@@ -1,0 +1,171 @@
+#==============================================================================
+# Script    : utils_age_mix.R
+# Project   : Aging and Neighborhood Commercial Vitality in Seoul
+# Purpose   : Shared helpers for annual resident/floating age-mix appendix
+#             sidecars.
+# Author    : Codex
+# Created   : 2026-04-22
+# Type      : utility
+# Inputs    : registered_resident_population.parquet,
+#             seoul_raw_integrated_wide.parquet, panel views, cfg
+# Outputs   : In-memory annual age-share tibbles merged into modeling panels
+# DependsOn : utils_io.R, utils_model.R, utils_qc.R, arrow
+#==============================================================================
+
+#==============================================================================
+# 1. Shared Age-Mix Registry
+#==============================================================================
+
+resolve_age_mix_family_registry <- function(domains = c("resident", "floating")) {
+  age_labels <- c("age20", "age30", "age40", "age50", "age60plus")
+  domains <- intersect(as.character(domains), c("resident", "floating"))
+  if (length(domains) == 0L) {
+    return(tibble::tibble())
+  }
+
+  registry <- tibble::tibble(
+    model_family = c("resident_age_mix", "floating_age_mix"),
+    domain = c("resident", "floating"),
+    source_type = c("resident", "floating"),
+    annual_step = c(FALSE, FALSE),
+    asof_col = c(NA_character_, NA_character_),
+    same_domain_total_control = c("ln_resident_pop", NA_character_),
+    raw_cols = list(
+      c(
+        age20 = "연령대_20_상주인구_수",
+        age30 = "연령대_30_상주인구_수",
+        age40 = "연령대_40_상주인구_수",
+        age50 = "연령대_50_상주인구_수",
+        age60plus = "연령대_60_이상_상주인구_수"
+      ),
+      c(
+        age20 = "연령대_20_유동인구_수",
+        age30 = "연령대_30_유동인구_수",
+        age40 = "연령대_40_유동인구_수",
+        age50 = "연령대_50_유동인구_수",
+        age60plus = "연령대_60_이상_유동인구_수"
+      )
+    )
+  ) |>
+    dplyr::filter(domain %in% domains) |>
+    dplyr::mutate(
+      share_cols = purrr::map(domain, ~ sprintf("%s_%s_share", age_labels, .x)),
+      exposure_vars = purrr::map(domain, ~ sprintf("%s_%s_share", age_labels[1:4], .x)),
+      omitted_reference_var = sprintf("age60plus_%s_share", domain),
+      requested_exposures = purrr::map_chr(exposure_vars, collapse_chr)
+    )
+
+  registry
+}
+
+
+#==============================================================================
+# 2. Annual Age-Share Construction
+#==============================================================================
+
+safe_num_age_mix <- function(x) {
+  suppressWarnings(as.numeric(x))
+}
+
+read_age_mix_source <- function(source_value, raw_cols) {
+  arrow::open_dataset(cfg$paths$seoul_raw_integrated_wide) |>
+    dplyr::filter(source_type == source_value) |>
+    dplyr::select(dplyr::all_of(c("adm_cd", "year", "quarter", raw_cols))) |>
+    dplyr::collect() |>
+    tibble::as_tibble() |>
+    standardize_keys()
+}
+
+build_domain_age_shares <- function(source_value,
+                                    domain,
+                                    annual_step = FALSE,
+                                    raw_cols,
+                                    asof_col = NA_character_) {
+  age_labels <- c("age20", "age30", "age40", "age50", "age60plus")
+
+  if (identical(domain, "resident") || identical(source_value, "resident")) {
+    resident_df <- arrow::read_parquet(cfg$paths$registered_resident_population) |>
+      tibble::as_tibble() |>
+      standardize_keys()
+
+    required_cols <- c(
+      "adm_cd", "year",
+      "age20_resident_pop", "age30_resident_pop", "age40_resident_pop",
+      "age50_resident_pop", "age60_resident_pop",
+      "age20_resident_share", "age30_resident_share", "age40_resident_share",
+      "age50_resident_share", "age60plus_resident_share"
+    )
+    assert_required_cols(resident_df, required_cols, name = "registered_resident_age_mix_source")
+
+    return(
+      resident_df |>
+        dplyr::transmute(
+          adm_cd,
+          year,
+          age_mix_total = age20_resident_pop + age30_resident_pop +
+            age40_resident_pop + age50_resident_pop + age60_resident_pop,
+          age20_resident_share,
+          age30_resident_share,
+          age40_resident_share,
+          age50_resident_share,
+          age60plus_resident_share
+        ) |>
+        dplyr::arrange(adm_cd, year)
+    )
+  }
+
+  source_df <- read_age_mix_source(source_value, unname(raw_cols))
+  assert_required_cols(
+    source_df,
+    c("adm_cd", "year", "quarter", unname(raw_cols)),
+    name = sprintf("%s_age_mix_source", domain)
+  )
+
+  annual_counts <- source_df |>
+    dplyr::transmute(
+      adm_cd,
+      year,
+      quarter,
+      age20 = safe_num_age_mix(.data[[raw_cols[["age20"]]]]),
+      age30 = safe_num_age_mix(.data[[raw_cols[["age30"]]]]),
+      age40 = safe_num_age_mix(.data[[raw_cols[["age40"]]]]),
+      age50 = safe_num_age_mix(.data[[raw_cols[["age50"]]]]),
+      age60plus = safe_num_age_mix(.data[[raw_cols[["age60plus"]]]])
+    ) |>
+    dplyr::group_by(adm_cd, year) |>
+    dplyr::summarise(
+      dplyr::across(
+        dplyr::all_of(age_labels),
+        ~ if (all(!is.finite(.x))) NA_real_ else mean(.x, na.rm = TRUE)
+      ),
+      .groups = "drop"
+    )
+
+  age_matrix <- as.matrix(dplyr::select(annual_counts, dplyr::all_of(age_labels)))
+  annual_counts$age_mix_total <- rowSums(age_matrix, na.rm = TRUE)
+  annual_counts$age_mix_total[rowSums(is.finite(age_matrix)) == 0L] <- NA_real_
+
+  share_cols <- sprintf("%s_%s_share", age_labels, domain)
+  for (ii in seq_along(age_labels)) {
+    age_col <- age_labels[[ii]]
+    share_col <- share_cols[[ii]]
+    annual_counts[[share_col]] <- dplyr::if_else(
+      is.finite(annual_counts$age_mix_total) & annual_counts$age_mix_total > 0,
+      annual_counts[[age_col]] / annual_counts$age_mix_total,
+      NA_real_
+    )
+  }
+
+  annual_counts |>
+    dplyr::select(adm_cd, year, age_mix_total, dplyr::all_of(share_cols)) |>
+    dplyr::arrange(adm_cd, year)
+}
+
+add_current_age_shares <- function(base_panel, domain_df, domain) {
+  share_cols <- sprintf("%s_%s_share", c("age20", "age30", "age40", "age50", "age60plus"), domain)
+
+  base_panel |>
+    dplyr::select(-dplyr::any_of(c("age_mix_total", share_cols))) |>
+    dplyr::left_join(domain_df, by = c("adm_cd", "year")) |>
+    dplyr::relocate(dplyr::any_of(share_cols), .after = "year")
+}

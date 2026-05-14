@@ -1,0 +1,41 @@
+old_path,new_path,role,canonical_status
+02_Code/00_config/config.R,02_Code/00_setup/config.R,project configuration,canonical
+02_Code/00_config/install_packages.R,02_Code/00_setup/install_packages.R,package installer,canonical support
+02_Code/00_config/packages.R,02_Code/00_setup/packages.R,package loader,canonical support
+02_Code/00_config/senior_geocode_manual_fix.csv,02_Code/00_setup/senior_geocode_manual_fix.csv,manual geocode fix table,canonical support
+02_Code/99_run_all.R,02_Code/run_all.R,pipeline orchestration,canonical
+02_Code/01_preprocess/02_build_adm_region_lookup.R,02_Code/01_preprocess/01_build_adm_region_lookup.R,admin-dong region lookup,canonical
+02_Code/01_preprocess/03_build_seoul_year_panel.R,02_Code/01_preprocess/02_build_seoul_year_base.R,Seoul annual base build,canonical
+02_Code/01_preprocess/04_build_auxiliary_covariates.R,02_Code/01_preprocess/03_build_auxiliary_covariates.R,auxiliary covariate build,canonical
+02_Code/01_preprocess/04b_build_golmok_survival_rate.R,02_Code/01_preprocess/04_build_golmok_survival_rate.R,new-enterprise survival-rate build,canonical
+02_Code/01_preprocess/04c_build_registered_resident_population.R,02_Code/01_preprocess/05_build_registered_resident_population.R,registered resident-population build,canonical
+02_Code/01_preprocess/05_build_analysis_panel.R,02_Code/01_preprocess/06_build_analysis_panel.R,analysis panel join and transforms,canonical
+02_Code/01_preprocess/06_build_vitality_index.R,02_Code/01_preprocess/07_build_vitality_index.R,vitality index build,canonical
+02_Code/02_esda/07_build_spatial_weights.R,02_Code/02_esda/01_build_spatial_weights.R,spatial weights build,canonical
+02_Code/02_esda/08_run_esda.R,02_Code/02_esda/02_run_esda.R,ESDA run,canonical
+02_Code/04_models/11_run_twfe_main.R,02_Code/03_models/01_run_twfe_main.R,TWFE baseline,canonical
+02_Code/04_models/13_run_spdm_main.R,02_Code/03_models/02_run_spdm_main.R,SPDM main model,canonical
+02_Code/04_models/13a_run_spdm_channel_models.R,02_Code/03_models/03_run_spdm_channel_path.R,SPDM channel path,canonical
+02_Code/04_models/13e_run_spdm_w_robustness.R,02_Code/04_robustness/01_run_spdm_w_robustness.R,SPDM W robustness,canonical robustness
+02_Code/05_robustness/15_run_robustness.R,02_Code/04_robustness/02_run_robustness.R,general robustness,canonical robustness
+02_Code/04_models/16_make_tables_figures.R,02_Code/05_reporting/01_make_tables_figures.R,analysis tables and figures,canonical reporting
+02_Code/07_report/01_build_presentation_artifacts.R,02_Code/05_reporting/02_build_presentation_artifacts.R,presentation artifacts,reporting sidecar
+02_Code/07_report/02_build_gtwr_level_artifacts.R,02_Code/05_reporting/03_build_gtwr_level_artifacts.R,GTWR level artifacts,reporting sidecar
+02_Code/06_qc/17_validate_method_dataset_alignment.R,02_Code/06_qc/01_validate_method_dataset_alignment.R,method-data contract QC,canonical QC
+02_Code/06_qc/18_check_processed_parquet_outputs.R,02_Code/06_qc/02_check_processed_parquet_outputs.R,processed parquet audit,manual QC
+02_Code/06_qc/20_open_outputs_for_rstudio_review.R,02_Code/06_qc/03_open_outputs_for_rstudio_review.R,RStudio output review helper,manual QC
+02_Code/01_preprocess/04a_build_living_population_inflow.R,02_Code/80_optional/preprocess/01_build_living_population_inflow.R,Seoul living-population inflow build,optional preprocess
+02_Code/04_models/11a_run_twfe_channel_models.R,02_Code/80_optional/twfe/01_run_twfe_channel_models.R,TWFE channel appendix,manual appendix
+02_Code/04_models/11b_run_twfe_interaction_models.R,02_Code/80_optional/twfe/02_run_twfe_interaction_models.R,TWFE interaction appendix,manual appendix
+02_Code/04_models/11c_run_twfe_age_mix_experiment.R,02_Code/80_optional/twfe/03_run_twfe_age_mix_experiment.R,TWFE age-mix appendix,manual appendix
+02_Code/04_models/13b_run_spdm_interaction_models.R,02_Code/80_optional/spdm/01_run_spdm_interaction_models.R,SPDM interaction appendix,manual appendix
+02_Code/04_models/13c_run_spdm_age_mix_experiment.R,02_Code/80_optional/spdm/02_run_spdm_age_mix_experiment.R,SPDM age-mix appendix,manual appendix
+02_Code/04_models/13d_run_spdm_sector_share_experiment.R,02_Code/80_optional/spdm/03_run_spdm_sector_share_experiment.R,SPDM sector-share appendix,manual appendix
+02_Code/04_models/13f_run_spdm_selection_sidecar.R,02_Code/80_optional/spdm/04_run_spdm_selection_sidecar.R,SPDM selection appendix,manual appendix
+02_Code/04_models/13h_run_spdm_family_comparison_sidecar.R,02_Code/80_optional/spdm/05_run_spdm_family_comparison_sidecar.R,SPDM family-comparison appendix,manual appendix
+02_Code/04_models/14_run_gtwr_optional.R,02_Code/80_optional/gtwr/01_run_gtwr_main.R,GTWR main sidecar,optional GTWR
+02_Code/04_models/14a_run_gtwr_floating_only_optional.R,02_Code/80_optional/gtwr/02_run_gtwr_floating_only.R,GTWR floating appendix,manual appendix
+02_Code/04_models/14b_run_gtwr_age_band_optional.R,02_Code/80_optional/gtwr/03_run_gtwr_age_band.R,GTWR age-band appendix,manual appendix
+02_Code/04_models/14c_run_gtwr_sector_share_optional.R,02_Code/80_optional/gtwr/04_run_gtwr_sector_share.R,GTWR sector-share appendix,manual appendix
+02_Code/04_models/14d_run_gwr_delta_optional.R,02_Code/80_optional/gtwr/05_run_gwr_delta.R,GWR delta appendix,manual appendix
+02_Code/04_models/14x_run_gtwr_experiment_optional.R,02_Code/80_optional/gtwr/06_run_gtwr_experiment.R,GTWR experiment appendix,manual appendix
