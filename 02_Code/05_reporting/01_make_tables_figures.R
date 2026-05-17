@@ -452,7 +452,6 @@ desc_var_registry <- tibble::tribble(
   "vitality_index_pca",              "PCA vitality index",                        "robustness_outcome",
   "ln_sales_count",                  "Log annual sales count",                    "economic_component",
   "ln_total_sales",                  "Log annual total sales amount",             "economic_component",
-  "ln_total_store_count",            "Log annual representative store count",     "economic_component",
   "ln_sales_per_store",              "Log annual sales per store",                "economic_support",
   "ln_floating_pop",                 "Log annual floating population",            "social_component",
   "ln_external_inflow_pop",          "Log annual external inflow population",      "social_component",
@@ -464,11 +463,8 @@ desc_var_registry <- tibble::tribble(
   "operating_months_rel_seoul",      "Operating duration relative to Seoul",       "stability_component",
   "survival_3y",                     "New-enterprise 3-year survival rate",       "stability_component",
   "ln_resident_pop",                 "Log annual resident population",            "model_control",
-  "ln_apartment_household_count",    "Log apartment household count",             "model_control",
   "ln_official_land_price",          "Log official land price",                   "model_control",
-  "transit_accessibility",           "Transit accessibility",                     "model_control",
-  "hospital_count_aux_core",         "Core hospital count",                       "model_control",
-  "mall_count_aux_core",             "Core large retail store count",             "model_control"
+  "transit_accessibility",           "Transit accessibility",                     "model_control"
 ) |>
   dplyr::mutate(display_order = dplyr::row_number()) |>
   dplyr::filter(.data$variable %in% names(panel))

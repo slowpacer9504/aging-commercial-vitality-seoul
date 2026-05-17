@@ -76,12 +76,11 @@
   - `vitality_index_pca`
 - shared control candidate pool
   - `ln_resident_pop`
-  - `ln_apartment_household_count`, `ln_official_land_price`
+  - `ln_official_land_price`
   - `transit_accessibility`
-  - `hospital_count_aux_core`, `mall_count_aux_core`
 - GTWR local sidecar control pool
   - lean: `ln_resident_pop`, `ln_official_land_price`
-  - extended: lean + `ln_apartment_household_count`, `transit_accessibility`, `hospital_count_aux_core`, `mall_count_aux_core`
+  - extended: lean + `transit_accessibility`
 
 ### 2.3 Main Text와 Appendix의 경계
 
@@ -122,7 +121,7 @@ Methods에서는 다음처럼 쓰면 된다.
 
 > 상업 활력은 경제적 활력, 사회적 활력, 시간적 활력, 안정성의 네 하위 차원으로 측정하였으며, 보조적으로 종합지수를 구성하였다.
 
-경제적 활력은 거래 규모 축과 점포 공급 규모 축을 동일가중으로 결합한다. 거래 규모 축은 추정매출 건수와 총 추정매출액의 pooled z-score 평균으로, 점포 공급 규모 축은 총 점포수의 pooled z-score로 측정한다. 점포당 매출액은 기술통계와 보조 진단용 지원 변수로 유지하되, 경제 하위지수에는 직접 투입하지 않는다.
+경제적 활력은 추정매출 건수와 총 추정매출액을 각각 pooled z-score로 표준화한 뒤 동일가중 평균해 측정한다. 총 점포수와 점포당 매출액은 패널에는 유지하되, 경제 하위지수에는 직접 투입하지 않는다.
 사회적 활력은 상권 내부 유동인구 규모와 서울생활인구 기반 외부 유입 인구 규모를 함께 반영한다.
 시간적 활력은 하루 안의 매출·유동인구 시간대 분산과 1년 안의 매출·유동인구 분기 안정성을 함께 반영한다.
 안정성은 업종 다양성으로 측정한 구조적 다양성 축과, 서울 대비 상대 영업월수 및 신생기업 3년 생존율로 측정한 점포 존속성 축을 동일가중으로 결합한다.
@@ -171,7 +170,7 @@ GTWR는 전역모형 이후에도 지역별 반응 강도와 방향이 다를 �
 
 - main text: 대표 지도 1~2개 또는 간단한 요약
 - appendix: 지역별 계수 분포, local condition number, 추가 local sidecar
-- control interpretation: 본문 GTWR는 lean을 기본으로 쓰고, extended는 대중교통 접근성 composite와 추가 입지 통제를 넣은 민감도 사양으로 해석한다.
+- control interpretation: 본문 GTWR는 lean을 기본으로 쓰고, extended는 대중교통 접근성 composite를 추가한 민감도 사양으로 해석한다.
 
 ## 4. 코드별 연구 역할 표
 

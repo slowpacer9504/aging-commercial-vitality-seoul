@@ -65,9 +65,7 @@ exposures <- intersect(exposure_base, names(panel))
 exposures <- exposures[vapply(exposures, function(v) sum(is.finite(panel[[v]])) > 100, logical(1))]
 
 control_candidates <- value_or(cfg$twfe_main_control_cols, c(
-  "ln_resident_pop",
-  "ln_apartment_household_count", "ln_official_land_price", "transit_accessibility",
-  "hospital_count_aux_core", "mall_count_aux_core"
+  "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
 ))
 # 후보 control을 넓게 제시한 뒤 usable screening을 적용한다.
 control_screen <- resolve_outcome_control_screen(

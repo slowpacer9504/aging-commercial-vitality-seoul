@@ -634,9 +634,7 @@ read_twfe_main_controls_used <- function(path = cfg$paths$twfe_main_controls_use
 
 twfe_main_control_candidate_cols <- function() {
   value_or(cfg$twfe_main_control_cols, c(
-    "ln_resident_pop",
-    "ln_apartment_household_count", "ln_official_land_price", "transit_accessibility",
-    "hospital_count_aux_core", "mall_count_aux_core"
+    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
   ))
 }
 
@@ -682,12 +680,17 @@ assert_twfe_main_controls_current <- function(control_screen,
 
   forbidden_controls <- intersect(
     selected_controls,
-    c("ln_worker_pop", "ln_floating_pop", "bus_stop_count_aux", "subway_station_count_aux", "apartment_count")
+    c(
+      "ln_worker_pop", "ln_floating_pop",
+      "bus_stop_count_aux", "subway_station_count_aux",
+      "apartment_count", "ln_apartment_count",
+      "ln_apartment_household_count", "hospital_count_aux_core", "mall_count_aux_core"
+    )
   )
   if (length(forbidden_controls) > 0L) {
     stop(
       sprintf(
-        "[ERROR] %s selected retired control(s): %s. Use the current six-control TWFE contract.",
+        "[ERROR] %s selected retired control(s): %s. Use the current TWFE control contract.",
         context,
         collapse_chr(forbidden_controls)
       ),

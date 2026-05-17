@@ -36,7 +36,8 @@ gtwr_retired_control_cols <- function() {
   c(
     "ln_worker_pop", "ln_floating_pop",
     "bus_stop_count_aux", "subway_station_count_aux",
-    "apartment_count", "ln_apartment_count"
+    "apartment_count", "ln_apartment_count",
+    "ln_apartment_household_count", "hospital_count_aux_core", "mall_count_aux_core"
   )
 }
 

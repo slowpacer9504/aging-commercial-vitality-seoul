@@ -249,7 +249,7 @@
   - annual sample 기준으로 실행한다.
   - `GTWR_CONTROL_SET=lean`을 기본 통제 사양으로 사용한다.
   - lean control pool은 `ln_resident_pop`, `ln_official_land_price` 두 개다.
-  - `GTWR_CONTROL_SET=extended`는 lean control에 `ln_apartment_household_count`, `transit_accessibility`, `hospital_count_aux_core`, `mall_count_aux_core`를 추가한다.
+  - `GTWR_CONTROL_SET=extended`는 lean control에 `transit_accessibility`를 추가한다.
   - GTWR extended에서 버스정류장 수와 지하철역 수는 별도 통제변수로 투입하지 않고 `transit_accessibility` composite로 투입한다.
   - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 기록한다.
   - local condition-number는 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 `st.dist`/`gw.weight` 기반 시공간 가중치에 맞춰 적용한다.

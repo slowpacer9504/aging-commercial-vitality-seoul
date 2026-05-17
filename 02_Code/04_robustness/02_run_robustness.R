@@ -76,9 +76,7 @@ if (length(robustness_outcomes) == 0L) {
   #============================================================================
 
   control_candidates <- c(
-    "ln_resident_pop",
-    "ln_apartment_household_count", "ln_official_land_price", "transit_accessibility",
-    "hospital_count_aux_core", "mall_count_aux_core"
+    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
   )
 
   control_screen <- resolve_outcome_control_screen(

@@ -132,7 +132,7 @@ GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타�
   - `vitality_index_pca`
 
 본문 결과표와 해석의 중심은 네 개의 하위 활력지표다. 종합지수는 전체 방향이 일관적인지 확인하는 보조 요약치로 둔다.
-경제적 활력 하위지수는 거래 규모 축과 점포 공급 규모 축을 동일가중으로 결합한다. 거래 규모 축은 추정매출 건수와 총 추정매출액의 pooled z-score 평균이고, 점포 공급 규모 축은 총 점포수의 pooled z-score다. 점포당 매출액은 기술통계와 보조 진단용 지원 변수로 유지하되, 경제 하위지수 구성요소에서는 제외한다.
+경제적 활력 하위지수는 추정매출 건수와 총 추정매출액을 각각 pooled z-score로 표준화한 뒤 평균해 구성한다. 총 점포수와 점포당 매출액은 패널에는 유지하되, 경제 하위지수 구성요소에서는 제외한다.
 사회적 활력 하위지수는 상권 내부 유동인구 규모와 서울생활인구 기반 외부 유입 인구 규모를 함께 반영한다.
 시간적 활력 하위지수는 하루 안의 시간대 분포와 1년 안의 분기 안정성을 함께 반영한다.
 안정성 하위지수는 구조적 다양성 축과 점포 존속성 축을 동일가중으로 결합한다. 구조적 다양성 축은 업종 다양성 지수의 pooled z-score이고, 점포 존속성 축은 서울 대비 상대 영업월수와 서울시 상권분석서비스 신생기업 3년 생존율(`survival_3y`)을 각각 pooled z-score로 표준화한 뒤 평균한다. `closure_rate`와 `stability_score = -closure_rate`는 폐업압력 진단용 지원 변수로 유지하지만, active 안정성 하위지수 구성요소에서는 제외한다.
@@ -140,14 +140,11 @@ GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타�
 
 ### 6.3 통제변수
 
-메인 TWFE/SPDM의 기본 control candidate pool은 아래 여섯 개다. `ln_floating_pop`은 사회적 활력 구성요소와 종합 활력지수에 포함되므로 메인 통제변수에서는 사용하지 않는다.
+메인 TWFE/SPDM의 기본 control candidate pool은 아래 세 개다. `ln_floating_pop`은 사회적 활력 구성요소와 종합 활력지수에 포함되므로 메인 통제변수에서는 사용하지 않는다. `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 남기지만 active TWFE/SPDM/GTWR 통제변수로 투입하지 않는다.
 
 - `ln_resident_pop`
-- `ln_apartment_household_count`
 - `ln_official_land_price`
 - `transit_accessibility`
-- `hospital_count_aux_core`
-- `mall_count_aux_core`
 
 메인 TWFE/SPDM은 finite observation 수와 추정 가능성에 따라 usable subset을 기록한다.
 
@@ -158,12 +155,9 @@ GTWR main sidecar는 local design matrix의 다중공선성 민감도를 고려�
   - `ln_official_land_price`
 - `extended` 선택값
   - `lean` 두 변수
-  - `ln_apartment_household_count`
   - `transit_accessibility`
-  - `hospital_count_aux_core`
-  - `mall_count_aux_core`
 
-`ln_resident_pop`은 행정안전부 주민등록인구현황의 행정동-월별 총인구 stock을 연평균한 뒤 `log1p`를 적용한 값이다. `ln_apartment_household_count`는 서울시 공동주택 아파트 정보의 좌표를 행정동 경계에 매칭하고 사용승인연도 이후 active stock으로 누적한 행정동-연도별 아파트 세대수의 `log1p` 값이다. `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만든 대중교통 접근성 통제변수다. 모든 GTWR control set은 complete-case 표본과 GTWR spatiotemporal weight 기반 local condition-number를 별도 진단으로 기록한다. 이 local CN은 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 시공간 거리·커널 가중치에 맞춰 적용한 보조 진단이다.
+`ln_resident_pop`은 행정안전부 주민등록인구현황의 행정동-월별 총인구 stock을 연평균한 뒤 `log1p`를 적용한 값이다. `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만든 대중교통 접근성 통제변수다. 모든 GTWR control set은 complete-case 표본과 GTWR spatiotemporal weight 기반 local condition-number를 별도 진단으로 기록한다. 이 local CN은 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 시공간 거리·커널 가중치에 맞춰 적용한 보조 진단이다.
 
 ### 6.4 기간 플래그와 보조 변수
 
@@ -206,7 +200,7 @@ active methodology stack은 아래와 같다.
 - 해석 수준: global causal claim이 아니라 local heterogeneity description
 - bandwidth: main GTWR는 outcome 간 비교 가능성, local coefficient 안정성, extended control set의 추정 가능성을 함께 고려해 `GTWR_BANDWIDTH_STRATEGY=fixed`, `GTWR_ST_BW=120`을 기본으로 사용한다. `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`일 때는 고정 adaptive bandwidth grid `60,90,120,150,180`을 같은 spec에 반복 적용해 baseline `120` 대비 latest-year beta agreement, sign flip, local condition-number 변화를 보조표로 기록한다. `bw.gtwr()` full-panel/anchor-year 탐색은 명시적으로 선택한 별도 진단 실행에서만 사용한다.
 - lamda sensitivity: `RUN_GTWR_LAMDA_SENSITIVITY=TRUE`일 때 `GTWR_LAMDA_SENSITIVITY_GRID`의 값별로 GTWR를 재추정하고, baseline latest-year beta와의 상관, 절대변화, sign flip, local condition-number 변화를 보조표로 기록한다.
-- control set: 기본값은 `GTWR_CONTROL_SET=lean`이며, `extended`는 대중교통 접근성 composite와 추가 입지 통제를 포함하는 민감도/확장 사양으로 사용한다.
+- control set: 기본값은 `GTWR_CONTROL_SET=lean`이며, `extended`는 대중교통 접근성 composite를 추가하는 민감도/확장 사양으로 사용한다.
 - reporting surface: GTWR local coefficient는 latest year beta를 기준으로 요약하고, earliest-to-latest delta는 보조 appendix diagnostic으로만 파생한다.
 
 ## 8. 본문과 부록의 경계

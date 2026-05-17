@@ -223,9 +223,7 @@ spdm_wx_name <- function(var) {
 
 spdm_main_control_candidate_cols <- function() {
   default_controls <- c(
-    "ln_resident_pop",
-    "ln_apartment_household_count", "ln_official_land_price", "transit_accessibility",
-    "hospital_count_aux_core", "mall_count_aux_core"
+    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
   )
   controls <- spdm_cfg_value("spdm_main_control_cols", default_controls)
   controls <- unique(as.character(value_or(controls, default_controls)))
@@ -236,7 +234,8 @@ spdm_retired_control_cols <- function() {
   c(
     "ln_worker_pop", "ln_floating_pop",
     "bus_stop_count_aux", "subway_station_count_aux",
-    "apartment_count", "ln_apartment_count"
+    "apartment_count", "ln_apartment_count",
+    "ln_apartment_household_count", "hospital_count_aux_core", "mall_count_aux_core"
   )
 }
 
@@ -306,7 +305,7 @@ assert_spdm_main_controls_current <- function(control_screen,
   if (length(forbidden_controls) > 0L) {
     stop(
       sprintf(
-        "[ERROR] %s selected retired SPDM control(s): %s. Use the current six-control SPDM contract.",
+        "[ERROR] %s selected retired SPDM control(s): %s. Use the current SPDM control contract.",
         context,
         collapse_chr(forbidden_controls)
       ),
@@ -348,7 +347,7 @@ assert_spdm_main_diagnostics_controls_current <- function(diagnostics,
   if (length(forbidden_controls) > 0L) {
     stop(
       sprintf(
-        "[ERROR] %s inherited retired SPDM diagnostic control(s): %s. Use the current six-control SPDM contract.",
+        "[ERROR] %s inherited retired SPDM diagnostic control(s): %s. Use the current SPDM control contract.",
         context,
         collapse_chr(forbidden_controls)
       ),

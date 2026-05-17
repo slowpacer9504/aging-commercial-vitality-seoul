@@ -262,8 +262,7 @@ active analytical contract는 이 문서가 선언하는 연도 패널 기준을
 
 - `vitality_sub_economic`
   - transaction scale axis: `ln_sales_count`, `ln_total_sales`
-  - store supply axis: `ln_total_store_count`
-  - final subindex: pooled-z transaction scale axis와 pooled-z store supply axis의 동일가중 평균
+  - final subindex: pooled-z `ln_sales_count`와 pooled-z `ln_total_sales`의 동일가중 평균
 - `vitality_sub_social`
   - `ln_floating_pop`, `ln_external_inflow_pop`
 - `vitality_sub_temporal`
@@ -379,7 +378,7 @@ GTWR main은 annual resident-only local sidecar다.
 - 해석 수준: local heterogeneity description
 - 실행 방식: outcome-exposure spec 단위로 계산하며, `GTWR_PARALLEL_SPECS`만큼 병렬 worker를 사용한다.
 - 재개 방식: spec별 RDS cache를 `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/`에 저장하고, 중단 후 재실행하면 유효한 완료 spec은 재사용한다.
-- control set: 기본값은 `GTWR_CONTROL_SET=lean`이다. `lean`은 주민등록인구 기반 `ln_resident_pop`, `ln_official_land_price`만 사용한다. `extended`는 여기에 `ln_apartment_household_count`, `transit_accessibility`, `hospital_count_aux_core`, `mall_count_aux_core`를 추가한다.
+- control set: 기본값은 `GTWR_CONTROL_SET=lean`이다. `lean`은 주민등록인구 기반 `ln_resident_pop`, `ln_official_land_price`만 사용한다. `extended`는 여기에 `transit_accessibility`를 추가한다.
 - bandwidth 방식: 기본값은 `GTWR_BANDWIDTH_STRATEGY=fixed`, `GTWR_ST_BW=120`이다. `adaptive=TRUE` 기준으로 각 추정점 주변 시공간 이웃 120개를 사용해 outcome 간 비교 가능성과 extended control set의 추정 가능성을 함께 유지한다. `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`이면 `GTWR_BANDWIDTH_SENSITIVITY_GRID`의 기본값 `60,90,120,150,180`을 같은 outcome-control-spec에 반복 적용하고, baseline 120 대비 beta correlation, 절대변화, sign flip, local condition-number 변화를 `gtwr_bandwidth_sensitivity_<control_set>.csv`에 저장한다. `full_panel_bw_gtwr`와 `anchor_year_bw_gtwr`는 명시적으로 선택한 별도 진단 실행에서만 사용한다.
 - lamda 민감도: `RUN_GTWR_LAMDA_SENSITIVITY=TRUE`일 때만 실행한다. `GTWR_LAMDA_SENSITIVITY_GRID`의 각 값을 같은 outcome-control-spec에 적용해 GTWR를 재추정하고, baseline latest-year beta 대비 상관, 절대변화, sign flip, local condition-number 변화를 `gtwr_lamda_sensitivity_<control_set>.csv`에 저장한다.
 - local CN 진단: `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 따르되, GTWR에서 사용한 `st.dist`/`gw.weight` 기반 시공간 가중치를 적용한다.
@@ -387,7 +386,7 @@ GTWR main은 annual resident-only local sidecar다.
 GTWR의 핵심 운영 원칙은 아래와 같다.
 
 1. annual sample만 사용한다.
-2. main control pool은 `GTWR_CONTROL_SET`으로 선택한다. 기본 `lean`은 상주인구 규모와 지가 통제만 사용하고, `extended`는 추가 입지 통제와 대중교통 접근성 composite를 사용한다.
+2. main control pool은 `GTWR_CONTROL_SET`으로 선택한다. 기본 `lean`은 상주인구 규모와 지가 통제만 사용하고, `extended`는 대중교통 접근성 composite를 추가한다.
 3. main bandwidth는 fixed `GTWR_ST_BW=120`으로 통일한다. fixed bandwidth grid 민감도는 opt-in 보조 진단으로만 실행하고, full-panel 또는 anchor-year `bw.gtwr()` 탐색은 명시적 진단 실행에서만 사용한다.
 4. main raw/output surface는 latest year local beta를 기준으로 만든다.
 5. earliest-to-latest delta는 `gtwr_delta_*` 보조 reporting table에서만 파생한다.

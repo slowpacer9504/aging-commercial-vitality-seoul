@@ -51,20 +51,16 @@
   - `vitality_index_pca`
 - `ESDA support outcomes`
   - `ln_total_sales`
-  - `ln_total_store_count`
   - `ln_floating_pop`
   - `diversity_index`
 
 ## 4) 핵심 통제변수
 
 - `ln_resident_pop`
-- `ln_apartment_household_count`
 - `ln_official_land_price`
 - `transit_accessibility`
-- `hospital_count_aux_core`
-- `mall_count_aux_core`
 
-위 6개는 TWFE/SPDM 기본 control candidate pool이며, usable subset은 finite-count와 collinearity 점검을 거쳐 확정한다. `ln_floating_pop`은 사회적 활력 구성요소이므로 메인 통제변수로 사용하지 않는다.
+위 3개는 TWFE/SPDM 기본 control candidate pool이며, usable subset은 finite-count와 collinearity 점검을 거쳐 확정한다. `ln_floating_pop`은 사회적 활력 구성요소이므로 메인 통제변수로 사용하지 않는다. `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 유지하지만 active TWFE/SPDM/GTWR 통제변수로 사용하지 않는다.
 
 GTWR는 별도 control set을 사용한다.
 
@@ -73,11 +69,8 @@ GTWR는 별도 control set을 사용한다.
   - `ln_official_land_price`
 - `extended`
   - `ln_resident_pop`
-  - `ln_apartment_household_count`
   - `ln_official_land_price`
   - `transit_accessibility`
-  - `hospital_count_aux_core`
-  - `mall_count_aux_core`
 
 GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직접 투입하지 않고, 두 변수를 표준화 평균한 `transit_accessibility`를 통제변수로 투입한다.
 
@@ -107,10 +100,9 @@ GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직
 - `age60_floating_share`와 `age60_sales_share`는 보조 축이다.
 - `vitality_sub_*` 4개를 우선 보고하고 `vitality_index_base`는 보조 종합지수로 둔다.
 - SPDM channel path에서는 mediator와 유동인구 source가 겹치는 `vitality_sub_social` 단독 지표를 제외하되, 종합 활력지수는 네 하위차원을 모두 포함하는 `vitality_index_base`를 사용한다.
-- `vitality_sub_economic`은 거래 규모 축과 점포 공급 규모 축의 동일가중 평균으로 구성한다.
-- 거래 규모 축(`economic_transaction_scale`)은 `ln_sales_count`와 `ln_total_sales`의 pooled z-score 평균이다.
-- 점포 공급 규모 축은 `ln_total_store_count`의 pooled z-score다.
-- `ln_sales_per_store`는 기술통계와 보조 진단용 지원 변수로 유지하지만, 경제 하위지수 구성요소에서는 제외한다.
+- `vitality_sub_economic`은 `ln_sales_count`와 `ln_total_sales`의 pooled z-score 평균으로 구성한다.
+- 거래 규모 축(`economic_transaction_scale`)은 active 경제 하위지수와 같은 `ln_sales_count`와 `ln_total_sales`의 pooled z-score 평균이다.
+- `ln_total_store_count`와 `ln_sales_per_store`는 패널에는 유지하지만, 경제 하위지수 구성요소와 reporting 경제 component에서는 제외한다.
 - `vitality_sub_social`은 내부 유동인구 규모(`ln_floating_pop`)와 외부 유입 인구 규모(`ln_external_inflow_pop`)로 구성한다.
 - `vitality_sub_temporal`은 일중 시간대 분산(`sales_time_entropy`, `floating_time_entropy`)과 연중 분기 안정성(`sales_quarter_stability`, `floating_quarter_stability`)으로 구성한다.
 - `vitality_sub_stability`는 구조적 다양성 축과 점포 존속성 축의 동일가중 평균으로 구성한다.
@@ -138,7 +130,7 @@ GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직
 - `annualization_formula`는 코드 기준의 실제 연간화 산식을 간단히 적는다.
 - `annualization_note`는 strict Q4 snapshot, 분모가중 비중, permit active-stock, 파생지수 생성처럼 해석상 중요한 예외를 적는다.
 - additive flow는 연합계가 기본이다. 예: `ln_total_sales`, `ln_sales_count`, `ln_age60_sales_amount`.
-- level 또는 stock은 연평균, Q4 snapshot, 또는 승인일 기반 active stock을 쓴다. 예: `ln_floating_pop`은 연평균이고, `ln_resident_pop`은 행정안전부 월별 주민등록인구 stock의 연평균이며, `ln_apartment_household_count`는 공동주택 아파트 사용승인연도 이후 active stock 세대수의 `log1p` 값이다.
+- level 또는 stock은 연평균, Q4 snapshot, 또는 승인일 기반 active stock을 쓴다. 예: `ln_floating_pop`은 연평균이고, `ln_resident_pop`은 행정안전부 월별 주민등록인구 stock의 연평균이며, `ln_total_store_count`는 분기 점포수 stock의 연평균에 `log1p`를 적용한 값이다.
 - 주민등록인구 기반 `age60_resident_share`, `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`는 월별 연령대 인구 합계를 월별 총인구 합계로 나눈 분모가중 연평균 비중이다.
 - 주민등록인구 age-mix appendix 변수(`age20_resident_share`~`age60plus_resident_share`)는 20세 이상 연령구성 분모에서 계산한다.
 - 2020년에 `오류제2동`에서 분동된 `항동`은 2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.

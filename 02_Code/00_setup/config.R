@@ -156,9 +156,7 @@ cfg$resident_age_support_vars <- c(
 cfg$twfe_main_exposure_vars <- c("age60_resident_share")
 cfg$twfe_channel_vars <- c("age60_floating_share")
 cfg$twfe_main_control_cols <- c(
-  "ln_resident_pop",
-  "ln_apartment_household_count", "ln_official_land_price", "transit_accessibility",
-  "hospital_count_aux_core", "mall_count_aux_core"
+  "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
 )
 cfg$floating_exposure_overlap_outcomes <- c("vitality_sub_social", "ln_floating_pop")
 cfg$primary_outcomes <- c(
@@ -171,7 +169,7 @@ cfg$outcome_registry_channel_path_outcomes <- setdiff(
   c(cfg$primary_outcomes, cfg$vitality_supplementary_outcomes)
 )
 cfg$vitality_component_appendix_outcomes <- c(
-  "ln_sales_count", "ln_total_sales", "ln_total_store_count",
+  "ln_sales_count", "ln_total_sales",
   "sales_time_entropy", "sales_quarter_stability", "ln_floating_pop",
   "ln_external_inflow_pop",
   "floating_time_entropy", "floating_quarter_stability",
@@ -244,9 +242,7 @@ cfg$gtwr_sector_share_outcomes <- c(
 cfg$spdm_main_exposure_vars <- c("age60_resident_share")
 cfg$spdm_channel_vars <- c("age60_floating_share")
 cfg$spdm_main_control_cols <- c(
-  "ln_resident_pop",
-  "ln_apartment_household_count", "ln_official_land_price", "transit_accessibility",
-  "hospital_count_aux_core", "mall_count_aux_core"
+  "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
 )
 cfg$gtwr_main_exposure_vars <- c("age60_resident_share")
 cfg$gtwr_floating_exposure_vars <- c("age60_floating_share")
@@ -257,15 +253,13 @@ cfg$gtwr_age_band_labels <- c("age20", "age30", "age40", "age50")
 
 # GTWR uses a more parsimonious default control contract than TWFE/SPDM
 # because local design matrices are much more sensitive to collinearity.
-# Set GTWR_CONTROL_SET=extended to use the larger pool. In the extended pool,
-# bus and subway counts enter through the standardized transit-accessibility composite.
+# Set GTWR_CONTROL_SET=extended to add the standardized
+# transit-accessibility composite to the lean pool.
 cfg$gtwr_lean_control_cols <- c(
   "ln_resident_pop", "ln_official_land_price"
 )
 cfg$gtwr_extended_control_cols <- c(
-  "ln_resident_pop",
-  "ln_apartment_household_count", "ln_official_land_price", "transit_accessibility",
-  "hospital_count_aux_core", "mall_count_aux_core"
+  "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
 )
 cfg$gtwr_control_set <- tolower(trimws(Sys.getenv("GTWR_CONTROL_SET", unset = "lean")))
 if (!cfg$gtwr_control_set %in% c("lean", "extended")) cfg$gtwr_control_set <- "lean"
@@ -328,8 +322,8 @@ twfe_control_cols <- c(
   "ln_resident_pop",
   "resident_pop",
   "resident_pop_density", "total_household_commercial_density",
-  "ln_spend_total", "facility_count", "ln_apartment_household_count", "ln_official_land_price",
-  "transit_accessibility", "hospital_count_aux_core", "mall_count_aux_core",
+  "ln_spend_total", "facility_count", "ln_official_land_price",
+  "transit_accessibility",
   "avg_slope_degree", "intersection_density", "sidewalk_length_km"
 )
 

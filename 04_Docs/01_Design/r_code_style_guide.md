@@ -158,7 +158,7 @@ active shared panel에는 `quarter`, `yq`, 그리고 legacy shift/lead suffix를
 - annual resident-only local heterogeneity analysis에 한정한다.
 - `GTWR_CONTROL_SET=lean`을 기본으로 사용하고, extended는 명시적으로 선택할 때만 사용한다.
 - lean control은 `ln_resident_pop`, `ln_official_land_price` 두 개로 고정한다.
-- extended control은 lean control에 `ln_apartment_household_count`, `transit_accessibility`, `hospital_count_aux_core`, `mall_count_aux_core`를 추가한다.
+- extended control은 lean control에 `transit_accessibility`를 추가한다.
 - `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만들고, 두 원천 count는 모델 통제변수로 직접 투입하지 않는다.
 - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 남긴다.
 - bandwidth는 main GTWR에서 `GTWR_BANDWIDTH_STRATEGY=fixed`, `GTWR_ST_BW=120`으로 통일한다. `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`인 경우에만 고정 grid `60,90,120,150,180` 민감도를 별도 cache/output으로 실행하고, `bw.gtwr()` 탐색은 명시적 진단 실행에서만 사용한다.

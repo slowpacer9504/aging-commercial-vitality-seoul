@@ -166,7 +166,6 @@ count_invalid_transformed <- function(df, source_spec, component_name) {
 required_vars <- c(
   "ln_sales_count",
   "ln_total_sales",
-  "ln_total_store_count",
   "sales_time_entropy",
   "sales_quarter_stability",
   "floating_pop",
@@ -194,7 +193,6 @@ component_spec <- tibble::tribble(
   ~component,                    ~source_variable,             ~dimension,   ~transformation,      ~direction_rule,
   "ln_sales_count",              "ln_sales_count",             "economic",   "none",               "as_is",
   "ln_total_sales",              "ln_total_sales",             "economic",   "none",               "as_is",
-  "ln_total_store_count",        "ln_total_store_count",       "economic",   "none",               "as_is",
   "sales_time_entropy",          "sales_time_entropy",         "temporal",   "none",               "as_is",
   "sales_quarter_stability",     "sales_quarter_stability",    "temporal",   "none",               "as_is",
   "ln_floating_pop",             "floating_pop",               "social",     "log1p(max(x,0))",    "as_is",
@@ -227,7 +225,7 @@ economic_axis_spec <- list(
 )
 
 economic_subindex_spec <- list(
-  vitality_sub_economic = c("economic_transaction_scale", "ln_total_store_count")
+  vitality_sub_economic = c("economic_transaction_scale")
 )
 
 stability_axis_spec <- list(
@@ -376,40 +374,6 @@ if (nrow(bad_economic_axis) > 0) {
   )
 }
 
-economic_axis_vars <- names(economic_axis_spec)
-economic_axis_zvars <- paste0(economic_axis_vars, "_z")
-for (i in seq_along(economic_axis_vars)) {
-  v <- economic_axis_vars[[i]]
-  z <- economic_axis_zvars[[i]]
-  v_finite <- is.finite(comp[[v]])
-  v_mean <- mean(comp[[v]][v_finite], na.rm = TRUE)
-  v_sd <- stats::sd(comp[[v]][v_finite], na.rm = TRUE)
-  comp[[z]] <- NA_real_
-  comp[[z]][v_finite] <- (comp[[v]][v_finite] - v_mean) / v_sd
-}
-
-economic_axis_z_qc <- tibble::tibble(
-  component = economic_axis_vars,
-  z_variable = economic_axis_zvars,
-  z_finite_n = vapply(economic_axis_zvars, function(v) sum(is.finite(comp[[v]])), integer(1))
-)
-bad_economic_axis_z <- economic_axis_z_qc |>
-  dplyr::filter(z_finite_n < 100L)
-if (nrow(bad_economic_axis_z) > 0) {
-  write_csv_safe(
-    dplyr::bind_rows(vitality_qc, economic_axis_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc), by = "component"),
-    cfg$logs$vitality_component_qc
-  )
-  stop(
-    sprintf(
-      "[ERROR] vitality economic axis z-score QC failed: %s",
-      paste(sprintf("%s(z_finite=%d)", bad_economic_axis_z$component, bad_economic_axis_z$z_finite_n), collapse = "; ")
-    ),
-    call. = FALSE
-  )
-}
-
 for (axis_name in names(stability_axis_spec)) {
   axis_vars <- stability_axis_spec[[axis_name]]
   axis_zvars <- paste0(axis_vars, "_z")
@@ -478,7 +442,7 @@ bad_axis_z <- stability_axis_z_qc |>
 if (nrow(bad_axis_z) > 0) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc), by = "component"),
+      dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc), by = "component"),
     cfg$logs$vitality_component_qc
   )
   stop(
@@ -492,10 +456,9 @@ if (nrow(bad_axis_z) > 0) {
 
 for (sub_name in names(economic_subindex_spec)) {
   sub_vars <- economic_subindex_spec[[sub_name]]
-  sub_zvars <- paste0(sub_vars, "_z")
-  sub_complete <- stats::complete.cases(comp[, sub_zvars, drop = FALSE])
+  sub_complete <- stats::complete.cases(comp[, sub_vars, drop = FALSE])
   comp[[sub_name]] <- NA_real_
-  comp[[sub_name]][sub_complete] <- rowMeans(comp[sub_complete, sub_zvars, drop = FALSE])
+  comp[[sub_name]][sub_complete] <- rowMeans(comp[sub_complete, sub_vars, drop = FALSE])
 }
 
 for (sub_name in names(standard_subindex_spec)) {
@@ -515,7 +478,7 @@ subindex_qc <- tibble::tibble(
   source_variable = vapply(subindex_source_spec, function(x) paste(x, collapse = ";"), character(1)),
   dimension = subindex_dimensions,
   transformation = c(
-    "mean_of_axis_and_component_zscores",
+    "mean_of_component_zscores",
     rep("mean_of_component_zscores", length(standard_subindex_spec)),
     "mean_of_axis_zscores"
   ),
@@ -537,7 +500,7 @@ bad_subindex <- subindex_qc |>
 if (nrow(bad_subindex) > 0) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc), by = "component"),
+      dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc), by = "component"),
     cfg$logs$vitality_component_qc
   )
   stop(
@@ -575,7 +538,7 @@ bad_sub_z <- sub_z_qc |>
 if (nrow(bad_sub_z) > 0) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc, sub_z_qc), by = "component"),
+      dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component"),
     cfg$logs$vitality_component_qc
   )
   stop(
@@ -597,7 +560,7 @@ complete_n <- sum(complete_idx)
 if (complete_n < 100L) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
+      dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
       dplyr::mutate(complete_case_n = complete_n),
     cfg$logs$vitality_component_qc
   )
@@ -611,7 +574,7 @@ entropy_fit <- tryCatch(
 if (inherits(entropy_fit, "error")) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
+      dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
       dplyr::mutate(
         complete_case_n = complete_n,
         entropy_message = entropy_fit$message
@@ -632,7 +595,7 @@ entropy_sd <- stats::sd(entropy_raw, na.rm = TRUE)
 if (!is.finite(entropy_sd) || entropy_sd <= 1e-8) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
+      dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
       dplyr::left_join(entropy_weight_tbl, by = "component") |>
       dplyr::mutate(
         complete_case_n = complete_n,
@@ -650,7 +613,7 @@ entropy_corr <- suppressWarnings(stats::cor(entropy_score, base_complete))
 if (!is.finite(entropy_corr) || entropy_corr <= 0) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
+      dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
       dplyr::left_join(entropy_weight_tbl, by = "component") |>
       dplyr::mutate(
         complete_case_n = complete_n,
@@ -668,7 +631,7 @@ pc1_corr <- suppressWarnings(stats::cor(pc1, base_complete))
 if (!is.finite(pc1_corr)) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
+      dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
       dplyr::left_join(entropy_weight_tbl, by = "component") |>
       dplyr::mutate(
         complete_case_n = complete_n,
@@ -688,7 +651,7 @@ comp$vitality_index_pca[complete_idx] <- pc1
 if (sum(is.finite(comp$vitality_index_pca)) < 100L) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
-      dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
+      dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
       dplyr::left_join(entropy_weight_tbl, by = "component") |>
       dplyr::mutate(
         complete_case_n = complete_n,
@@ -728,7 +691,7 @@ panel_main_view_specs_annual <- list(
     "age60_resident_pop", "age60_floating_pop", "age60_sales_amount",
     "ln_age60_resident_pop", "ln_age60_floating_pop", "ln_age60_sales_amount",
     "age60_sales_lq",
-    "ln_total_sales", "ln_total_store_count", "ln_floating_pop", "diversity_index",
+    "ln_total_sales", "ln_floating_pop", "diversity_index",
     "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
     "vitality_sub_stability", "vitality_index_base"
   )),
@@ -738,10 +701,7 @@ panel_main_view_specs_annual <- list(
     "vitality_sub_stability", "vitality_index_base",
     "age60_resident_share", "age60_floating_share", "age60_sales_share",
     cfg$resident_age_support_vars,
-    "ln_resident_pop",
-    "ln_apartment_household_count", "ln_official_land_price",
-    "transit_accessibility",
-    "hospital_count_aux_core", "mall_count_aux_core"
+    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
   )),
   spdm = unique(c(
     "adm_cd", "year",
@@ -749,10 +709,7 @@ panel_main_view_specs_annual <- list(
     "vitality_sub_stability", "vitality_index_base",
     "age60_resident_share",
     cfg$resident_age_support_vars,
-    "ln_resident_pop",
-    "ln_apartment_household_count", "ln_official_land_price",
-    "transit_accessibility",
-    "hospital_count_aux_core", "mall_count_aux_core"
+    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
   )),
   gtwr = unique(c(
     "adm_cd", "year",
@@ -760,10 +717,7 @@ panel_main_view_specs_annual <- list(
     "vitality_sub_stability", "vitality_index_base",
     "age60_resident_share",
     cfg$resident_age_support_vars,
-    "ln_resident_pop",
-    "ln_apartment_household_count", "ln_official_land_price",
-    "transit_accessibility",
-    "hospital_count_aux_core", "mall_count_aux_core"
+    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
   ))
 )
 
@@ -787,7 +741,7 @@ validate_panel_main_views(panel_main, panel_main_view_specs_annual)
 # 이 companion이 더 직접적인 설명 자료가 된다.
 write_csv_safe(
   dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
-    dplyr::left_join(dplyr::bind_rows(z_qc, economic_axis_z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
+    dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
     dplyr::left_join(entropy_weight_tbl, by = "component") |>
     dplyr::mutate(
       complete_case_n = complete_n,

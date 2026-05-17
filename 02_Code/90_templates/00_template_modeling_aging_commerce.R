@@ -198,11 +198,8 @@ exposures_main <- c(
 
 controls_structural <- c(
   "ln_resident_pop",
-  "ln_apartment_household_count",
   "ln_official_land_price",
-  "transit_accessibility",
-  "hospital_count_aux_core",
-  "mall_count_aux_core"
+  "transit_accessibility"
 )
 
 controls_gtwr_lean <- c(
@@ -212,10 +209,7 @@ controls_gtwr_lean <- c(
 
 controls_gtwr_extended <- c(
   controls_gtwr_lean,
-  "ln_apartment_household_count",
-  "transit_accessibility",
-  "hospital_count_aux_core",
-  "mall_count_aux_core"
+  "transit_accessibility"
 )
 
 existing_outcomes <- intersect(outcomes_main, names(panel_main))
@@ -295,4 +289,4 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 # - FE는 `adm_cd + year`로 고정한다.
 # - quarterly suffix와 `yq`는 active modeling code에 재도입하지 않는다.
 # - GTWR는 optional local sidecar이며 main causal estimator가 아니다.
-# - GTWR lean control은 규모·지가 통제, extended control은 대중교통 접근성 composite와 추가 입지 통제를 포함한다.
+# - GTWR lean control은 규모·지가 통제, extended control은 대중교통 접근성 composite를 추가한다.

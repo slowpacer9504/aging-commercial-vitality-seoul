@@ -117,7 +117,6 @@ label_variable <- function(x) {
     x == "age60_resident_share" ~ "Age 60+ Resident Share",
     x == "vitality_index_base" ~ "Composite Vitality Index",
     x == "ln_total_sales" ~ "Log Total Sales",
-    x == "ln_total_store_count" ~ "Log Store Count",
     TRUE ~ x
   )
 }
@@ -472,7 +471,7 @@ if (file.exists(global_moran_source)) {
     dplyr::filter(
       year == latest_year,
       w_type == "queen",
-      variable %in% c("age60_resident_share", "vitality_index_base", "ln_total_sales", "ln_total_store_count")
+      variable %in% c("age60_resident_share", "vitality_index_base", "ln_total_sales")
     ) |>
     dplyr::transmute(
       Variable = label_variable(variable),
