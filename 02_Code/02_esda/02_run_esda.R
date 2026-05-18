@@ -1,10 +1,10 @@
 #==============================================================================
 # Script    : 02_run_esda.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Run the project ESDA pipeline with latest-year descriptive
+# Purpose   : Run the project ESDA pipeline with latest-quarter descriptive
 #             distribution maps, Global Moran's I, Global Bivariate Moran's I,
 #             univariate/bivariate LISA, W-sensitivity diagnostics, and
-#             annual-sequence EHSA over core aging and vitality variables.
+#             quarterly-sequence EHSA over core aging and vitality variables.
 # Author    : Codex
 # Created   : 2026-02-28
 # Updated   : 2026-04-22
@@ -41,25 +41,35 @@ if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {
 }
 
 panel <- read_panel_main_view("esda")
-if (!all(c("adm_cd", "year") %in% names(panel))) {
-  stop("[ERROR] ESDA panel view must contain adm_cd and year", call. = FALSE)
+if (!all(c("adm_cd", "year", "quarter", "yq") %in% names(panel))) {
+  stop("[ERROR] ESDA panel view must contain adm_cd, year, quarter, and yq", call. = FALSE)
 }
 panel <- panel |>
   dplyr::mutate(
     adm_cd = as.character(adm_cd),
-    year = suppressWarnings(as.integer(year))
+    year = suppressWarnings(as.integer(year)),
+    quarter = suppressWarnings(as.integer(quarter)),
+    yq = as.character(yq),
+    quarter_index = if ("quarter_index" %in% names(panel)) {
+      suppressWarnings(as.integer(quarter_index))
+    } else {
+      suppressWarnings(as.integer((year - min(year, na.rm = TRUE)) * 4L + quarter))
+    }
   )
 
-latest_year <- max(panel$year[is.finite(panel$year)], na.rm = TRUE)
-if (!is.finite(latest_year)) {
-  stop("[ERROR] no valid annual observations found in panel_main for ESDA", call. = FALSE)
+latest_row <- panel |>
+  dplyr::filter(!is.na(yq), nzchar(yq), is.finite(quarter_index)) |>
+  dplyr::arrange(dplyr::desc(quarter_index), dplyr::desc(yq)) |>
+  dplyr::slice_head(n = 1)
+if (nrow(latest_row) == 0L) {
+  stop("[ERROR] no valid quarterly observations found in panel_main for ESDA", call. = FALSE)
 }
-latest_year <- as.integer(latest_year)
+latest_yq <- latest_row$yq[[1]]
 
 cs <- panel |>
-  dplyr::filter(year == latest_year)
+  dplyr::filter(yq == latest_yq)
 if (nrow(cs) == 0) {
-  stop(sprintf("[ERROR] no rows found for latest ESDA year: %d", latest_year), call. = FALSE)
+  stop(sprintf("[ERROR] no rows found for latest ESDA quarter: %s", latest_yq), call. = FALSE)
 }
 
 b2020 <- load_commercial_boundary(cfg$dir_boundary, cfg$target_crs) |>
@@ -261,7 +271,7 @@ get_w_ids <- function(lw) {
   get_listw_region_ids(lw)
 }
 
-compute_global_moran_table <- function(cs, lw, w_type, vars, year_value, nsim = cfg$esda_global_moran_nsim) {
+compute_global_moran_table <- function(cs, lw, w_type, vars, yq_value, nsim = cfg$esda_global_moran_nsim) {
   purrr::map_dfr(vars, function(v) {
     aligned <- tryCatch(
       align_numeric_vector_to_listw(cs, lw, value_col = v, id_col = "adm_cd", min_units = 30L),
@@ -270,7 +280,7 @@ compute_global_moran_table <- function(cs, lw, w_type, vars, year_value, nsim = 
 
     if (inherits(aligned, "error")) {
       return(tibble::tibble(
-        year = as.integer(year_value),
+        yq = as.character(yq_value),
         w_type = w_type,
         variable = v,
         n_units = NA_integer_,
@@ -287,8 +297,8 @@ compute_global_moran_table <- function(cs, lw, w_type, vars, year_value, nsim = 
     }
 
     seed_label <- sprintf(
-      "global_moran|%d|%s|%s|nsim=%d",
-      as.integer(year_value), w_type, v, as.integer(nsim)
+      "global_moran|%s|%s|%s|nsim=%d",
+      as.character(yq_value), w_type, v, as.integer(nsim)
     )
     mt <- tryCatch(
       with_deterministic_seed(
@@ -300,7 +310,7 @@ compute_global_moran_table <- function(cs, lw, w_type, vars, year_value, nsim = 
 
     if (inherits(mt, "error")) {
       return(tibble::tibble(
-        year = as.integer(year_value),
+        yq = as.character(yq_value),
         w_type = w_type,
         variable = v,
         n_units = aligned$n_complete,
@@ -329,7 +339,7 @@ compute_global_moran_table <- function(cs, lw, w_type, vars, year_value, nsim = 
     }
 
     tibble::tibble(
-      year = as.integer(year_value),
+      yq = as.character(yq_value),
       w_type = w_type,
       variable = v,
       n_units = aligned$n_complete,
@@ -346,9 +356,9 @@ compute_global_moran_table <- function(cs, lw, w_type, vars, year_value, nsim = 
   })
 }
 
-empty_bivariate_summary <- function(year_value, var_x, var_y, message, status = "failed") {
+empty_bivariate_summary <- function(yq_value, var_x, var_y, message, status = "failed") {
   tibble::tibble(
-    year = as.integer(year_value),
+    yq = as.character(yq_value),
     w_type = "queen",
     var_x = var_x,
     var_y = var_y,
@@ -365,9 +375,9 @@ empty_bivariate_summary <- function(year_value, var_x, var_y, message, status = 
   )
 }
 
-empty_global_bivariate_summary <- function(year_value, var_x, var_y, message, status = "failed") {
+empty_global_bivariate_summary <- function(yq_value, var_x, var_y, message, status = "failed") {
   tibble::tibble(
-    year = as.integer(year_value),
+    yq = as.character(yq_value),
     w_type = "queen",
     var_x = var_x,
     var_y = var_y,
@@ -383,9 +393,9 @@ empty_global_bivariate_summary <- function(year_value, var_x, var_y, message, st
   )
 }
 
-empty_univariate_summary <- function(year_value, variable, message, status = "failed") {
+empty_univariate_summary <- function(yq_value, variable, message, status = "failed") {
   tibble::tibble(
-    year = as.integer(year_value),
+    yq = as.character(yq_value),
     w_type = "queen",
     variable = variable,
     n_units = NA_integer_,
@@ -401,7 +411,7 @@ empty_univariate_summary <- function(year_value, variable, message, status = "fa
   )
 }
 
-compute_univariate_lisa_var <- function(cs, lw, variable, year_value, nsim = 499L, alpha = 0.05) {
+compute_univariate_lisa_var <- function(cs, lw, variable, yq_value, nsim = 499L, alpha = 0.05) {
   d <- cs |>
     dplyr::transmute(
       adm_cd = as.character(adm_cd),
@@ -413,7 +423,7 @@ compute_univariate_lisa_var <- function(cs, lw, variable, year_value, nsim = 499
   keep_ids <- intersect(w_ids, d$adm_cd)
   if (length(keep_ids) < 30L) {
     return(list(
-      summary = empty_univariate_summary(year_value, variable, "insufficient overlap after complete-case filter", "skipped"),
+      summary = empty_univariate_summary(yq_value, variable, "insufficient overlap after complete-case filter", "skipped"),
       local = tibble::tibble()
     ))
   }
@@ -424,7 +434,7 @@ compute_univariate_lisa_var <- function(cs, lw, variable, year_value, nsim = 499
   )
   if (inherits(lw_sub, "error")) {
     return(list(
-      summary = empty_univariate_summary(year_value, variable, lw_sub$message),
+      summary = empty_univariate_summary(yq_value, variable, lw_sub$message),
       local = tibble::tibble()
     ))
   }
@@ -434,8 +444,8 @@ compute_univariate_lisa_var <- function(cs, lw, variable, year_value, nsim = 499
     dplyr::slice(match(keep_ids, adm_cd))
 
   seed_label <- sprintf(
-    "univariate_lisa|%d|%s|queen|nsim=%d|alpha=%s",
-    as.integer(year_value), variable, as.integer(nsim), alpha
+    "univariate_lisa|%s|%s|queen|nsim=%d|alpha=%s",
+    as.character(yq_value), variable, as.integer(nsim), alpha
   )
   local_raw <- tryCatch(
     with_deterministic_seed(
@@ -446,7 +456,7 @@ compute_univariate_lisa_var <- function(cs, lw, variable, year_value, nsim = 499
   )
   if (inherits(local_raw, "error")) {
     return(list(
-      summary = empty_univariate_summary(year_value, variable, local_raw$message),
+      summary = empty_univariate_summary(yq_value, variable, local_raw$message),
       local = tibble::tibble()
     ))
   }
@@ -472,7 +482,7 @@ compute_univariate_lisa_var <- function(cs, lw, variable, year_value, nsim = 499
   )
 
   local <- tibble::tibble(
-    year = as.integer(year_value),
+    yq = as.character(yq_value),
     w_type = "queen",
     variable = variable,
     adm_cd = d$adm_cd,
@@ -488,7 +498,7 @@ compute_univariate_lisa_var <- function(cs, lw, variable, year_value, nsim = 499
   )
 
   summary <- tibble::tibble(
-    year = as.integer(year_value),
+    yq = as.character(yq_value),
     w_type = "queen",
     variable = variable,
     n_units = nrow(local),
@@ -506,7 +516,7 @@ compute_univariate_lisa_var <- function(cs, lw, variable, year_value, nsim = 499
   list(summary = summary, local = local)
 }
 
-compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, year_value, nsim = 499L, alpha = 0.05) {
+compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 499L, alpha = 0.05) {
   d <- cs |>
     dplyr::transmute(
       adm_cd = as.character(adm_cd),
@@ -519,7 +529,7 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, year_value, nsim =
   keep_ids <- intersect(w_ids, d$adm_cd)
   if (length(keep_ids) < 30L) {
     return(list(
-      summary = empty_bivariate_summary(year_value, var_x, var_y, "insufficient overlap after complete-case filter", "skipped"),
+      summary = empty_bivariate_summary(yq_value, var_x, var_y, "insufficient overlap after complete-case filter", "skipped"),
       local = tibble::tibble()
     ))
   }
@@ -530,7 +540,7 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, year_value, nsim =
   )
   if (inherits(lw_sub, "error")) {
     return(list(
-      summary = empty_bivariate_summary(year_value, var_x, var_y, lw_sub$message),
+      summary = empty_bivariate_summary(yq_value, var_x, var_y, lw_sub$message),
       local = tibble::tibble()
     ))
   }
@@ -540,8 +550,8 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, year_value, nsim =
     dplyr::slice(match(keep_ids, adm_cd))
 
   seed_label <- sprintf(
-    "bivariate_lisa|%d|%s|%s|queen|nsim=%d|alpha=%s",
-    as.integer(year_value), var_x, var_y, as.integer(nsim), alpha
+    "bivariate_lisa|%s|%s|%s|queen|nsim=%d|alpha=%s",
+    as.character(yq_value), var_x, var_y, as.integer(nsim), alpha
   )
   local_raw <- tryCatch(
     with_deterministic_seed(
@@ -552,7 +562,7 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, year_value, nsim =
   )
   if (inherits(local_raw, "error")) {
     return(list(
-      summary = empty_bivariate_summary(year_value, var_x, var_y, local_raw$message),
+      summary = empty_bivariate_summary(yq_value, var_x, var_y, local_raw$message),
       local = tibble::tibble()
     ))
   }
@@ -579,7 +589,7 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, year_value, nsim =
   )
 
   local <- tibble::tibble(
-    year = as.integer(year_value),
+    yq = as.character(yq_value),
     w_type = "queen",
     var_x = var_x,
     var_y = var_y,
@@ -596,7 +606,7 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, year_value, nsim =
   )
 
   summary <- tibble::tibble(
-    year = as.integer(year_value),
+    yq = as.character(yq_value),
     w_type = "queen",
     var_x = var_x,
     var_y = var_y,
@@ -615,7 +625,7 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, year_value, nsim =
   list(summary = summary, local = local)
 }
 
-compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, year_value, nsim = 499L) {
+compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 499L) {
   d <- cs |>
     dplyr::transmute(
       adm_cd = as.character(adm_cd),
@@ -631,7 +641,7 @@ compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, year_value
   if (length(keep_ids) < 30L) {
     return(
       empty_global_bivariate_summary(
-        year_value, var_x, var_y, "insufficient overlap after complete-case filter", "skipped"
+        yq_value, var_x, var_y, "insufficient overlap after complete-case filter", "skipped"
       ) |>
         dplyr::mutate(
           n_units = length(keep_ids),
@@ -647,7 +657,7 @@ compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, year_value
   )
   if (inherits(lw_sub, "error")) {
     return(
-      empty_global_bivariate_summary(year_value, var_x, var_y, lw_sub$message) |>
+      empty_global_bivariate_summary(yq_value, var_x, var_y, lw_sub$message) |>
         dplyr::mutate(
           n_units = length(keep_ids),
           n_missing = n_missing,
@@ -661,8 +671,8 @@ compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, year_value
     dplyr::slice(match(keep_ids, adm_cd))
 
   seed_label <- sprintf(
-    "global_bivariate_moran|%d|%s|%s|queen|nsim=%d",
-    as.integer(year_value), var_x, var_y, as.integer(nsim)
+    "global_bivariate_moran|%s|%s|%s|queen|nsim=%d",
+    as.character(yq_value), var_x, var_y, as.integer(nsim)
   )
   stat_raw <- tryCatch(
     with_deterministic_seed(
@@ -673,7 +683,7 @@ compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, year_value
   )
   if (inherits(stat_raw, "error")) {
     return(
-      empty_global_bivariate_summary(year_value, var_x, var_y, stat_raw$message) |>
+      empty_global_bivariate_summary(yq_value, var_x, var_y, stat_raw$message) |>
         dplyr::mutate(
           n_units = nrow(d),
           n_missing = n_missing,
@@ -693,7 +703,7 @@ compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, year_value
   }
 
   tibble::tibble(
-    year = as.integer(year_value),
+    yq = as.character(yq_value),
     w_type = "queen",
     var_x = var_x,
     var_y = var_y,
@@ -709,7 +719,7 @@ compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, year_value
   )
 }
 
-save_univariate_lisa_map <- function(local_tbl, boundary, variable, year_value) {
+save_univariate_lisa_map <- function(local_tbl, boundary, variable, yq_value) {
   stub <- sanitize_stub(variable)
   out_path <- file.path(cfg$dir_maps, sprintf("univariate_lisa_map__%s.png", stub))
 
@@ -728,7 +738,7 @@ save_univariate_lisa_map <- function(local_tbl, boundary, variable, year_value) 
     ggplot2::scale_fill_manual(values = lisa_palette, drop = FALSE) +
     ggplot2::labs(
       title = sprintf("Univariate LISA: %s", variable),
-      subtitle = sprintf("Latest year cross-section: %d", as.integer(year_value)),
+      subtitle = sprintf("Latest quarter cross-section: %s", as.character(yq_value)),
       fill = NULL
     ) +
     ggplot2::theme_void() +
@@ -742,7 +752,7 @@ save_univariate_lisa_map <- function(local_tbl, boundary, variable, year_value) 
   invisible(out_path)
 }
 
-save_bivariate_lisa_map <- function(local_tbl, boundary, var_x, var_y, year_value) {
+save_bivariate_lisa_map <- function(local_tbl, boundary, var_x, var_y, yq_value) {
   stub_x <- sanitize_stub(var_x)
   stub_y <- sanitize_stub(var_y)
   out_path <- file.path(cfg$dir_maps, sprintf("bivariate_lisa_map__%s__%s.png", stub_x, stub_y))
@@ -762,7 +772,7 @@ save_bivariate_lisa_map <- function(local_tbl, boundary, var_x, var_y, year_valu
     ggplot2::scale_fill_manual(values = lisa_palette, drop = FALSE) +
     ggplot2::labs(
       title = sprintf("Bivariate LISA: %s vs W(%s)", var_x, var_y),
-      subtitle = sprintf("Latest year cross-section: %d", as.integer(year_value)),
+      subtitle = sprintf("Latest quarter cross-section: %s", as.character(yq_value)),
       fill = NULL
     ) +
     ggplot2::theme_void() +
@@ -779,8 +789,8 @@ save_bivariate_lisa_map <- function(local_tbl, boundary, var_x, var_y, year_valu
 empty_ehsa_summary <- function(var, message, status = "failed") {
   tibble::tibble(
     var = var,
-    start_year = NA_integer_,
-    end_year = NA_integer_,
+    start_yq = NA_character_,
+    end_yq = NA_character_,
     n_periods = NA_integer_,
     n_total_locations = NA_integer_,
     n_used_locations = NA_integer_,
@@ -804,26 +814,27 @@ normalize_ehsa_classification <- function(x) {
 
 resolve_ehsa_suffix <- function(panel_df, var, min_locations = 30L) {
   d <- panel_df |>
-    dplyr::select(adm_cd, year, dplyr::all_of(var)) |>
+    dplyr::select(adm_cd, yq, quarter_index, dplyr::all_of(var)) |>
     dplyr::mutate(
       adm_cd = as.character(adm_cd),
-      year = suppressWarnings(as.integer(year))
+      yq = as.character(yq),
+      quarter_index = suppressWarnings(as.integer(quarter_index))
     )
 
   total_n <- dplyr::n_distinct(d$adm_cd)
   coverage <- d |>
-    dplyr::filter(is.finite(year)) |>
-    dplyr::distinct(year) |>
-    dplyr::arrange(year)
+    dplyr::filter(!is.na(yq), nzchar(yq), is.finite(quarter_index)) |>
+    dplyr::distinct(yq, quarter_index) |>
+    dplyr::arrange(quarter_index, yq)
 
   if (nrow(coverage) == 0L) return(NULL)
 
   for (start_idx in seq_len(nrow(coverage))) {
-    keep_years <- coverage$year[start_idx:nrow(coverage)]
-    n_periods <- length(keep_years)
+    keep_periods <- coverage$yq[start_idx:nrow(coverage)]
+    n_periods <- length(keep_periods)
 
     complete_ids <- d |>
-      dplyr::filter(year %in% keep_years, is.finite(.data[[var]])) |>
+      dplyr::filter(yq %in% keep_periods, is.finite(.data[[var]])) |>
       dplyr::count(adm_cd, name = "n_valid") |>
       dplyr::filter(n_valid == n_periods) |>
       dplyr::pull(adm_cd)
@@ -831,8 +842,8 @@ resolve_ehsa_suffix <- function(panel_df, var, min_locations = 30L) {
     if (length(complete_ids) < min_locations) next
 
     out <- d |>
-      dplyr::filter(adm_cd %in% complete_ids, year %in% keep_years, is.finite(.data[[var]])) |>
-      dplyr::mutate(time_id = match(year, keep_years))
+      dplyr::filter(adm_cd %in% complete_ids, yq %in% keep_periods, is.finite(.data[[var]])) |>
+      dplyr::mutate(time_id = match(yq, keep_periods))
 
     expected_n <- length(complete_ids) * n_periods
     if (nrow(out) != expected_n) next
@@ -840,8 +851,8 @@ resolve_ehsa_suffix <- function(panel_df, var, min_locations = 30L) {
     return(list(
       data = out,
       ids = as.character(complete_ids),
-      start_year = as.integer(keep_years[[1]]),
-      end_year = as.integer(keep_years[[length(keep_years)]]),
+      start_yq = as.character(keep_periods[[1]]),
+      end_yq = as.character(keep_periods[[length(keep_periods)]]),
       n_periods = as.integer(n_periods),
       n_total_locations = as.integer(total_n),
       n_used_locations = as.integer(length(complete_ids)),
@@ -861,18 +872,18 @@ compute_ehsa_for_var <- function(
   threshold = 0.01,
   k = 1L,
   min_locations = 30L,
-  min_periods = cfg$esda_ehsa_min_years
+  min_periods = cfg$esda_ehsa_min_periods
 ) {
   suffix <- resolve_ehsa_suffix(panel_df, var, min_locations = min_locations)
   if (is.null(suffix)) {
     return(list(
-      summary = empty_ehsa_summary(var, "no complete annual suffix panel available", "skipped"),
+      summary = empty_ehsa_summary(var, "no complete quarterly suffix panel available", "skipped"),
       local = tibble::tibble()
     ))
   }
   if (suffix$n_periods < min_periods) {
     return(list(
-      summary = empty_ehsa_summary(var, sprintf("insufficient annual periods for EHSA: %d", suffix$n_periods), "skipped"),
+      summary = empty_ehsa_summary(var, sprintf("insufficient quarterly periods for EHSA: %d", suffix$n_periods), "skipped"),
       local = tibble::tibble()
     ))
   }
@@ -912,7 +923,7 @@ compute_ehsa_for_var <- function(
   expected_n <- length(sub_w_ids) * suffix$n_periods
   if (nrow(stc_data) != expected_n) {
     return(list(
-      summary = empty_ehsa_summary(var, "complete-case annual suffix panel is not balanced after W subset"),
+      summary = empty_ehsa_summary(var, "complete-case quarterly suffix panel is not balanced after W subset"),
       local = tibble::tibble()
     ))
   }
@@ -937,8 +948,8 @@ compute_ehsa_for_var <- function(
   ehsa <- tryCatch(
     with_deterministic_seed(
       sprintf(
-        "ehsa|%s|%d|%d|periods=%d|nsim=%d|threshold=%s|k=%d",
-        var, suffix$start_year, suffix$end_year, suffix$n_periods, as.integer(nsim), threshold, as.integer(k)
+        "ehsa|%s|%s|%s|periods=%d|nsim=%d|threshold=%s|k=%d",
+        var, suffix$start_yq, suffix$end_yq, suffix$n_periods, as.integer(nsim), threshold, as.integer(k)
       ),
       sfdep::emerging_hotspot_analysis(
         stc,
@@ -964,8 +975,8 @@ compute_ehsa_for_var <- function(
     dplyr::mutate(
       classification = normalize_ehsa_classification(classification),
       var = var,
-      start_year = suffix$start_year,
-      end_year = suffix$end_year,
+      start_yq = suffix$start_yq,
+      end_yq = suffix$end_yq,
       n_periods = suffix$n_periods,
       threshold = threshold,
       w_type = "queen_include_self",
@@ -983,7 +994,7 @@ compute_ehsa_for_var <- function(
 
   summary <- local |>
     dplyr::count(
-      var, start_year, end_year, n_periods,
+      var, start_yq, end_yq, n_periods,
       n_total_locations, n_used_locations, n_excluded_locations,
       classification,
       name = "n_locations"
@@ -1023,9 +1034,9 @@ save_ehsa_map <- function(local_tbl, boundary, var) {
     ggplot2::labs(
       title = sprintf("Emerging Hot Spot: %s", var),
       subtitle = sprintf(
-        "Complete-case annual sequence: %d to %d (%d of %d locations)",
-        local_tbl$start_year[[1]],
-        local_tbl$end_year[[1]],
+        "Complete-case quarterly sequence: %s to %s (%d of %d locations)",
+        local_tbl$start_yq[[1]],
+        local_tbl$end_yq[[1]],
         local_tbl$n_used_locations[[1]],
         local_tbl$n_total_locations[[1]]
       ),
@@ -1066,7 +1077,7 @@ if (nrow(main_distribution_map_specs) > 0L) {
         value_col = variable,
         out_path = out_path,
         title = sprintf("Distribution Map: %s", display_label),
-        subtitle = sprintf("Latest year cross-section: %d | quintile classes", latest_year),
+        subtitle = sprintf("Latest quarter cross-section: %s | quintile classes", latest_yq),
         method = method,
         n_classes = n_classes,
         center_zero = center_zero,
@@ -1084,7 +1095,7 @@ if (nrow(main_distribution_map_specs) > 0L) {
 global_by_w <- purrr::imap_dfr(w_paths, function(w_path, w_type) {
   if (!file.exists(w_path)) {
     return(tibble::tibble(
-      year = latest_year,
+      yq = latest_yq,
       w_type = w_type,
       variable = esda_global_vars,
       n_units = NA_integer_,
@@ -1101,7 +1112,7 @@ global_by_w <- purrr::imap_dfr(w_paths, function(w_path, w_type) {
   }
 
   lw <- readRDS(w_path)
-  compute_global_moran_table(cs, lw, w_type, esda_global_vars, latest_year)
+  compute_global_moran_table(cs, lw, w_type, esda_global_vars, latest_yq)
 })
 
 write_csv_safe(global_by_w, cfg$paths$global_morans_i_by_w)
@@ -1121,7 +1132,7 @@ lw_queen <- readRDS(cfg$paths$w_queen)
 bv_pairs <- tidyr::crossing(var_x = bivariate_aging_vars, var_y = bivariate_outcomes)
 global_bv_summary <- purrr::pmap_dfr(
   list(bv_pairs$var_x, bv_pairs$var_y),
-  function(var_x, var_y) compute_global_bivariate_moran_pair(cs, lw_queen, var_x, var_y, latest_year)
+  function(var_x, var_y) compute_global_bivariate_moran_pair(cs, lw_queen, var_x, var_y, latest_yq)
 )
 
 write_csv_safe(global_bv_summary, cfg$paths$global_bivariate_morans_i)
@@ -1133,7 +1144,7 @@ write_csv_safe(global_bv_summary, cfg$paths$global_bivariate_morans_i)
 
 uv_results <- purrr::map(
   univariate_lisa_vars,
-  ~ compute_univariate_lisa_var(cs, lw_queen, .x, latest_year)
+  ~ compute_univariate_lisa_var(cs, lw_queen, .x, latest_yq)
 )
 
 uv_summary <- dplyr::bind_rows(purrr::map(uv_results, "summary"))
@@ -1150,7 +1161,7 @@ if (length(univariate_lisa_vars) > 0L && nrow(uv_local) > 0L) {
       local_var <- uv_local |>
         dplyr::filter(variable == !!map_var)
       if (nrow(local_var) == 0L) return(invisible(NULL))
-      save_univariate_lisa_map(local_var, b2020, map_var, latest_year)
+      save_univariate_lisa_map(local_var, b2020, map_var, latest_yq)
     }
   )
 }
@@ -1162,7 +1173,7 @@ if (length(univariate_lisa_vars) > 0L && nrow(uv_local) > 0L) {
 
 bv_results <- purrr::pmap(
   list(bv_pairs$var_x, bv_pairs$var_y),
-  function(var_x, var_y) compute_bivariate_lisa_pair(cs, lw_queen, var_x, var_y, latest_year)
+  function(var_x, var_y) compute_bivariate_lisa_pair(cs, lw_queen, var_x, var_y, latest_yq)
 )
 
 bv_summary <- dplyr::bind_rows(purrr::map(bv_results, "summary"))
@@ -1179,7 +1190,7 @@ if (nrow(lisa_map_pairs) > 0L && nrow(bv_local) > 0L) {
       local_pair <- bv_local |>
         dplyr::filter(var_x == !!map_x, var_y == !!map_y)
       if (nrow(local_pair) == 0L) return(invisible(NULL))
-      save_bivariate_lisa_map(local_pair, b2020, map_x, map_y, latest_year)
+      save_bivariate_lisa_map(local_pair, b2020, map_x, map_y, latest_yq)
     }
   )
 }
@@ -1222,8 +1233,8 @@ append_log(cfg$logs$data_qc, sprintf("\n## [%s] 02_run_esda", timestamp()))
 append_log(
   cfg$logs$data_qc,
   sprintf(
-    "- ESDA completed at latest year %d with seed=%d: descriptive maps=%d, global vars=%d, global-W rows=%d, global bivariate pairs=%d, univariate vars=%d, univariate maps=%d, bivariate pairs=%d, bivariate maps=%d, ehsa vars=%d, ehsa_min_years=%d",
-    latest_year,
+    "- ESDA completed at latest quarter %s with seed=%d: descriptive maps=%d, global vars=%d, global-W rows=%d, global bivariate pairs=%d, univariate vars=%d, univariate maps=%d, bivariate pairs=%d, bivariate maps=%d, ehsa vars=%d, ehsa_min_periods=%d",
+    latest_yq,
     cfg$esda_seed,
     nrow(main_distribution_map_specs),
     length(esda_global_vars),
@@ -1234,6 +1245,6 @@ append_log(
     nrow(bv_summary),
     nrow(lisa_map_pairs),
     length(ehsa_vars),
-    as.integer(cfg$esda_ehsa_min_years)
+    as.integer(cfg$esda_ehsa_min_periods)
   )
 )

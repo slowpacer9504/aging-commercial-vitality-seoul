@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : 02_build_presentation_artifacts.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Build slide-ready presentation tables and figures from annual
+# Purpose   : Build slide-ready presentation tables and figures from quarterly
 #             canonical outputs plus any available optional sidecars.
 # Author    : Codex
 # Created   : 2026-04-01
@@ -283,14 +283,14 @@ make_spdm_channel_path_diagram <- function(diagram_tbl) {
     dplyr::slice_head(n = 1L)
   sample_text <- if (nrow(sample_label) > 0L) {
     sprintf(
-      "Annual Queen SPDM, %d dongs x %d years (%d-%d)",
+      "Quarterly Queen SPDM, %d dongs x %d periods (%s-%s)",
       as.integer(sample_label$n_units[[1]]),
       as.integer(sample_label$n_periods[[1]]),
-      as.integer(sample_label$sample_min_year[[1]]),
-      as.integer(sample_label$sample_max_year[[1]])
+      as.character(sample_label$sample_min_yq[[1]]),
+      as.character(sample_label$sample_max_yq[[1]])
     )
   } else {
-    "Annual Queen SPDM"
+    "Quarterly Queen SPDM"
   }
 
   node_tbl <- tibble::tribble(
@@ -465,11 +465,11 @@ bv_lisa_map_source <- map_path("bivariate_lisa_map__age60_resident_share__vitali
 
 if (file.exists(global_moran_source)) {
   global_moran_tbl <- readr::read_csv(global_moran_source, show_col_types = FALSE)
-  latest_year <- suppressWarnings(max(global_moran_tbl$year, na.rm = TRUE))
+  latest_yq <- max(as.character(global_moran_tbl$yq), na.rm = TRUE)
 
   presentation_esda_global <- global_moran_tbl |>
     dplyr::filter(
-      year == latest_year,
+      yq == latest_yq,
       w_type == "queen",
       variable %in% c("age60_resident_share", "vitality_index_base", "ln_total_sales")
     ) |>
@@ -477,7 +477,7 @@ if (file.exists(global_moran_source)) {
       Variable = label_variable(variable),
       `Moran's I` = fmt_num(moran_i),
       `p-value` = fmt_p(p_value),
-      Year = year,
+      Quarter = yq,
       `Spatial Weights` = label_w(w_type),
       `Number of Dongs` = n_units
     )
@@ -489,7 +489,7 @@ if (file.exists(global_moran_source)) {
     artifact_type = "csv",
     status = "created",
     source_paths = global_moran_source,
-    note = "latest-year queen-only Global Moran summary for four presentation variables"
+    note = "latest-quarter queen-only Global Moran summary for four presentation variables"
   )
 } else {
   mark_missing_artifact(
@@ -504,11 +504,11 @@ if (file.exists(global_moran_source)) {
 if (file.exists(global_bv_source) && file.exists(bv_lisa_source)) {
   global_bv_tbl <- readr::read_csv(global_bv_source, show_col_types = FALSE)
   bv_lisa_tbl <- readr::read_csv(bv_lisa_source, show_col_types = FALSE)
-  latest_year_bv <- suppressWarnings(max(global_bv_tbl$year, na.rm = TRUE))
+  latest_yq_bv <- max(as.character(global_bv_tbl$yq), na.rm = TRUE)
 
   presentation_esda_bv <- global_bv_tbl |>
     dplyr::filter(
-      year == latest_year_bv,
+      yq == latest_yq_bv,
       w_type == "queen",
       var_x == "age60_resident_share",
       var_y == "vitality_index_base"
@@ -516,12 +516,12 @@ if (file.exists(global_bv_source) && file.exists(bv_lisa_source)) {
     dplyr::left_join(
       bv_lisa_tbl |>
         dplyr::filter(
-          year == latest_year_bv,
+          yq == latest_yq_bv,
           w_type == "queen",
           var_x == "age60_resident_share",
           var_y == "vitality_index_base"
         ),
-      by = c("year", "w_type", "var_x", "var_y", "n_units", "status", "message")
+      by = c("yq", "w_type", "var_x", "var_y", "n_units", "status", "message")
     ) |>
     dplyr::transmute(
       `Aging Variable` = label_variable(var_x),
@@ -533,7 +533,7 @@ if (file.exists(global_bv_source) && file.exists(bv_lisa_source)) {
       HL = n_high_low,
       LH = n_low_high,
       LL = n_low_low,
-      Year = year,
+      Quarter = yq,
       `Spatial Weights` = label_w(w_type),
       `Number of Dongs` = n_units
     )
@@ -595,7 +595,7 @@ if (file.exists(twfe_main_source) && file.exists(twfe_residual_source)) {
     dplyr::distinct() |>
     dplyr::left_join(
       twfe_resid_tbl |>
-        dplyr::select(outcome, sample_min_year, sample_max_year, mean_moran_i, share_p_lt_0_05, latest_year, latest_moran_i, latest_p),
+        dplyr::select(outcome, sample_min_yq, sample_max_yq, mean_moran_i, share_p_lt_0_05, latest_yq, latest_moran_i, latest_p),
       by = "outcome"
     ) |>
     dplyr::arrange(outcome_order) |>
@@ -604,11 +604,11 @@ if (file.exists(twfe_main_source) && file.exists(twfe_residual_source)) {
       `TWFE Coefficient (M2)` = fmt_num(estimate),
       `TWFE p-value` = fmt_p(p.value),
       `Mean Residual Moran's I` = fmt_num(mean_moran_i),
-      `Share of Years with p<0.05` = fmt_pct(share_p_lt_0_05),
-      `Latest Year` = latest_year,
-      `Latest Year Moran's I` = fmt_num(latest_moran_i),
-      `Latest Year p-value` = fmt_p(latest_p),
-      `Sample Window` = paste(sample_min_year, sample_max_year, sep = " ~ "),
+      `Share of Quarters with p<0.05` = fmt_pct(share_p_lt_0_05),
+      `Latest Quarter` = latest_yq,
+      `Latest Quarter Moran's I` = fmt_num(latest_moran_i),
+      `Latest Quarter p-value` = fmt_p(latest_p),
+      `Sample Window` = paste(sample_min_yq, sample_max_yq, sep = " ~ "),
       `Number of Observations` = nobs
     )
 
@@ -619,7 +619,7 @@ if (file.exists(twfe_main_source) && file.exists(twfe_residual_source)) {
     artifact_type = "csv",
     status = "created",
     source_paths = c(twfe_main_source, twfe_residual_source),
-    note = "annual M2 focal coefficients joined with residual Moran summary"
+    note = "quarterly M2 focal coefficients joined with residual Moran summary"
   )
 
   twfe_plot_tbl <- twfe_main_tbl |>
@@ -656,7 +656,7 @@ if (file.exists(twfe_main_source) && file.exists(twfe_residual_source)) {
     artifact_type = "png",
     status = "created",
     source_paths = c(twfe_main_source, twfe_residual_source),
-    note = "presentation-specific annual TWFE coefficient plot"
+    note = "presentation-specific quarterly TWFE coefficient plot"
   )
 } else {
   mark_missing_artifact(
@@ -703,8 +703,8 @@ if (file.exists(spdm_main_source)) {
       `Total Effect` = fmt_num(total),
       `Total Effect p-value` = fmt_p(total_p),
       `Number of Dongs` = n_units,
-      `Number of Years` = n_periods,
-      `Sample Window` = paste(sample_min_year, sample_max_year, sep = " ~ "),
+      `Number of Periods` = n_periods,
+      `Sample Window` = paste(sample_min_yq, sample_max_yq, sep = " ~ "),
       `Spatial Weights` = label_w(w_type)
     )
   write_csv_safe(presentation_spdm_main_tbl, cfg$paths$presentation_spdm_main)
@@ -766,7 +766,7 @@ if (file.exists(spdm_main_source)) {
     ) +
     ggplot2::labs(
       title = "Main SPDM Results",
-      subtitle = "Annual direct, indirect, and total effects",
+      subtitle = "Quarterly direct, indirect, and total effects",
       x = NULL,
       y = "Estimated Effect",
       color = NULL
@@ -781,7 +781,7 @@ if (file.exists(spdm_main_source)) {
     artifact_type = "png",
     status = "created",
     source_paths = spdm_main_source,
-    note = "presentation-specific annual SPDM main plot"
+    note = "presentation-specific quarterly SPDM main plot"
   )
 } else {
   mark_missing_artifact(
@@ -823,8 +823,8 @@ if (file.exists(spdm_w_source)) {
       `Direct Effect` = fmt_num(direct),
       `Indirect Effect` = fmt_num(indirect),
       `Number of Dongs` = n_units,
-      `Number of Years` = n_periods,
-      `Sample Window` = paste(sample_min_year, sample_max_year, sep = " ~ ")
+      `Number of Periods` = n_periods,
+      `Sample Window` = paste(sample_min_yq, sample_max_yq, sep = " ~ ")
     )
   write_csv_safe(presentation_spdm_w_tbl, cfg$paths$presentation_spdm_w_robustness)
   register_artifact(
@@ -833,7 +833,7 @@ if (file.exists(spdm_w_source)) {
     artifact_type = "csv",
     status = "created",
     source_paths = spdm_w_source,
-    note = "annual W-robustness summary for main outcomes"
+    note = "quarterly W-robustness summary for main outcomes"
   )
 
   presentation_spdm_w_all_tbl <- spdm_w_tbl |>
@@ -846,8 +846,8 @@ if (file.exists(spdm_w_source)) {
       `Direct Effect` = fmt_num(direct),
       `Indirect Effect` = fmt_num(indirect),
       `Number of Dongs` = n_units,
-      `Number of Years` = n_periods,
-      `Sample Window` = paste(sample_min_year, sample_max_year, sep = " ~ ")
+      `Number of Periods` = n_periods,
+      `Sample Window` = paste(sample_min_yq, sample_max_yq, sep = " ~ ")
     )
   write_csv_safe(presentation_spdm_w_all_tbl, cfg$paths$presentation_spdm_w_robustness_all_outcomes)
   register_artifact(
@@ -856,7 +856,7 @@ if (file.exists(spdm_w_source)) {
     artifact_type = "csv",
     status = "created",
     source_paths = spdm_w_source,
-    note = "annual W-robustness summary for all available outcomes"
+    note = "quarterly W-robustness summary for all available outcomes"
   )
 
   build_w_plot <- function(df, title_text, path, artifact_name, note_text) {
@@ -896,14 +896,14 @@ if (file.exists(spdm_w_source)) {
     "SPDM W Robustness",
     cfg$paths$presentation_spdm_w_robustness_plot,
     "presentation_spdm_w_robustness_plot",
-    "annual W-robustness plot for main outcomes"
+    "quarterly W-robustness plot for main outcomes"
   )
   build_w_plot(
     spdm_w_tbl,
     "SPDM W Robustness Across All Outcomes",
     cfg$paths$presentation_spdm_w_robustness_all_outcomes_plot,
     "presentation_spdm_w_robustness_all_outcomes_plot",
-    "annual W-robustness plot for all available outcomes"
+    "quarterly W-robustness plot for all available outcomes"
   )
 } else {
   for (artifact in list(
@@ -973,7 +973,7 @@ if (all(file.exists(spdm_channel_sources))) {
       inference_method,
       channel_status_raw = status,
       channel_note = message,
-      n_units, n_periods, sample_min_year, sample_max_year
+      n_units, n_periods, sample_min_yq, sample_max_yq
     )
 
   channel_imp_total_tbl <- spdm_channel_imp_tbl |>
@@ -1025,7 +1025,7 @@ if (all(file.exists(spdm_channel_sources))) {
       "bootstrap_valid_draws", "bootstrap_R", "bootstrap_method",
       "mediated_share_vs_cprime", "inference_method",
       "Channel Spec Status", "Channel Note",
-      "n_units", "n_periods", "sample_min_year", "sample_max_year"
+      "n_units", "n_periods", "sample_min_yq", "sample_max_yq"
     )
   )
 
@@ -1074,8 +1074,8 @@ if (all(file.exists(spdm_channel_sources))) {
       `Channel Spec Status` = `Channel Spec Status`,
       `Channel Note` = `Channel Note`,
       `Number of Dongs` = n_units,
-      `Number of Years` = n_periods,
-      `Sample Window` = paste(sample_min_year, sample_max_year, sep = " ~ ")
+      `Number of Periods` = n_periods,
+      `Sample Window` = paste(sample_min_yq, sample_max_yq, sep = " ~ ")
     )
 
   write_csv_safe(presentation_spdm_channel_tbl, cfg$paths$presentation_spdm_channel)
@@ -1085,7 +1085,7 @@ if (all(file.exists(spdm_channel_sources))) {
     artifact_type = "csv",
     status = "created",
     source_paths = spdm_channel_sources,
-    note = "canonical annual SPDM channel path summary; standalone social outcome excluded while composite index retains social vitality"
+    note = "canonical quarterly SPDM channel path summary; standalone social outcome excluded while composite index retains social vitality"
   )
 
   spdm_channel_path_diagram_tbl <- channel_joined_tbl |>
@@ -1105,8 +1105,8 @@ if (all(file.exists(spdm_channel_sources))) {
       `Indirect Total Effect a*b` = indirect_total,
       `Indirect Total Effect p-value` = indirect_total_p,
       `Number of Dongs` = n_units,
-      `Number of Years` = n_periods,
-      `Sample Window` = paste(sample_min_year, sample_max_year, sep = " ~ ")
+      `Number of Periods` = n_periods,
+      `Sample Window` = paste(sample_min_yq, sample_max_yq, sep = " ~ ")
     )
 
   write_csv_safe(spdm_channel_path_diagram_tbl, cfg$paths$presentation_spdm_channel_path_diagram_data)
@@ -1130,8 +1130,8 @@ if (all(file.exists(spdm_channel_sources))) {
       indirect_p = suppressWarnings(as.numeric(indirect_total_p)),
       n_units = suppressWarnings(as.numeric(n_units)),
       n_periods = suppressWarnings(as.numeric(n_periods)),
-      sample_min_year = suppressWarnings(as.numeric(sample_min_year)),
-      sample_max_year = suppressWarnings(as.numeric(sample_max_year))
+      sample_min_yq = as.character(sample_min_yq),
+      sample_max_yq = as.character(sample_max_yq)
     )
 
   spdm_channel_path_diagram <- make_spdm_channel_path_diagram(spdm_channel_path_diagram_input)
@@ -1235,7 +1235,7 @@ if (all(file.exists(spdm_channel_sources))) {
     artifact_type = "png",
     status = "created",
     source_paths = spdm_channel_sources,
-    note = "canonical annual SPDM channel path plot using primary 03_run_spdm_channel_path inference intervals"
+    note = "canonical quarterly SPDM channel path plot using primary 03_run_spdm_channel_path inference intervals"
   )
 } else {
   mark_missing_artifact(
@@ -1277,12 +1277,10 @@ gtwr_resolution <- resolve_gtwr_presentation_source()
 
 if (!is.na(gtwr_resolution$source_control_set)) {
   gtwr_summary_tbl <- read_gtwr_presentation_summary(gtwr_resolution) |>
-    ensure_cols(c("recent_year_n", "earliest_year", "latest_year", "fit_scope", "message", "status", "source_table")) |>
+    ensure_cols(c("recent_period_n", "earliest_yq", "latest_yq", "fit_scope", "message", "status", "source_table")) |>
     dplyr::mutate(
-      recent_year_n = dplyr::coalesce(
-        suppressWarnings(as.integer(recent_year_n)),
-        suppressWarnings(as.integer(latest_year) - as.integer(earliest_year) + 1L)
-      )
+      period_n = suppressWarnings(as.integer(recent_period_n)),
+      comparison_window = paste(.data$earliest_yq, .data$latest_yq, sep = " ~ ")
     ) |>
     dplyr::filter(focal_var == "age60_resident_share") |>
     dplyr::mutate(outcome_order_presentation = match(outcome, cfg$gtwr_main_outcomes)) |>
@@ -1322,7 +1320,7 @@ if (!is.na(gtwr_resolution$source_control_set)) {
 	        `Share Positive` = fmt_pct(share_positive),
 	        `Global LM R2` = fmt_num(global_lm_r2),
 	        `Max GTWR Local CN` = fmt_num(max_local_cn_gtwr),
-        `Comparison Window` = paste(earliest_year, latest_year, sep = " ~ "),
+        `Comparison Window` = comparison_window,
         window_scope = window_scope,
         fit_scope = fit_scope,
         source_table = source_table
@@ -1376,9 +1374,9 @@ if (!is.na(gtwr_resolution$source_control_set)) {
         Outcome = label_outcome(outcome),
         source_control_set = gtwr_resolution$source_control_set,
         Status = status,
-        `Comparison Window` = paste(earliest_year, latest_year, sep = " ~ "),
+        `Comparison Window` = comparison_window,
         fit_scope = fit_scope,
-        `Number of Years` = recent_year_n,
+        `Number of Periods` = period_n,
         Message = message,
         source_table = source_table
       )
@@ -1390,7 +1388,7 @@ if (!is.na(gtwr_resolution$source_control_set)) {
       status = "created",
       source_paths = gtwr_resolution$source_paths,
       source_mode = gtwr_resolution$source_control_set,
-      note = "manual annual appendix summary created from GTWR raw outputs with only not-estimated rows"
+      note = "manual quarterly appendix summary created from GTWR raw outputs with only not-estimated rows"
     )
     mark_not_run_appendix_artifact(
       artifact_name = "presentation_gtwr_summary_plot",
@@ -1398,7 +1396,7 @@ if (!is.na(gtwr_resolution$source_control_set)) {
       artifact_type = "png",
       source_paths = gtwr_resolution$source_paths,
       source_mode = gtwr_resolution$source_control_set,
-      note = "manual annual appendix not run for plotting: GTWR raw outputs contain no success rows"
+      note = "manual quarterly appendix not run for plotting: GTWR raw outputs contain no success rows"
     )
   }
 } else {

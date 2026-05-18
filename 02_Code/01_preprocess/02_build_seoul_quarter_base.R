@@ -1,15 +1,15 @@
 #==============================================================================
-# Script    : 02_build_seoul_year_base.R
+# Script    : 02_build_seoul_quarter_base.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Build Seoul commercial raw-integrated wide outputs and the
-#             canonical annual base panel for 2019-2025 impact analysis.
+#             canonical quarterly base panel for 2019-2025 impact analysis.
 # Author    : Codex
 # Created   : 2026-02-28
 # Type      : panel_building
 # Inputs    : Seoul commercial service raw csv files by source type
 # Outputs   : seoul_raw_integrated_wide.parquet,
 #             seoul_raw_review.parquet,
-#             seoul_year_base.parquet, panel_year_aggregation_qc.csv
+#             seoul_quarter_base.parquet, panel_quarter_aggregation_qc.csv
 # DependsOn : 02_Code/R/utils_io.R, 02_Code/R/utils_qc.R
 #==============================================================================
 
@@ -19,7 +19,7 @@
 
 # 서울시 상권분석서비스 branch를 두 층으로 만든다.
 # 1) seoul_raw_integrated_wide / seoul_raw_review: source별 원천을 설명 가능하게 통합한 층
-# 2) seoul_year_base: 이후 aux와 결합할 분석용 연도 base panel
+# 2) seoul_quarter_base: 이후 aux와 결합할 분석용 분기 base panel
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -27,18 +27,13 @@ source(here::here("02_Code", "R", "utils_qc.R"))
 load_project_packages()
 ensure_dirs(cfg$required_dirs)
 
-append_log(cfg$logs$data_qc, sprintf("\n## [%s] 02_build_seoul_year_base", timestamp()))
+append_log(cfg$logs$data_qc, sprintf("\n## [%s] 02_build_seoul_quarter_base", timestamp()))
 
-year_base_path <- if (!is.null(cfg$paths$year_base)) {
-  cfg$paths$year_base
-} else {
-  file.path(cfg$dir_analysis, "seoul_year_base.parquet")
-}
-year_aggregation_qc_path <- if (!is.null(cfg$logs$panel_year_aggregation_qc)) {
-  cfg$logs$panel_year_aggregation_qc
-} else {
-  file.path(cfg$dir_logs, "panel_year_aggregation_qc.csv")
-}
+quarter_base_path <- value_or(cfg$paths$quarter_base, file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"))
+quarter_aggregation_qc_path <- value_or(
+  cfg$logs$panel_quarter_aggregation_qc,
+  file.path(cfg$dir_logs, "panel_quarter_aggregation_qc.csv")
+)
 
 seoul_root <- file.path(cfg$dir_raw, "02_Seoul_Commercial_District_ Administrative Dong")
 if (!dir.exists(seoul_root)) {
@@ -160,6 +155,18 @@ quarter_stability_score <- function(x, expected_quarters = 4L) {
   x_cv <- stats::sd(x_obs) / x_mean
   if (!is.finite(x_cv)) return(NA_real_)
   -log1p(x_cv)
+}
+
+rolling_quarter_stability <- function(x, expected_quarters = 4L) {
+  x_num <- safe_num(x)
+  out <- rep(NA_real_, length(x_num))
+  if (length(x_num) < expected_quarters) return(out)
+  for (i in seq_along(x_num)) {
+    start <- i - expected_quarters + 1L
+    if (start < 1L) next
+    out[[i]] <- quarter_stability_score(x_num[start:i], expected_quarters = expected_quarters)
+  }
+  out
 }
 
 normalize_structural_zero_count <- function(x, active_ref) {
@@ -466,7 +473,7 @@ build_anchor_by_year <- function(df, value_cols) {
     dplyr::group_modify(function(.x, .y) {
       # Q4 업데이트형 source는 strict Q4 snapshot으로만 발행한다.
       # Q4가 없거나 Q4 값이 비어 있으면 같은 연도 최신분기로 fallback하지 않는다.
-      # active annual panel에는 이 anchor 시점 자체를 남기지 않고 값만 발행한다.
+      # active quarterly panel에는 이 anchor 시점 자체를 남기지 않고 값만 발행한다.
       .x_q4 <- .x[.x$quarter == 4L, , drop = FALSE]
       keep <- has_any_value_row(.x_q4, value_cols)
       if (!any(keep)) {
@@ -508,12 +515,39 @@ publish_anchor_by_year <- function(df, value_cols, availability_col = NULL) {
     dplyr::arrange(adm_cd, year)
 }
 
+pick_first_present_value <- function(x) {
+  present <- value_present(x)
+  if (!any(present)) {
+    if (is.character(x)) return(NA_character_)
+    if (is.integer(x)) return(NA_integer_)
+    return(NA_real_)
+  }
+  x[present][[1]]
+}
+
+publish_values_by_quarter <- function(df, value_cols, availability_col = NULL) {
+  value_cols <- intersect(value_cols, names(df))
+  out <- df |>
+    dplyr::group_by(adm_cd, year, quarter) |>
+    dplyr::summarise(
+      dplyr::across(dplyr::all_of(value_cols), pick_first_present_value),
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(adm_cd, year, quarter)
+
+  if (!is.null(availability_col)) {
+    out[[availability_col]] <- as.integer(has_any_value_row(out, value_cols))
+  }
+
+  out
+}
+
 summarize_year_source_qc <- function(df, vars, source_name, aggregation_rule) {
   vars <- intersect(vars, names(df))
   if (nrow(df) == 0L || length(vars) == 0L) {
     return(tibble::tibble(
       source = character(0),
-      year = integer(0),
+      yq = character(0),
       aggregation_rule = character(0),
       observed_adm_n = integer(0),
       row_n = integer(0),
@@ -522,10 +556,13 @@ summarize_year_source_qc <- function(df, vars, source_name, aggregation_rule) {
   }
 
   observed <- Reduce("|", lapply(vars, function(vn) value_present(df[[vn]])))
+  if (!"yq" %in% names(df) && all(c("year", "quarter") %in% names(df))) {
+    df$yq <- make_yq(df$year, df$quarter)
+  }
 
   df |>
     dplyr::mutate(.observed = observed) |>
-    dplyr::group_by(year) |>
+    dplyr::group_by(yq) |>
     dplyr::summarise(
       source = source_name,
       aggregation_rule = aggregation_rule,
@@ -534,7 +571,7 @@ summarize_year_source_qc <- function(df, vars, source_name, aggregation_rule) {
       observed_share = observed_adm_n / pmax(row_n, 1L),
       .groups = "drop"
     ) |>
-    dplyr::select(source, year, aggregation_rule, observed_adm_n, row_n, observed_share)
+    dplyr::select(source, yq, aggregation_rule, observed_adm_n, row_n, observed_share)
 }
 
 add_missing_numeric_cols <- function(df, cols, fill = 0) {
@@ -994,7 +1031,11 @@ sales_q <- sales_raw |>
     sales_share_cs1 = dplyr::if_else(total_sales > 0, sales_cs1 / total_sales, NA_real_),
     sales_share_cs2 = dplyr::if_else(total_sales > 0, sales_cs2 / total_sales, NA_real_),
     sales_share_cs3 = dplyr::if_else(total_sales > 0, sales_cs3 / total_sales, NA_real_)
-  )
+  ) |>
+  dplyr::arrange(adm_cd, year, quarter) |>
+  dplyr::group_by(adm_cd) |>
+  dplyr::mutate(sales_quarter_stability = rolling_quarter_stability(total_sales)) |>
+  dplyr::ungroup()
 
 store_raw <- working_source_map[["store"]]
 if (nrow(store_raw) == 0) stop("[ERROR] store source is empty", call. = FALSE)
@@ -1117,6 +1158,11 @@ floating_q <- floating_raw |>
     age60_floating_share = dplyr::if_else(floating_pop > 0, age60_floating_pop / floating_pop, NA_real_)
   ) |>
   dplyr::ungroup()
+floating_q <- floating_q |>
+  dplyr::arrange(adm_cd, year, quarter) |>
+  dplyr::group_by(adm_cd) |>
+  dplyr::mutate(floating_quarter_stability = rolling_quarter_stability(floating_pop)) |>
+  dplyr::ungroup()
 assert_no_dup_keys(floating_q, c("adm_cd", "year", "quarter"), "floating_q")
 
 resident_source <- working_source_map[["resident"]] |>
@@ -1126,7 +1172,7 @@ resident_source <- working_source_map[["resident"]] |>
     quarter,
     total_household_commercial = safe_num(total_household_commercial_raw)
   )
-resident_y <- publish_anchor_by_year(
+resident_q <- publish_values_by_quarter(
   resident_source,
   c("total_household_commercial")
 )
@@ -1139,7 +1185,7 @@ worker_source <- working_source_map[["worker"]] |>
     worker_pop = safe_num(worker_pop_raw),
     age60_worker_pop = safe_num(age60_worker_pop_raw)
   )
-worker_y <- publish_anchor_by_year(worker_source, c("worker_pop", "age60_worker_pop"))
+worker_q <- publish_values_by_quarter(worker_source, c("worker_pop", "age60_worker_pop"))
 
 income_source <- working_source_map[["income"]] |>
   dplyr::transmute(
@@ -1149,7 +1195,7 @@ income_source <- working_source_map[["income"]] |>
     income_level = safe_num(income_level_raw),
     spend_total = safe_num(spend_total_raw)
   )
-income_y <- publish_anchor_by_year(income_source, c("income_level", "spend_total"))
+income_q <- publish_values_by_quarter(income_source, c("income_level", "spend_total"))
 
 facility_source <- working_source_map[["facility"]] |>
   dplyr::mutate(
@@ -1171,7 +1217,7 @@ facility_source <- working_source_map[["facility"]] |>
     subway_station_count,
     bus_stop_count
   )
-facility_y <- publish_anchor_by_year(
+facility_q <- publish_values_by_quarter(
   facility_source,
   c("facility_count", "hospital_count", "mall_count", "subway_station_count", "bus_stop_count"),
   availability_col = "facility_available"
@@ -1185,7 +1231,7 @@ apartment_source <- working_source_map[["apartment"]] |>
     apartment_complex_count = safe_num(apartment_complex_count_raw),
     apartment_mean_price = safe_num(apartment_mean_price_raw)
   )
-apartment_y <- publish_anchor_by_year(
+apartment_q <- publish_values_by_quarter(
   apartment_source,
   c("apartment_complex_count", "apartment_mean_price"),
   availability_col = "apartment_available"
@@ -1202,7 +1248,7 @@ change_source <- working_source_map[["change"]] |>
     closure_months_avg = safe_num(closure_months_avg_raw),
     seoul_operating_months_avg = safe_num(seoul_operating_months_avg_raw)
   )
-change_y <- publish_anchor_by_year(
+change_q <- publish_values_by_quarter(
   change_source,
   c(
     "commercial_change_index_code", "commercial_change_index_name",
@@ -1371,32 +1417,32 @@ floating_y <- floating_q |>
   dplyr::select(-floating_pop_flow, -age60_floating_pop_flow)
 
 # ----------------------------------------------------------------------------
-# C) Assemble final year base and quarterly raw review companion
+# C) Assemble final quarter base and quarterly raw review companion
 # ----------------------------------------------------------------------------
 
-adm_base <- sort(unique(floating_y$adm_cd))
+adm_base <- sort(unique(floating_q$adm_cd))
 adm_pool <- sort(unique(c(
   adm_base,
-  sales_y$adm_cd,
-  store_y$adm_cd,
-  resident_y$adm_cd,
-  worker_y$adm_cd,
-  income_y$adm_cd,
-  facility_y$adm_cd,
-  apartment_y$adm_cd,
-  change_y$adm_cd
+  sales_q$adm_cd,
+  store_q$adm_cd,
+  resident_q$adm_cd,
+  worker_q$adm_cd,
+  income_q$adm_cd,
+  facility_q$adm_cd,
+  apartment_q$adm_cd,
+  change_q$adm_cd
 )))
 
 extra_adm <- setdiff(adm_pool, adm_base)
 if (length(extra_adm) > 0) {
-  append_log(cfg$logs$data_qc, sprintf("- Extra adm_cd beyond floating annual base: %d", length(extra_adm)))
+  append_log(cfg$logs$data_qc, sprintf("- Extra adm_cd beyond floating quarterly base: %d", length(extra_adm)))
 }
 
-panel_year_grid <- tidyr::expand_grid(
+panel_quarter_grid <- tidyr::expand_grid(
   adm_cd = adm_pool,
-  year = cfg$short_start:cfg$short_end
+  cfg$quarter_sequence
 ) |>
-  dplyr::arrange(adm_cd, year)
+  dplyr::arrange(adm_cd, year, quarter)
 
 review_panel_grid <- tidyr::expand_grid(
   adm_cd = adm_pool,
@@ -1518,67 +1564,67 @@ seoul_raw_review <- review_panel_grid |>
   dplyr::arrange(adm_cd, year, quarter, service_cs_group)
 assert_no_dup_keys(seoul_raw_review, c("adm_cd", "year", "quarter", "service_cs_group"), "seoul_raw_review")
 
-out_year <- panel_year_grid |>
+out_quarter <- panel_quarter_grid |>
   dplyr::left_join(
-    sales_y |>
+    sales_q |>
       dplyr::select(
-        adm_cd, year,
+        adm_cd, year, quarter,
         total_sales, sales_count, age60_sales_amount, age60_sales_share,
         sales_time_entropy, sales_time_entropy_06_24, sales_quarter_stability,
         dplyr::all_of(sales_major_cols), dplyr::all_of(sales_share_cols)
       ),
-    by = c("adm_cd", "year")
+    by = c("adm_cd", "year", "quarter")
   ) |>
   dplyr::left_join(
-    store_y |>
+    store_q |>
       dplyr::select(
-        adm_cd, year,
+        adm_cd, year, quarter,
         total_store_count, opening_rate, closure_rate, instability_index, diversity_index,
         dplyr::all_of(store_major_cols), dplyr::all_of(store_share_cols)
       ),
-    by = c("adm_cd", "year")
+    by = c("adm_cd", "year", "quarter")
   ) |>
   dplyr::left_join(
-    floating_y |>
+    floating_q |>
       dplyr::select(
-        adm_cd, year,
+        adm_cd, year, quarter,
         floating_pop, age60_floating_pop,
         floating_time_entropy, floating_time_entropy_06_24, floating_quarter_stability,
         age60_floating_share
       ),
-    by = c("adm_cd", "year")
+    by = c("adm_cd", "year", "quarter")
   ) |>
-  dplyr::left_join(resident_y, by = c("adm_cd", "year")) |>
-  dplyr::left_join(worker_y, by = c("adm_cd", "year")) |>
-  dplyr::left_join(income_y, by = c("adm_cd", "year")) |>
-  dplyr::left_join(facility_y, by = c("adm_cd", "year")) |>
-  dplyr::left_join(apartment_y, by = c("adm_cd", "year")) |>
-  dplyr::left_join(change_y, by = c("adm_cd", "year")) |>
-  dplyr::arrange(adm_cd, year)
+  dplyr::left_join(resident_q, by = c("adm_cd", "year", "quarter")) |>
+  dplyr::left_join(worker_q, by = c("adm_cd", "year", "quarter")) |>
+  dplyr::left_join(income_q, by = c("adm_cd", "year", "quarter")) |>
+  dplyr::left_join(facility_q, by = c("adm_cd", "year", "quarter")) |>
+  dplyr::left_join(apartment_q, by = c("adm_cd", "year", "quarter")) |>
+  dplyr::left_join(change_q, by = c("adm_cd", "year", "quarter")) |>
+  dplyr::arrange(adm_cd, year, quarter)
 
 #==============================================================================
-# 4. Run QC and Save Year Base
+# 4. Run QC and Save Quarter Base
 #==============================================================================
 
-validate_panel_keys(out_year, c("adm_cd", "year"))
+validate_panel_keys(out_quarter, c("adm_cd", "yq"))
 
-forbidden_year_base_cols <- intersect(c("quarter", "quarter_code_raw"), names(out_year))
-if (length(forbidden_year_base_cols) > 0L) {
+forbidden_quarter_base_cols <- intersect(c("quarter_code_raw"), names(out_quarter))
+if (length(forbidden_quarter_base_cols) > 0L) {
   stop(
     sprintf(
-      "[ERROR] seoul_year_base still contains quarterly columns: %s",
-      paste(forbidden_year_base_cols, collapse = ", ")
+      "[ERROR] seoul_quarter_base still contains raw quarterly columns: %s",
+      paste(forbidden_quarter_base_cols, collapse = ", ")
     ),
     call. = FALSE
   )
 }
 
 diversity_qc <- dplyr::bind_rows(
-  out_year |>
-    dplyr::group_by(year) |>
+  out_quarter |>
+    dplyr::group_by(yq) |>
     dplyr::summarise(
       source = "diversity_index",
-      aggregation_rule = "annual_mean_stock_distribution_then_entropy",
+      aggregation_rule = "quarterly_stock_distribution_entropy",
       observed_adm_n = sum(is.finite(diversity_index)),
       row_n = dplyr::n(),
       observed_share = observed_adm_n / pmax(row_n, 1L),
@@ -1588,11 +1634,11 @@ diversity_qc <- dplyr::bind_rows(
       max_value = suppressWarnings(max(diversity_index[is.finite(diversity_index)], na.rm = TRUE)),
       .groups = "drop"
     ),
-  out_year |>
+  out_quarter |>
     dplyr::summarise(
       source = "diversity_index",
-      year = NA_integer_,
-      aggregation_rule = "annual_mean_stock_distribution_then_entropy",
+      yq = NA_character_,
+      aggregation_rule = "quarterly_stock_distribution_entropy",
       observed_adm_n = sum(is.finite(diversity_index)),
       row_n = dplyr::n(),
       observed_share = observed_adm_n / pmax(row_n, 1L),
@@ -1604,7 +1650,7 @@ diversity_qc <- dplyr::bind_rows(
 )
 
 diversity_overall <- diversity_qc |>
-  dplyr::filter(is.na(year)) |>
+  dplyr::filter(is.na(yq)) |>
   dplyr::slice(1)
 diversity_sd <- diversity_overall$sd_value[[1]]
 if (!is.finite(diversity_overall$observed_adm_n[[1]]) || diversity_overall$observed_adm_n[[1]] == 0L ||
@@ -1621,68 +1667,68 @@ if (!is.finite(diversity_overall$observed_adm_n[[1]]) || diversity_overall$obser
   )
 }
 
-year_aggregation_qc <- dplyr::bind_rows(
+quarter_aggregation_qc <- dplyr::bind_rows(
   summarize_year_source_qc(
-    sales_y,
+    sales_q,
     c("total_sales", "sales_count", "age60_sales_share", "sales_time_entropy", "sales_quarter_stability"),
-    "sales_year",
-    "sum_flow + recompute_entropy + quarter_stability + ratio_from_annual_sum"
+    "sales_quarter",
+    "source_quarter_flow + time_entropy + rolling_4q_stability + quarterly_ratio"
   ),
   summarize_year_source_qc(
-    store_y,
+    store_q,
     c("total_store_count", "opening_rate", "closure_rate", "diversity_index"),
-    "store_year",
-    "mean_stock + sum_flow + recompute_diversity"
+    "store_quarter",
+    "source_quarter_stock_flow + quarterly_diversity"
   ),
   summarize_year_source_qc(
-    floating_y,
+    floating_q,
     c("floating_pop", "age60_floating_share", "floating_time_entropy", "floating_quarter_stability"),
-    "floating_year",
-    "mean_level + weighted_share + recompute_entropy + quarter_stability"
+    "floating_quarter",
+    "source_quarter_level + time_entropy + rolling_4q_stability"
   ),
   summarize_year_source_qc(
-    resident_y,
+    resident_q,
     c("total_household_commercial"),
-    "resident_year",
-    "strict_q4_snapshot_households_only"
+    "resident_quarter",
+    "source_quarter_snapshot_households_only"
   ),
   summarize_year_source_qc(
-    worker_y,
+    worker_q,
     c("worker_pop", "age60_worker_pop"),
-    "worker_year",
-    "strict_q4_snapshot"
+    "worker_quarter",
+    "source_quarter_snapshot"
   ),
   summarize_year_source_qc(
-    income_y,
+    income_q,
     c("income_level", "spend_total"),
-    "income_year",
-    "strict_q4_snapshot"
+    "income_quarter",
+    "source_quarter_snapshot"
   ),
   summarize_year_source_qc(
-    facility_y,
+    facility_q,
     c("facility_count", "hospital_count", "mall_count", "bus_stop_count", "subway_station_count"),
-    "facility_year",
-    "strict_q4_snapshot + structural_zero_normalization"
+    "facility_quarter",
+    "source_quarter_snapshot + structural_zero_normalization"
   ),
   summarize_year_source_qc(
-    apartment_y,
+    apartment_q,
     c("apartment_complex_count", "apartment_mean_price"),
-    "apartment_year",
-    "strict_q4_snapshot"
+    "apartment_quarter",
+    "source_quarter_snapshot"
   ),
   summarize_year_source_qc(
-    change_y,
+    change_q,
     c("operating_months_rel_seoul", "commercial_change_index_code"),
-    "change_year",
-    "strict_q4_snapshot_difference"
+    "change_quarter",
+    "source_quarter_snapshot_difference"
   ),
   diversity_qc
 )
 
 staged_outputs <- list(
-  year_base = list(
-    final_path = year_base_path,
-    staged_path = stage_output_write(year_base_path, function(path) write_parquet_safe(out_year, path))
+  quarter_base = list(
+    final_path = quarter_base_path,
+    staged_path = stage_output_write(quarter_base_path, function(path) write_parquet_safe(out_quarter, path))
   ),
   seoul_raw_review = list(
     final_path = cfg$paths$seoul_raw_review,
@@ -1692,29 +1738,29 @@ staged_outputs <- list(
     final_path = cfg$paths$seoul_raw_integrated_wide,
     staged_path = stage_output_write(cfg$paths$seoul_raw_integrated_wide, function(path) write_parquet_safe(raw_integrated_wide, path))
   ),
-  panel_year_aggregation_qc = list(
-    final_path = year_aggregation_qc_path,
-    staged_path = stage_output_write(year_aggregation_qc_path, function(path) write_csv_safe(year_aggregation_qc, path))
+  panel_quarter_aggregation_qc = list(
+    final_path = quarter_aggregation_qc_path,
+    staged_path = stage_output_write(quarter_aggregation_qc_path, function(path) write_csv_safe(quarter_aggregation_qc, path))
   )
 )
 
 promote_staged_outputs(staged_outputs)
 
-log_extreme_summary(out_year, "total_sales")
-log_extreme_summary(out_year, "total_store_count")
-log_extreme_summary(out_year, "floating_pop")
+log_extreme_summary(out_quarter, "total_sales")
+log_extreme_summary(out_quarter, "total_store_count")
+log_extreme_summary(out_quarter, "floating_pop")
 
-append_log(cfg$logs$data_qc, sprintf("- Year base rows: %d", nrow(out_year)))
+append_log(cfg$logs$data_qc, sprintf("- Quarter base rows: %d", nrow(out_quarter)))
 append_log(
   cfg$logs$data_qc,
   sprintf(
-    "- Seoul raw staged publish complete: wide_rows=%d wide_cols=%d raw=%s review=%s year=%s aggregation_qc=%s",
+    "- Seoul raw staged publish complete: wide_rows=%d wide_cols=%d raw=%s review=%s quarter=%s aggregation_qc=%s",
     nrow(raw_integrated_wide),
     ncol(raw_integrated_wide),
     basename(cfg$paths$seoul_raw_integrated_wide),
     basename(cfg$paths$seoul_raw_review),
-    basename(year_base_path),
-    basename(year_aggregation_qc_path)
+    basename(quarter_base_path),
+    basename(quarter_aggregation_qc_path)
   )
 )
 append_log(
@@ -1736,15 +1782,15 @@ append_log(
 append_log(
   cfg$logs$data_qc,
   paste(
-    "- Facility structural-zero normalization applied in year base:",
+    "- Facility structural-zero normalization applied in quarter base:",
     "missing hospital/mall/subway/bus subcomponent counts within active facility rows are treated as 0"
   )
 )
 append_log(
   cfg$logs$data_qc,
   sprintf(
-    "- Annual diversity QC: %s (observed=%d unique=%d sd=%.6f)",
-    basename(year_aggregation_qc_path),
+    "- Quarterly diversity QC: %s (observed=%d unique=%d sd=%.6f)",
+    basename(quarter_aggregation_qc_path),
     diversity_overall$observed_adm_n[[1]],
     diversity_overall$unique_n[[1]],
     diversity_sd
@@ -1754,7 +1800,7 @@ append_log(
   cfg$logs$data_qc,
   sprintf(
     "- Availability flags (facility/apartment) active rows: %d/%d",
-    sum(out_year$facility_available == 1L, na.rm = TRUE),
-    sum(out_year$apartment_available == 1L, na.rm = TRUE)
+    sum(out_quarter$facility_available == 1L, na.rm = TRUE),
+    sum(out_quarter$apartment_available == 1L, na.rm = TRUE)
   )
 )

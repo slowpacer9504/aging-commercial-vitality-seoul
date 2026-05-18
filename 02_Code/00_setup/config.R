@@ -118,14 +118,25 @@ cfg$esda_global_moran_nsim <- 999L
 cfg$esda_global_moran_p_value <- "permutation_two_sided_abs"
 cfg$short_start <- 2019L
 cfg$short_end <- 2025L
-# Raw quarterly staging still needs the terminal quarter to validate source
-# coverage before annual aggregation. This does not change the active annual
-# panel contract, which publishes `adm_cd-year` only.
+# Active panel is quarterly. The terminal quarter lets source coverage and
+# model samples stop cleanly when the final study year is incomplete.
 cfg$short_end_quarter <- 4L
+cfg$quarter_sequence <- data.frame(
+  year = rep(seq.int(cfg$short_start, cfg$short_end), each = 4L),
+  quarter = rep(seq.int(1L, 4L), times = length(seq.int(cfg$short_start, cfg$short_end)))
+)
+cfg$quarter_sequence <- cfg$quarter_sequence[
+  !(cfg$quarter_sequence$year == cfg$short_end & cfg$quarter_sequence$quarter > cfg$short_end_quarter),
+  ,
+  drop = FALSE
+]
+cfg$quarter_sequence$yq <- sprintf("%dQ%d", cfg$quarter_sequence$year, cfg$quarter_sequence$quarter)
+cfg$quarter_sequence$quarter_index <- seq_len(nrow(cfg$quarter_sequence))
 cfg$covid_years <- 2020:2022
 cfg$covid_start_year <- min(cfg$covid_years)
 cfg$covid_end_year <- max(cfg$covid_years)
-cfg$spdm_min_periods <- length(seq.int(cfg$short_start, cfg$short_end))
+cfg$spdm_min_periods <- suppressWarnings(as.integer(Sys.getenv("SPDM_MIN_PERIODS", unset = "20")))
+if (!is.finite(cfg$spdm_min_periods) || cfg$spdm_min_periods < 4L) cfg$spdm_min_periods <- 20L
 cfg$living_pop_hours <- trimws(Sys.getenv("LIVING_POP_HOURS", unset = "0-23"))
 cfg$living_pop_sample_months <- trimws(Sys.getenv("LIVING_POP_SAMPLE_MONTHS", unset = ""))
 cfg$run_living_pop_inflow <- tolower(trimws(Sys.getenv("RUN_LIVING_POP_INFLOW", unset = "false"))) %in% c("1", "true", "yes")
@@ -187,7 +198,7 @@ cfg$esda_main_univariate_lisa_vars <- cfg$esda_main_global_moran_vars
 cfg$esda_main_bivariate_aging_vars <- cfg$esda_main_global_moran_aging_vars
 cfg$esda_main_bivariate_outcomes <- cfg$esda_main_outcomes
 cfg$esda_main_ehsa_vars <- c(cfg$esda_main_global_moran_aging_vars, cfg$esda_main_outcomes)
-cfg$esda_ehsa_min_years <- 4L
+cfg$esda_ehsa_min_periods <- 4L
 cfg$outcome_registry <- data.frame(
   outcome = c(
     cfg$primary_outcomes,
@@ -278,6 +289,7 @@ cfg$run_gtwr_age_band_sidecar <- tolower(trimws(Sys.getenv("RUN_GTWR_AGE_BAND_SI
 cfg$run_gtwr_sector_share_sidecar <- tolower(trimws(Sys.getenv("RUN_GTWR_SECTOR_SHARE_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
 cfg$run_gwr_delta <- tolower(trimws(Sys.getenv("RUN_GWR_DELTA", unset = "false"))) %in% c("1", "true", "yes")
 cfg$run_gwr_delta_floating_sidecar <- tolower(trimws(Sys.getenv("RUN_GWR_DELTA_FLOATING_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
+cfg$build_optional_appendix_tables <- tolower(trimws(Sys.getenv("BUILD_OPTIONAL_APPENDIX_TABLES", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gwr_delta_window_years <- 3L
 cfg$gwr_delta_windows_n <- cfg$gwr_delta_window_years
 cfg$gwr_delta_kernel <- "bisquare"
@@ -313,10 +325,9 @@ cfg$spdm_builtin_impact_sim_type <- "mult"
 cfg$spdm_impact_sim_type <- cfg$spdm_builtin_impact_sim_type
 cfg$spdm_impact_empirical <- FALSE
 
-# Active annual panel joins auxiliary variables directly on `adm_cd-year`.
-# 더 이상 연 단위 보조변수를 분기 패널에 step expansion하지 않는다.
-cfg$annual_join_policy <- "direct_adm_cd_year_join_no_quarter_expansion"
-cfg$annual_asof_policy <- cfg$annual_join_policy
+# Active quarterly panel joins auxiliary variables on quarter-end as-of rules.
+cfg$quarterly_join_policy <- "direct_adm_cd_yq_join_with_quarter_end_asof"
+cfg$quarterly_asof_policy <- cfg$quarterly_join_policy
 
 twfe_control_cols <- c(
   "ln_resident_pop",
@@ -334,7 +345,7 @@ cfg$panel_main_view_specs <- list(
   # 즉 여기 정의가 바뀌면 ESDA/TWFE/SPDM/GTWR 입력 계약도 함께 바뀌므로,
   # 코드북과 QC가 이 값을 같이 참조해야 한다.
   esda = unique(c(
-    "adm_cd", "year",
+    "adm_cd", "year", "quarter", "yq", "quarter_index",
     cfg$impact_aging_vars,
     cfg$esda_main_global_moran_aging_vars,
     cfg$resident_age_support_vars,
@@ -344,7 +355,7 @@ cfg$panel_main_view_specs <- list(
     cfg$esda_representative_vitality_outcome
   )),
   twfe = unique(c(
-    "adm_cd", "year", "covid_period",
+    "adm_cd", "year", "quarter", "yq", "quarter_index", "covid_period",
     cfg$twfe_main_outcomes,
     cfg$vitality_component_appendix_outcomes,
     "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal", "vitality_sub_stability",
@@ -352,14 +363,14 @@ cfg$panel_main_view_specs <- list(
     cfg$impact_aging_vars, cfg$resident_age_support_vars, twfe_control_cols
   )),
   spdm = unique(c(
-    "adm_cd", "year", "covid_period",
+    "adm_cd", "year", "quarter", "yq", "quarter_index", "covid_period",
     cfg$spdm_main_outcomes,
     cfg$spdm_main_exposure_vars,
     cfg$resident_age_support_vars,
     cfg$spdm_main_control_cols
   )),
   gtwr = unique(c(
-    "adm_cd", "year", "covid_period",
+    "adm_cd", "year", "quarter", "yq", "quarter_index", "covid_period",
     cfg$gtwr_main_outcomes,
     cfg$gtwr_main_exposure_vars,
     cfg$gtwr_floating_exposure_vars,
@@ -367,7 +378,7 @@ cfg$panel_main_view_specs <- list(
     cfg$gtwr_main_control_cols
   )),
   gwr_delta = unique(c(
-    "adm_cd", "year", "covid_period",
+    "adm_cd", "year", "quarter", "yq", "quarter_index", "covid_period",
     cfg$gwr_delta_outcomes,
     cfg$gwr_delta_main_exposure_vars,
     cfg$gwr_delta_floating_exposure_vars,
@@ -444,9 +455,9 @@ cfg$aux_source_contracts <- list(
 # 4. Optional High-Cost Modes
 #==============================================================================
 
-# GTWR is an opt-in local sidecar. The default main specification fixes the
-# adaptive spatiotemporal bandwidth at 120 neighbors to avoid singular local
-# design matrices in the extended control set while preserving local variation;
+# GTWR is an opt-in quarterly local sidecar. The default main specification fixes
+# the adaptive spatiotemporal bandwidth at 480 neighbors to keep the local sample
+# roughly comparable to the pre-quarterly 120-neighbor setting;
 # bw.gtwr() search remains available only when explicitly requested through
 # GTWR_BANDWIDTH_STRATEGY.
 cfg$run_gtwr_main_sidecar <- tolower(trimws(Sys.getenv("RUN_GTWR_MAIN_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
@@ -467,14 +478,14 @@ cfg$gtwr_kernel <- trimws(Sys.getenv("GTWR_KERNEL", unset = "bisquare"))
 if (!cfg$gtwr_kernel %in% c("bisquare", "gaussian", "exponential", "tricube", "boxcar")) cfg$gtwr_kernel <- "bisquare"
 cfg$gtwr_adaptive <- tolower(trimws(Sys.getenv("GTWR_ADAPTIVE", unset = "true"))) %in% c("1", "true", "yes")
 cfg$gtwr_bandwidth_strategy <- tolower(trimws(Sys.getenv("GTWR_BANDWIDTH_STRATEGY", unset = "fixed")))
-if (!cfg$gtwr_bandwidth_strategy %in% c("full_panel_bw_gtwr", "anchor_year_bw_gtwr", "fixed")) cfg$gtwr_bandwidth_strategy <- "fixed"
-cfg$gtwr_bw_anchor_year <- suppressWarnings(as.integer(Sys.getenv("GTWR_BW_ANCHOR_YEAR", unset = as.character(cfg$short_start))))
-if (!is.finite(cfg$gtwr_bw_anchor_year)) cfg$gtwr_bw_anchor_year <- cfg$short_start
+if (!cfg$gtwr_bandwidth_strategy %in% c("full_panel_bw_gtwr", "anchor_quarter_bw_gtwr", "fixed")) cfg$gtwr_bandwidth_strategy <- "fixed"
+cfg$gtwr_bw_anchor_yq <- trimws(Sys.getenv("GTWR_BW_ANCHOR_YQ", unset = as.character(cfg$quarter_sequence$yq[[1L]])))
+if (!cfg$gtwr_bw_anchor_yq %in% cfg$quarter_sequence$yq) cfg$gtwr_bw_anchor_yq <- as.character(cfg$quarter_sequence$yq[[1L]])
 cfg$gtwr_bw_approach <- trimws(Sys.getenv("GTWR_BW_APPROACH", unset = "CV"))
 if (!cfg$gtwr_bw_approach %in% c("CV", "cv", "AIC", "aic", "AICc")) cfg$gtwr_bw_approach <- "CV"
 cfg$gtwr_refresh_bw_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BW_CACHE", unset = "false"))) %in% c("1", "true", "yes")
-cfg$gtwr_st_bw <- suppressWarnings(as.integer(Sys.getenv("GTWR_ST_BW", unset = "120")))
-if (!is.finite(cfg$gtwr_st_bw) || cfg$gtwr_st_bw < 30L) cfg$gtwr_st_bw <- 120L
+cfg$gtwr_st_bw <- suppressWarnings(as.integer(Sys.getenv("GTWR_ST_BW", unset = "480")))
+if (!is.finite(cfg$gtwr_st_bw) || cfg$gtwr_st_bw < 120L) cfg$gtwr_st_bw <- 480L
 cfg$gtwr_lamda <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LAMDA", unset = "0.05")))
 if (!is.finite(cfg$gtwr_lamda) || cfg$gtwr_lamda < 0) cfg$gtwr_lamda <- 0.05
 cfg$gtwr_ksi <- suppressWarnings(as.numeric(Sys.getenv("GTWR_KSI", unset = "0")))
@@ -487,7 +498,7 @@ cfg$run_gtwr_lamda_sensitivity <- tolower(trimws(Sys.getenv("RUN_GTWR_LAMDA_SENS
 cfg$gtwr_lamda_sensitivity_grid <- trimws(Sys.getenv("GTWR_LAMDA_SENSITIVITY_GRID", unset = "0.025,0.05,0.1,0.2"))
 cfg$gtwr_refresh_lamda_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_LAMDA_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$run_gtwr_bandwidth_sensitivity <- tolower(trimws(Sys.getenv("RUN_GTWR_BANDWIDTH_SENSITIVITY", unset = "false"))) %in% c("1", "true", "yes")
-cfg$gtwr_bandwidth_sensitivity_grid <- trimws(Sys.getenv("GTWR_BANDWIDTH_SENSITIVITY_GRID", unset = "60,90,120,150,180"))
+cfg$gtwr_bandwidth_sensitivity_grid <- trimws(Sys.getenv("GTWR_BANDWIDTH_SENSITIVITY_GRID", unset = "240,360,480,600,720"))
 cfg$gtwr_refresh_bandwidth_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BANDWIDTH_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_write_legacy_alias <- FALSE
 cfg$gwr_delta_write_legacy_alias <- FALSE
@@ -528,7 +539,7 @@ cfg$paths <- list(
   seoul_raw_integrated_long = file.path(cfg$dir_intermediate, "seoul_raw_integrated_long.parquet"),
   seoul_raw_integrated_wide = file.path(cfg$dir_intermediate, "seoul_raw_integrated_wide.parquet"),
   seoul_raw_review = file.path(cfg$dir_intermediate, "seoul_raw_review.parquet"),
-  year_base = file.path(cfg$dir_analysis, "seoul_year_base.parquet"),
+  quarter_base = file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"),
   adm_region_lookup = file.path(cfg$dir_analysis, "adm_region_lookup.parquet"),
   adm_region_lookup_csv = file.path(cfg$dir_tables, "adm_region_lookup.csv"),
   aux_covariates = file.path(cfg$dir_analysis, "aux_covariates.parquet"),
@@ -564,7 +575,7 @@ cfg$paths <- list(
   twfe_main_controls_used = file.path(cfg$dir_tables, "twfe_main_controls_used.csv"),
   twfe_main_diagnostics = file.path(cfg$dir_tables, "twfe_main_diagnostics.csv"),
   twfe_main_residual_moran = file.path(cfg$dir_tables, "twfe_main_residual_moran.csv"),
-  twfe_main_residual_moran_by_year = file.path(cfg$dir_tables, "twfe_main_residual_moran_by_year.csv"),
+  twfe_main_residual_moran_by_yq = file.path(cfg$dir_tables, "twfe_main_residual_moran_by_yq.csv"),
   twfe_main_residual_moran_summary = file.path(cfg$dir_tables, "twfe_main_residual_moran_summary.csv"),
   twfe_main_coefplot = file.path(cfg$dir_figures, "twfe_main_coefplot.png"),
   twfe_main_coefplot_supplementary = file.path(cfg$dir_figures, "twfe_main_coefplot_supplementary.png"),
@@ -620,7 +631,7 @@ cfg$paths <- list(
 )
 
 cfg$paths$twfe_residual_moran <- cfg$paths$twfe_main_residual_moran
-cfg$paths$twfe_residual_moran_by_year <- cfg$paths$twfe_main_residual_moran_by_year
+cfg$paths$twfe_residual_moran_by_yq <- cfg$paths$twfe_main_residual_moran_by_yq
 cfg$paths$twfe_residual_moran_summary <- cfg$paths$twfe_main_residual_moran_summary
 cfg$paths$spdm_w_robustness_controls_used <- cfg$paths$spdm_w_robustness_controls
 cfg$paths$global_morans_i <- file.path(cfg$dir_tables, "global_morans_i.csv")
@@ -898,7 +909,7 @@ cfg$paths$presentation_manifest <- file.path(
 
 cfg$canonical_pipeline_scripts <- c(
   "02_Code/01_preprocess/01_build_adm_region_lookup.R",
-  "02_Code/01_preprocess/02_build_seoul_year_base.R",
+  "02_Code/01_preprocess/02_build_seoul_quarter_base.R",
   "02_Code/01_preprocess/03_build_auxiliary_covariates.R",
   "02_Code/01_preprocess/04_build_golmok_survival_rate.R",
   "02_Code/01_preprocess/05_build_registered_resident_population.R",
@@ -918,7 +929,7 @@ cfg$optional_sidecar_scripts <- list(
   living_pop_inflow = "02_Code/80_optional/preprocess/01_build_living_population_inflow.R",
   gtwr_main = "02_Code/80_optional/gtwr/01_run_gtwr_main.R"
 )
-cfg$manual_annual_appendix_scripts <- c(
+cfg$manual_quarterly_appendix_scripts <- c(
   "02_Code/80_optional/twfe/01_run_twfe_channel_models.R",
   "02_Code/80_optional/twfe/02_run_twfe_interaction_models.R",
   "02_Code/80_optional/twfe/03_run_twfe_age_mix_experiment.R",
@@ -933,10 +944,10 @@ cfg$manual_annual_appendix_scripts <- c(
   "02_Code/80_optional/gtwr/05_run_gwr_delta.R",
   "02_Code/80_optional/gtwr/06_run_gtwr_experiment.R"
 )
-cfg$deferred_sidecar_scripts <- cfg$manual_annual_appendix_scripts
+cfg$deferred_sidecar_scripts <- cfg$manual_quarterly_appendix_scripts
 cfg$active_output_contract <- list(
   shared_data = c(
-    cfg$paths$year_base,
+    cfg$paths$quarter_base,
     cfg$paths$adm_region_lookup,
     cfg$paths$aux_covariates,
     cfg$paths$living_population_external_inflow,
@@ -968,7 +979,7 @@ cfg$active_output_contract <- list(
     cfg$paths$twfe_main_controls_used,
     cfg$paths$twfe_main_diagnostics,
     cfg$paths$twfe_main_residual_moran,
-    cfg$paths$twfe_main_residual_moran_by_year,
+    cfg$paths$twfe_main_residual_moran_by_yq,
     cfg$paths$twfe_main_residual_moran_summary,
     cfg$paths$twfe_main_coefplot
   ),
@@ -1041,7 +1052,7 @@ cfg$logs <- list(
   golmok_survival_rate_qc = file.path(cfg$dir_logs, "golmok_survival_rate_qc.csv"),
   registered_resident_population_qc = file.path(cfg$dir_logs, "registered_resident_population_qc.csv"),
   registered_resident_population_mapping_qc = file.path(cfg$dir_logs, "registered_resident_population_mapping_qc.csv"),
-  panel_year_aggregation_qc = file.path(cfg$dir_logs, "panel_year_aggregation_qc.csv"),
+  panel_quarter_aggregation_qc = file.path(cfg$dir_logs, "panel_quarter_aggregation_qc.csv"),
   transit_aux_qc = file.path(cfg$dir_logs, "transit_aux_qc.csv"),
   vitality_component_qc = file.path(cfg$dir_logs, "vitality_component_qc.csv"),
   decision = file.path(cfg$dir_doc_logs, "decision_log.md"),

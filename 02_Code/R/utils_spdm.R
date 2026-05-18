@@ -49,8 +49,8 @@ spdm_empty_coef_tbl <- function() {
     n_units = integer(),
     n_periods = integer(),
     n_obs = integer(),
-    sample_min_year = integer(),
-    sample_max_year = integer(),
+    sample_min_yq = character(),
+    sample_max_yq = character(),
     model_family = character(),
     w_type = character(),
     message = character()
@@ -85,8 +85,8 @@ spdm_empty_impacts_tbl <- function() {
     n_units = integer(),
     n_periods = integer(),
     n_obs = integer(),
-    sample_min_year = integer(),
-    sample_max_year = integer(),
+    sample_min_yq = character(),
+    sample_max_yq = character(),
     model_family = character(),
     w_type = character(),
     sim_R = integer(),
@@ -125,8 +125,8 @@ spdm_empty_diag_tbl <- function() {
     n_units = integer(),
     n_periods = integer(),
     n_obs = integer(),
-    sample_min_year = integer(),
-    sample_max_year = integer(),
+    sample_min_yq = character(),
+    sample_max_yq = character(),
     selected_controls = character(),
     spatial_lagged_terms = character(),
     n_wx_terms = integer(),
@@ -159,8 +159,8 @@ spdm_empty_family_comparison_tbl <- function() {
     n_units = integer(),
     n_periods = integer(),
     n_obs = integer(),
-    sample_min_year = integer(),
-    sample_max_year = integer(),
+    sample_min_yq = character(),
+    sample_max_yq = character(),
     selected_controls = character(),
     focal_term = character(),
     focal_estimate = numeric(),
@@ -213,8 +213,10 @@ get_main_spatial_families <- function() {
   c("slx", "sar", "sdm", "sem", "sdem", "sarar_sac", "gns")
 }
 
-spdm_required_years <- function() {
-  seq.int(as.integer(cfg$short_start), as.integer(cfg$short_end))
+spdm_required_periods <- function() {
+  q_seq <- value_or(cfg$quarter_sequence$yq, character())
+  q_seq <- unique(as.character(q_seq))
+  q_seq[!is.na(q_seq) & nzchar(q_seq)]
 }
 
 spdm_wx_name <- function(var) {
@@ -395,45 +397,76 @@ build_spdm_control_rows <- function(spec_id,
   )
 }
 
-assess_spdm_balanced_dims <- function(data, w_ids, required_years = spdm_required_years()) {
+assess_spdm_balanced_dims <- function(data, w_ids, required_periods = spdm_required_periods()) {
   if (nrow(data) == 0L) {
-    return(list(ok = FALSE, keep_ids = character(), n_units = 0L, n_periods = 0L))
+    return(list(ok = FALSE, keep_ids = character(), periods = character(), n_units = 0L, n_periods = 0L))
   }
 
-  required_years <- sort(unique(suppressWarnings(as.integer(required_years))))
-  required_years <- required_years[is.finite(required_years)]
+  required_periods <- unique(as.character(required_periods))
+  required_periods <- required_periods[!is.na(required_periods) & nzchar(required_periods)]
+  period_order <- if (exists("cfg", inherits = TRUE) && !is.null(cfg$quarter_sequence$yq)) {
+    unique(as.character(cfg$quarter_sequence$yq))
+  } else {
+    character()
+  }
+  sort_periods <- function(x) {
+    x <- unique(as.character(x))
+    x <- x[!is.na(x) & nzchar(x)]
+    if (length(period_order) > 0L) {
+      known <- x[x %in% period_order]
+      unknown <- sort(setdiff(x, period_order))
+      return(c(period_order[period_order %in% known], unknown))
+    }
+    sort(x)
+  }
+  required_periods <- sort_periods(required_periods)
 
-  annual_counts <- data |>
-    dplyr::mutate(year = suppressWarnings(as.integer(year))) |>
-    dplyr::filter(is.finite(year)) |>
-    dplyr::distinct(adm_cd, year) |>
+  quarter_counts <- data |>
+    dplyr::mutate(yq = as.character(yq)) |>
+    dplyr::filter(!is.na(yq), nzchar(yq)) |>
+    dplyr::distinct(adm_cd, yq) |>
     dplyr::group_by(adm_cd) |>
     dplyr::summarise(
       n_t = dplyr::n(),
-      has_required_years = if (length(required_years) == 0L) TRUE else all(required_years %in% year),
+      periods = list(yq),
+      has_required_periods = if (length(required_periods) == 0L) TRUE else all(required_periods %in% yq),
       .groups = "drop"
     )
 
-  if (nrow(annual_counts) == 0L) {
-    return(list(ok = FALSE, keep_ids = character(), n_units = 0L, n_periods = 0L))
+  if (nrow(quarter_counts) == 0L) {
+    return(list(ok = FALSE, keep_ids = character(), periods = character(), n_units = 0L, n_periods = 0L))
   }
 
-  if (length(required_years) > 0L) {
-    full_t <- length(required_years)
-    adm_balanced <- annual_counts |>
-      dplyr::filter(n_t >= full_t, has_required_years) |>
+  observed_periods <- sort_periods(data$yq)
+  candidate_periods <- if (length(required_periods) > 0L && all(required_periods %in% observed_periods)) {
+    required_periods
+  } else {
+    observed_periods
+  }
+
+  if (length(candidate_periods) == 0L) {
+    return(list(ok = FALSE, keep_ids = character(), periods = character(), n_units = 0L, n_periods = 0L))
+  }
+
+  min_periods <- as.integer(value_or(cfg$spdm_min_periods, 20L))
+  if (!is.finite(min_periods) || min_periods < 4L) min_periods <- 20L
+  full_t <- length(candidate_periods)
+
+  if (length(required_periods) > 0L) {
+    adm_balanced <- quarter_counts |>
+      dplyr::filter(n_t >= full_t, purrr::map_lgl(periods, ~ all(candidate_periods %in% .x))) |>
       dplyr::pull(adm_cd)
   } else {
-    full_t <- max(annual_counts$n_t, na.rm = TRUE)
-    adm_balanced <- annual_counts |>
-      dplyr::filter(n_t == full_t) |>
+    adm_balanced <- quarter_counts |>
+      dplyr::filter(n_t >= full_t, purrr::map_lgl(periods, ~ all(candidate_periods %in% .x))) |>
       dplyr::pull(adm_cd)
   }
 
   keep_ids <- intersect(as.character(w_ids), as.character(adm_balanced))
   list(
-    ok = (length(keep_ids) >= 20L && full_t >= as.integer(value_or(cfg$spdm_min_periods, 4L))),
+    ok = (length(keep_ids) >= 20L && full_t >= min_periods),
     keep_ids = keep_ids,
+    periods = candidate_periods,
     n_units = as.integer(length(keep_ids)),
     n_periods = as.integer(full_t)
   )
@@ -449,7 +482,7 @@ choose_spdm_controls_for_spec <- function(panel,
   selected <- character()
   for (ctrl in control_pool) {
     trial <- c(selected, ctrl)
-    vars <- unique(c("adm_cd", "year", outcome, exposure, trial))
+    vars <- unique(c("adm_cd", "yq", outcome, exposure, trial))
     d_try <- panel |>
       dplyr::select(dplyr::all_of(vars)) |>
       tidyr::drop_na()
@@ -532,7 +565,7 @@ fit_spdm_model <- function(pdat, outcome, exposure, controls, lw_sub, model_fami
   rhs_text <- paste(rhs_formula, collapse = " + ")
 
   if (identical(family, "slx")) {
-    fm <- stats::as.formula(sprintf("%s ~ %s | adm_cd + year", outcome, rhs_text))
+    fm <- stats::as.formula(sprintf("%s ~ %s | adm_cd + yq", outcome, rhs_text))
     fit <- tryCatch(
       fixest::feols(fm, data = pdat_model, cluster = ~ adm_cd, data.save = TRUE),
       error = function(e) e
@@ -614,7 +647,7 @@ fit_spdm_model <- function(pdat, outcome, exposure, controls, lw_sub, model_fami
 
 fit_twfe_common_model <- function(pdat, outcome, exposure, controls) {
   rhs <- unique(c(exposure, controls))
-  fm <- stats::as.formula(sprintf("%s ~ %s | adm_cd + year", outcome, paste(rhs, collapse = " + ")))
+  fm <- stats::as.formula(sprintf("%s ~ %s | adm_cd + yq", outcome, paste(rhs, collapse = " + ")))
 
   fit <- tryCatch(
     fixest::feols(fm, data = pdat, cluster = ~ adm_cd, data.save = TRUE),
@@ -656,12 +689,12 @@ prepare_spdm_spec <- function(panel,
     n_units = NA_integer_,
     n_periods = NA_integer_,
     n_obs = NA_integer_,
-    sample_min_year = NA_integer_,
-    sample_max_year = NA_integer_
+    sample_min_yq = NA_character_,
+    sample_max_yq = NA_character_
   )
 
   for (ctrl_try in control_ladder) {
-    vars <- unique(c("adm_cd", "year", outcome, exposure, ctrl_try))
+    vars <- unique(c("adm_cd", "year", "quarter", "yq", outcome, exposure, ctrl_try))
     d_try <- panel |>
       dplyr::select(dplyr::all_of(vars)) |>
       tidyr::drop_na()
@@ -690,13 +723,15 @@ prepare_spdm_spec <- function(panel,
       next
     }
 
-    year_levels <- sort(unique(suppressWarnings(as.integer(d_try$year))))
+    period_levels <- dims$periods
     pdat_try <- d_try |>
-      dplyr::filter(adm_cd %in% keep_ids) |>
+      dplyr::filter(adm_cd %in% keep_ids, yq %in% period_levels) |>
       dplyr::mutate(
         adm_cd = factor(adm_cd, levels = keep_ids),
         year = as.integer(year),
-        time_id = as.integer(factor(year, levels = year_levels))
+        quarter = as.integer(quarter),
+        yq = as.character(yq),
+        time_id = as.integer(factor(yq, levels = period_levels))
       ) |>
       dplyr::arrange(adm_cd, time_id)
 
@@ -736,8 +771,8 @@ prepare_spdm_spec <- function(panel,
     prep$n_units <- as.integer(n_units_try)
     prep$n_periods <- as.integer(n_periods_try)
     prep$n_obs <- as.integer(n_obs_try)
-    prep$sample_min_year <- suppressWarnings(as.integer(min(pdat_try$year, na.rm = TRUE)))
-    prep$sample_max_year <- suppressWarnings(as.integer(max(pdat_try$year, na.rm = TRUE)))
+    prep$sample_min_yq <- as.character(min(pdat_try$yq, na.rm = TRUE))
+    prep$sample_max_yq <- as.character(max(pdat_try$yq, na.rm = TRUE))
     return(prep)
   }
 
@@ -752,7 +787,7 @@ rebuild_main_spdm_sample <- function(panel,
                                      w_ids,
                                      expected_row,
                                      context_label = "main SPDM") {
-  needed <- unique(c("adm_cd", "year", outcome, exposure, selected_controls))
+  needed <- unique(c("adm_cd", "year", "quarter", "yq", outcome, exposure, selected_controls))
   missing_vars <- setdiff(needed, names(panel))
   if (length(missing_vars) > 0L) {
     return(list(
@@ -788,19 +823,21 @@ rebuild_main_spdm_sample <- function(panel,
     ))
   }
 
+  period_levels <- dims$periods
   pdat <- d_try |>
-    dplyr::filter(adm_cd %in% dims$keep_ids) |>
+    dplyr::filter(adm_cd %in% dims$keep_ids, yq %in% period_levels) |>
     dplyr::mutate(
       adm_cd = factor(adm_cd, levels = dims$keep_ids),
-      time_id = as.integer(factor(year, levels = sort(unique(year))))
+      yq = as.character(yq),
+      time_id = as.integer(factor(yq, levels = period_levels))
     ) |>
     dplyr::arrange(adm_cd, time_id)
 
   n_units <- dplyr::n_distinct(pdat$adm_cd)
   n_periods <- dplyr::n_distinct(pdat$time_id)
   n_obs <- nrow(pdat)
-  sample_min_year <- suppressWarnings(as.integer(min(pdat$year, na.rm = TRUE)))
-  sample_max_year <- suppressWarnings(as.integer(max(pdat$year, na.rm = TRUE)))
+  sample_min_yq <- as.character(min(pdat$yq, na.rm = TRUE))
+  sample_max_yq <- as.character(max(pdat$yq, na.rm = TRUE))
 
   mismatch <- character()
   if (is.finite(expected_row$n_units[[1]]) && !identical(as.integer(n_units), as.integer(expected_row$n_units[[1]]))) {
@@ -812,13 +849,13 @@ rebuild_main_spdm_sample <- function(panel,
   if (is.finite(expected_row$n_obs[[1]]) && !identical(as.integer(n_obs), as.integer(expected_row$n_obs[[1]]))) {
     mismatch <- c(mismatch, sprintf("n_obs expected %s got %s", expected_row$n_obs[[1]], n_obs))
   }
-  expected_min_year <- suppressWarnings(as.integer(expected_row$sample_min_year[[1]]))
-  expected_max_year <- suppressWarnings(as.integer(expected_row$sample_max_year[[1]]))
-  if (is.finite(expected_min_year) && !identical(sample_min_year, expected_min_year)) {
-    mismatch <- c(mismatch, sprintf("sample_min_year expected %s got %s", expected_row$sample_min_year[[1]], sample_min_year))
+  expected_min_yq <- as.character(expected_row$sample_min_yq[[1]])
+  expected_max_yq <- as.character(expected_row$sample_max_yq[[1]])
+  if (!is.na(expected_min_yq) && nzchar(expected_min_yq) && !identical(sample_min_yq, expected_min_yq)) {
+    mismatch <- c(mismatch, sprintf("sample_min_yq expected %s got %s", expected_row$sample_min_yq[[1]], sample_min_yq))
   }
-  if (is.finite(expected_max_year) && !identical(sample_max_year, expected_max_year)) {
-    mismatch <- c(mismatch, sprintf("sample_max_year expected %s got %s", expected_row$sample_max_year[[1]], sample_max_year))
+  if (!is.na(expected_max_yq) && nzchar(expected_max_yq) && !identical(sample_max_yq, expected_max_yq)) {
+    mismatch <- c(mismatch, sprintf("sample_max_yq expected %s got %s", expected_row$sample_max_yq[[1]], sample_max_yq))
   }
 
   if (length(mismatch) > 0L) {
@@ -840,8 +877,8 @@ rebuild_main_spdm_sample <- function(panel,
     n_units = as.integer(n_units),
     n_periods = as.integer(n_periods),
     n_obs = as.integer(n_obs),
-    sample_min_year = sample_min_year,
-    sample_max_year = sample_max_year
+    sample_min_yq = sample_min_yq,
+    sample_max_yq = sample_max_yq
   )
 }
 
@@ -869,12 +906,12 @@ prepare_spatial_family_spec <- function(panel,
     n_units = NA_integer_,
     n_periods = NA_integer_,
     n_obs = NA_integer_,
-    sample_min_year = NA_integer_,
-    sample_max_year = NA_integer_
+    sample_min_yq = NA_character_,
+    sample_max_yq = NA_character_
   )
 
   for (ctrl_try in control_ladder) {
-    vars <- unique(c("adm_cd", "year", outcome, exposure, ctrl_try))
+    vars <- unique(c("adm_cd", "year", "quarter", "yq", outcome, exposure, ctrl_try))
     d_try <- panel |>
       dplyr::select(dplyr::all_of(vars)) |>
       tidyr::drop_na()
@@ -903,13 +940,15 @@ prepare_spatial_family_spec <- function(panel,
       next
     }
 
-    year_levels <- sort(unique(suppressWarnings(as.integer(d_try$year))))
+    period_levels <- dims$periods
     pdat_try <- d_try |>
-      dplyr::filter(adm_cd %in% keep_ids) |>
+      dplyr::filter(adm_cd %in% keep_ids, yq %in% period_levels) |>
       dplyr::mutate(
         adm_cd = factor(adm_cd, levels = keep_ids),
         year = as.integer(year),
-        time_id = as.integer(factor(year, levels = year_levels))
+        quarter = as.integer(quarter),
+        yq = as.character(yq),
+        time_id = as.integer(factor(yq, levels = period_levels))
       ) |>
       dplyr::arrange(adm_cd, time_id)
 
@@ -973,8 +1012,8 @@ prepare_spatial_family_spec <- function(panel,
     prep$n_units <- as.integer(n_units_try)
     prep$n_periods <- as.integer(n_periods_try)
     prep$n_obs <- as.integer(n_obs_try)
-    prep$sample_min_year <- suppressWarnings(as.integer(min(pdat_try$year, na.rm = TRUE)))
-    prep$sample_max_year <- suppressWarnings(as.integer(max(pdat_try$year, na.rm = TRUE)))
+    prep$sample_min_yq <- as.character(min(pdat_try$yq, na.rm = TRUE))
+    prep$sample_max_yq <- as.character(max(pdat_try$yq, na.rm = TRUE))
     return(prep)
   }
 
@@ -1071,8 +1110,8 @@ build_spdm_not_applicable_impacts_row <- function(spec_id,
                                                   n_units,
                                                   n_periods,
                                                   n_obs,
-                                                  sample_min_year,
-                                                  sample_max_year,
+                                                  sample_min_yq,
+                                                  sample_max_yq,
                                                   model_family,
                                                   w_type,
                                                   sim_R = NA_integer_,
@@ -1088,8 +1127,8 @@ build_spdm_not_applicable_impacts_row <- function(spec_id,
       n_units = as.integer(n_units),
       n_periods = as.integer(n_periods),
       n_obs = as.integer(n_obs),
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       model_family = model_family,
       w_type = w_type,
       sim_R = as.integer(sim_R),
@@ -1108,8 +1147,8 @@ compute_spdm_impacts_row_splm_builtin <- function(spec_id,
                                                   n_periods,
                                                   n_units,
                                                   n_obs,
-                                                  sample_min_year,
-                                                  sample_max_year,
+                                                  sample_min_yq,
+                                                  sample_max_yq,
                                                   model_family = "sdm",
                                                   w_type = "queen",
                                                   sim_R = 1000L,
@@ -1127,8 +1166,8 @@ compute_spdm_impacts_row_splm_builtin <- function(spec_id,
         n_units = n_units,
         n_periods = n_periods,
         n_obs = n_obs,
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+        sample_min_yq = sample_min_yq,
+        sample_max_yq = sample_max_yq,
         model_family = model_family,
         w_type = w_type,
         sim_R = sim_R,
@@ -1168,8 +1207,8 @@ compute_spdm_impacts_row_splm_builtin <- function(spec_id,
           n_units = as.integer(n_units),
           n_periods = as.integer(n_periods),
           n_obs = as.integer(n_obs),
-          sample_min_year = sample_min_year,
-          sample_max_year = sample_max_year,
+          sample_min_yq = sample_min_yq,
+          sample_max_yq = sample_max_yq,
           model_family = model_family,
           w_type = w_type,
           sim_R = as.integer(sim_R),
@@ -1195,8 +1234,8 @@ compute_spdm_impacts_row_splm_builtin <- function(spec_id,
           n_units = as.integer(n_units),
           n_periods = as.integer(n_periods),
           n_obs = as.integer(n_obs),
-          sample_min_year = sample_min_year,
-          sample_max_year = sample_max_year,
+          sample_min_yq = sample_min_yq,
+          sample_max_yq = sample_max_yq,
           model_family = model_family,
           w_type = w_type,
           sim_R = as.integer(sim_R),
@@ -1246,8 +1285,8 @@ compute_spdm_impacts_row_splm_builtin <- function(spec_id,
       n_units = as.integer(n_units),
       n_periods = as.integer(n_periods),
       n_obs = as.integer(n_obs),
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       model_family = model_family,
       w_type = w_type,
       sim_R = as.integer(sim_R),
@@ -1349,8 +1388,8 @@ compute_wx_linear_impacts_row <- function(spec_id,
                                           n_units,
                                           n_periods,
                                           n_obs,
-                                          sample_min_year,
-                                          sample_max_year,
+                                          sample_min_yq,
+                                          sample_max_yq,
                                           model_family = "slx",
                                           w_type = "queen",
                                           message = NA_character_) {
@@ -1366,8 +1405,8 @@ compute_wx_linear_impacts_row <- function(spec_id,
           n_units = as.integer(n_units),
           n_periods = as.integer(n_periods),
           n_obs = as.integer(n_obs),
-          sample_min_year = suppressWarnings(as.integer(sample_min_year)),
-          sample_max_year = suppressWarnings(as.integer(sample_max_year)),
+          sample_min_yq = as.character(sample_min_yq),
+          sample_max_yq = as.character(sample_max_yq),
           model_family = model_family,
           w_type = w_type,
           sim_method = "manual_wx_linear_delta",
@@ -1452,8 +1491,8 @@ compute_wx_linear_impacts_row <- function(spec_id,
       n_units = as.integer(n_units),
       n_periods = as.integer(n_periods),
       n_obs = as.integer(n_obs),
-      sample_min_year = suppressWarnings(as.integer(sample_min_year)),
-      sample_max_year = suppressWarnings(as.integer(sample_max_year)),
+      sample_min_yq = as.character(sample_min_yq),
+      sample_max_yq = as.character(sample_max_yq),
       model_family = model_family,
       w_type = w_type,
       sim_method = "manual_wx_linear_delta",
@@ -1473,8 +1512,8 @@ compute_true_sdm_impacts_row <- function(spec_id,
                                          n_units,
                                          n_periods,
                                          n_obs,
-                                         sample_min_year,
-                                         sample_max_year,
+                                         sample_min_yq,
+                                         sample_max_yq,
                                          model_family = "sdm",
                                          w_type = "queen",
                                          sim_R = 1000L,
@@ -1493,8 +1532,8 @@ compute_true_sdm_impacts_row <- function(spec_id,
           n_units = as.integer(n_units),
           n_periods = as.integer(n_periods),
           n_obs = as.integer(n_obs),
-          sample_min_year = suppressWarnings(as.integer(sample_min_year)),
-          sample_max_year = suppressWarnings(as.integer(sample_max_year)),
+          sample_min_yq = as.character(sample_min_yq),
+          sample_max_yq = as.character(sample_max_yq),
           model_family = model_family,
           w_type = w_type,
           sim_R = as.integer(sim_R),
@@ -1629,8 +1668,8 @@ compute_true_sdm_impacts_row <- function(spec_id,
       n_units = as.integer(n_units),
       n_periods = as.integer(n_periods),
       n_obs = as.integer(n_obs),
-      sample_min_year = suppressWarnings(as.integer(sample_min_year)),
-      sample_max_year = suppressWarnings(as.integer(sample_max_year)),
+      sample_min_yq = as.character(sample_min_yq),
+      sample_max_yq = as.character(sample_max_yq),
       model_family = model_family,
       w_type = w_type,
       sim_R = sim_R,
@@ -1651,8 +1690,8 @@ compute_spdm_impacts_row <- function(spec_id,
                                      n_periods,
                                      n_units,
                                      n_obs,
-                                     sample_min_year,
-                                     sample_max_year,
+                                     sample_min_yq,
+                                     sample_max_yq,
                                      model_family = "sdm",
                                      w_type = "queen",
                                      sim_R = 1000L,
@@ -1671,8 +1710,8 @@ compute_spdm_impacts_row <- function(spec_id,
       n_units = n_units,
       n_periods = n_periods,
       n_obs = n_obs,
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       model_family = model_family,
       w_type = w_type,
       message = message
@@ -1690,8 +1729,8 @@ compute_spdm_impacts_row <- function(spec_id,
       n_units = n_units,
       n_periods = n_periods,
       n_obs = n_obs,
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       model_family = model_family,
       w_type = w_type,
       sim_R = sim_R,
@@ -1711,8 +1750,8 @@ compute_spdm_impacts_row <- function(spec_id,
     n_periods = n_periods,
     n_units = n_units,
     n_obs = n_obs,
-    sample_min_year = sample_min_year,
-    sample_max_year = sample_max_year,
+    sample_min_yq = sample_min_yq,
+    sample_max_yq = sample_max_yq,
     model_family = model_family,
     w_type = w_type,
     sim_R = sim_R,
@@ -1735,8 +1774,8 @@ extract_spdm_coef_table <- function(mod,
                                     n_units,
                                     n_periods,
                                     n_obs,
-                                    sample_min_year,
-                                    sample_max_year,
+                                    sample_min_yq,
+                                    sample_max_yq,
                                     model_family = "sdm",
                                     w_type = "queen",
                                     message = NA_character_) {
@@ -1752,8 +1791,8 @@ extract_spdm_coef_table <- function(mod,
         n_units = as.integer(n_units),
         n_periods = as.integer(n_periods),
         n_obs = as.integer(n_obs),
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+        sample_min_yq = sample_min_yq,
+        sample_max_yq = sample_max_yq,
         model_family = model_family,
         w_type = w_type,
         se_method = spdm_coef_se_method(),
@@ -1774,8 +1813,8 @@ extract_spdm_coef_table <- function(mod,
       n_units = as.integer(n_units),
       n_periods = as.integer(n_periods),
       n_obs = as.integer(n_obs),
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       model_family = model_family,
       w_type = w_type,
       se_method = spdm_coef_se_method(),
@@ -1791,8 +1830,8 @@ extract_twfe_common_coef_table <- function(mod,
                                           n_units,
                                           n_periods,
                                           n_obs,
-                                          sample_min_year,
-                                          sample_max_year,
+                                          sample_min_yq,
+                                          sample_max_yq,
                                           model_family = "twfe_common",
                                           w_type = "queen",
                                           message = NA_character_) {
@@ -1807,8 +1846,8 @@ extract_twfe_common_coef_table <- function(mod,
         n_units = as.integer(n_units),
         n_periods = as.integer(n_periods),
         n_obs = as.integer(n_obs),
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+        sample_min_yq = sample_min_yq,
+        sample_max_yq = sample_max_yq,
         model_family = model_family,
         w_type = w_type,
         se_method = "clustered_by_adm_cd",
@@ -1825,8 +1864,8 @@ extract_twfe_common_coef_table <- function(mod,
       n_units = as.integer(n_units),
       n_periods = as.integer(n_periods),
       n_obs = as.integer(n_obs),
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       model_family = model_family,
       w_type = w_type,
       se_method = "clustered_by_adm_cd",
@@ -1965,8 +2004,8 @@ build_spdm_diagnostics_row <- function(spec_id,
                                        n_units,
                                        n_periods,
                                        n_obs,
-                                       sample_min_year,
-                                       sample_max_year,
+                                       sample_min_yq,
+                                       sample_max_yq,
                                        selected_controls,
                                        spatial_lagged_terms = NA_character_,
                                        n_wx_terms = NA_integer_,
@@ -1995,8 +2034,8 @@ build_spdm_diagnostics_row <- function(spec_id,
       n_units = as.integer(n_units),
       n_periods = as.integer(n_periods),
       n_obs = as.integer(n_obs),
-      sample_min_year = suppressWarnings(as.integer(sample_min_year)),
-      sample_max_year = suppressWarnings(as.integer(sample_max_year)),
+      sample_min_yq = as.character(sample_min_yq),
+      sample_max_yq = as.character(sample_max_yq),
       selected_controls = collapse_chr(selected_controls),
       spatial_lagged_terms = as.character(spatial_lagged_terms),
       n_wx_terms = suppressWarnings(as.integer(n_wx_terms)),
@@ -2027,8 +2066,8 @@ build_spdm_family_comparison_row <- function(spec_id,
                                              n_units,
                                              n_periods,
                                              n_obs,
-                                             sample_min_year,
-                                             sample_max_year,
+                                             sample_min_yq,
+                                             sample_max_yq,
                                              selected_controls,
                                              focal_term = exposure,
                                              focal_estimate = NA_real_,
@@ -2066,8 +2105,8 @@ build_spdm_family_comparison_row <- function(spec_id,
       n_units = as.integer(n_units),
       n_periods = as.integer(n_periods),
       n_obs = as.integer(n_obs),
-      sample_min_year = suppressWarnings(as.integer(sample_min_year)),
-      sample_max_year = suppressWarnings(as.integer(sample_max_year)),
+      sample_min_yq = as.character(sample_min_yq),
+      sample_max_yq = as.character(sample_max_yq),
       selected_controls = collapse_chr(selected_controls),
       focal_term = as.character(focal_term),
       focal_estimate = focal_estimate,

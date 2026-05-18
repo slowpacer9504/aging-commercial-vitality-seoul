@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : 01_run_gtwr_main.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Run the resident-only annual GTWR optional sidecar and overwrite
+# Purpose   : Run the resident-only quarterly GTWR optional sidecar and overwrite
 #             the configured output bundle on each active execution.
 # Author    : Codex
 # Created   : 2026-03-27
@@ -32,7 +32,7 @@ load_project_packages()
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_gtwr_main", timestamp()))
 
 #==============================================================================
-# 1. Resident-Only Annual GTWR Contract
+# 1. Resident-Only Quarterly GTWR Contract
 #==============================================================================
 
 if (!isTRUE(cfg$run_gtwr)) {
@@ -89,7 +89,7 @@ if (!isTRUE(cfg$run_gtwr)) {
     write_csv_safe(empty_gtwr_frozen_spec_tbl(), frozen_path)
     write_csv_safe(empty_gtwr_lamda_sensitivity_tbl(), lamda_sensitivity_path)
     write_csv_safe(empty_gtwr_bandwidth_sensitivity_tbl(), bandwidth_sensitivity_path)
-    append_log(cfg$logs$model_run, "- GTWR main skipped: missing annual outcomes or resident exposure")
+    append_log(cfg$logs$model_run, "- GTWR main skipped: missing quarterly outcomes or resident exposure")
   } else {
     panel_xy <- prepare_gtwr_points(panel)
     cache_dir <- cfg$get_gtwr_main_spec_cache_dir(control_set)
@@ -159,7 +159,7 @@ if (!isTRUE(cfg$run_gtwr)) {
         ", resume=", isTRUE(cfg$gtwr_resume_specs),
         ", refresh_cache=", isTRUE(cfg$gtwr_refresh_spec_cache),
         ", bw_strategy=", cfg$gtwr_bandwidth_strategy,
-        ", bw_anchor_year=", cfg$gtwr_bw_anchor_year,
+        ", bw_anchor_yq=", cfg$gtwr_bw_anchor_yq,
         ", bw_approach=", cfg$gtwr_bw_approach,
         ", refresh_bw_cache=", isTRUE(cfg$gtwr_refresh_bw_cache),
         ", cache_dir=", cache_dir
@@ -480,7 +480,7 @@ if (!isTRUE(cfg$run_gtwr)) {
     append_log(
       cfg$logs$model_run,
       paste0(
-        "- GTWR main annual sidecar completed: control_set=", control_set,
+        "- GTWR main quarterly sidecar completed: control_set=", control_set,
         ", specs=", nrow(summary_tbl),
         ", statuses=", paste(unique(summary_tbl$status), collapse = "|"),
         ", outputs={", basename(summary_path), ",", basename(panel_path), ",", basename(local_path), ",", basename(controls_path), ",", basename(frozen_path), ",", basename(lamda_sensitivity_path), ",", basename(bandwidth_sensitivity_path), "}"

@@ -1,20 +1,20 @@
 #==============================================================================
 # Script    : 06_build_analysis_panel.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Build the merged annual base panel and shared pre-vitality panel
-#             by combining the annual Seoul base, auxiliary covariates,
+# Purpose   : Build the merged quarterly base panel and shared pre-vitality panel
+#             by combining the quarterly Seoul base, auxiliary covariates,
 #             common contemporaneous transforms, and QC.
 # Author    : Codex
 # Created   : 2026-04-22
 # Type      : panel_building
-# Inputs    : seoul_year_base.parquet, aux_covariates.parquet,
+# Inputs    : seoul_quarter_base.parquet, aux_covariates.parquet,
 #             living_population_external_inflow.parquet,
 #             golmok_survival_rate.parquet,
 #             registered_resident_population.parquet
 # Outputs   : panel_merged_base.parquet, panel_main_pre_vitality.parquet,
 #             missing_data_log.csv, panel_join_coverage_qc.csv,
 #             panel_structural_count_flags.csv
-# DependsOn : 02_build_seoul_year_base.R, 03_build_auxiliary_covariates.R,
+# DependsOn : 02_build_seoul_quarter_base.R, 03_build_auxiliary_covariates.R,
 #             01_build_living_population_inflow.R,
 #             04_build_golmok_survival_rate.R,
 #             05_build_registered_resident_population.R
@@ -24,8 +24,8 @@
 # 0. Setup
 #==============================================================================
 
-# 이 스크립트는 active annual shared panel handoff를 만든다.
-# 1) panel_merged_base: year base + aux를 붙인 직후 상태
+# 이 스크립트는 active quarterly shared panel handoff를 만든다.
+# 1) panel_merged_base: quarter base + aux를 붙인 직후 상태
 # 2) panel_main_pre_vitality: 공통 contemporaneous 파생변수를 반영한 상태
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
@@ -37,21 +37,15 @@ load_project_packages()
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 06_build_analysis_panel", timestamp()))
 
-year_base_path <- if (!is.null(cfg$paths$year_base)) {
-  cfg$paths$year_base
-} else {
-  file.path(cfg$dir_analysis, "seoul_year_base.parquet")
-}
-year_aggregation_qc_path <- if (!is.null(cfg$logs$panel_year_aggregation_qc)) {
-  cfg$logs$panel_year_aggregation_qc
-} else {
-  file.path(cfg$dir_logs, "panel_year_aggregation_qc.csv")
-}
+quarter_base_path <- value_or(cfg$paths$quarter_base, file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"))
+quarter_aggregation_qc_path <- value_or(
+  cfg$logs$panel_quarter_aggregation_qc,
+  file.path(cfg$dir_logs, "panel_quarter_aggregation_qc.csv")
+)
 
 required <- c(
-  year_base_path,
+  quarter_base_path,
   cfg$paths$aux_covariates,
-  cfg$paths$living_population_external_inflow,
   cfg$paths$golmok_survival_rate,
   cfg$paths$registered_resident_population
 )
@@ -60,17 +54,41 @@ if (length(missing) > 0) {
   stop(sprintf("[ERROR] Missing required input: %s", paste(missing, collapse = ", ")), call. = FALSE)
 }
 
-year_base <- arrow::read_parquet(year_base_path) |> tibble::as_tibble() |> standardize_keys()
+quarter_base <- arrow::read_parquet(quarter_base_path) |> tibble::as_tibble() |> standardize_keys()
 aux <- arrow::read_parquet(cfg$paths$aux_covariates) |> tibble::as_tibble() |> standardize_keys()
-living_inflow <- arrow::read_parquet(cfg$paths$living_population_external_inflow) |>
-  tibble::as_tibble() |>
-  standardize_keys()
+living_inflow <- if (file.exists(cfg$paths$living_population_external_inflow)) {
+  arrow::read_parquet(cfg$paths$living_population_external_inflow) |>
+    tibble::as_tibble() |>
+    standardize_keys()
+} else {
+  quarter_base |>
+    dplyr::select(adm_cd, year, quarter, yq, quarter_index) |>
+    dplyr::mutate(
+      external_inflow_pop = NA_real_,
+      inner_external_inflow_pop = NA_real_,
+      metro_external_inflow_pop = NA_real_,
+      living_population_source = "missing_optional_quarterly_sidecar"
+    )
+}
 survival_rate <- arrow::read_parquet(cfg$paths$golmok_survival_rate) |>
   tibble::as_tibble() |>
   standardize_keys()
 registered_resident <- arrow::read_parquet(cfg$paths$registered_resident_population) |>
   tibble::as_tibble() |>
   standardize_keys()
+
+if (!"yq" %in% names(living_inflow)) {
+  living_inflow <- quarter_base |>
+    dplyr::select(adm_cd, year, quarter, yq, quarter_index) |>
+    dplyr::left_join(living_inflow, by = c("adm_cd", "year"))
+} else if (!"quarter_index" %in% names(living_inflow)) {
+  living_inflow <- living_inflow |>
+    dplyr::left_join(
+      quarter_base |>
+        dplyr::select(adm_cd, yq, quarter_index),
+      by = c("adm_cd", "yq")
+    )
+}
 adm_area_lookup <- load_commercial_boundary(cfg$dir_boundary, target_crs = cfg$target_crs) |>
   dplyr::mutate(adm_area_km2 = as.numeric(sf::st_area(geometry)) / 10^6) |>
   sf::st_drop_geometry() |>
@@ -125,7 +143,7 @@ summarize_join_coverage <- function(df, vars, source_name) {
   if (length(vars) == 0L) {
     return(tibble::tibble(
       source = character(0),
-      year = integer(0),
+      yq = character(0),
       variable = character(0),
       non_missing_n = integer(0),
       row_n = integer(0),
@@ -134,9 +152,9 @@ summarize_join_coverage <- function(df, vars, source_name) {
   }
 
   df |>
-    dplyr::select(year, dplyr::all_of(vars)) |>
+    dplyr::select(yq, dplyr::all_of(vars)) |>
     tidyr::pivot_longer(cols = dplyr::all_of(vars), names_to = "variable", values_to = "value") |>
-    dplyr::group_by(year, variable) |>
+    dplyr::group_by(yq, variable) |>
     dplyr::summarise(
       non_missing_n = sum(has_value(value)),
       row_n = dplyr::n(),
@@ -151,31 +169,21 @@ summarize_join_coverage <- function(df, vars, source_name) {
 # 2. Validate Input Contracts and Join Base Layers
 #==============================================================================
 
-assert_required_cols(year_base, c("adm_cd", "year"), "year_base")
-assert_required_cols(aux, c("adm_cd", "year"), "aux_covariates")
-assert_required_cols(living_inflow, c("adm_cd", "year", "external_inflow_pop"), "living_population_external_inflow")
-assert_required_cols(survival_rate, c("adm_cd", "year", "survival_3y"), "golmok_survival_rate")
+quarter_keys <- c("adm_cd", "year", "quarter", "yq", "quarter_index")
+assert_required_cols(quarter_base, quarter_keys, "quarter_base")
+assert_required_cols(aux, quarter_keys, "aux_covariates")
+assert_required_cols(living_inflow, c("adm_cd", "year", "quarter", "yq", "quarter_index", "external_inflow_pop"), "living_population_external_inflow")
+assert_required_cols(survival_rate, c("adm_cd", "year", "quarter", "yq", "quarter_index", "survival_3y"), "golmok_survival_rate")
 assert_required_cols(
   registered_resident,
-  c("adm_cd", "year", "resident_pop", "age60_resident_pop", "age60_resident_share"),
+  c("adm_cd", "year", "quarter", "yq", "resident_pop", "age60_resident_pop", "age60_resident_share"),
   "registered_resident_population"
 )
-assert_unique_keys(year_base, c("adm_cd", "year"), "year_base")
-assert_unique_keys(aux, c("adm_cd", "year"), "aux_covariates")
-assert_unique_keys(living_inflow, c("adm_cd", "year"), "living_population_external_inflow")
-assert_unique_keys(survival_rate, c("adm_cd", "year"), "golmok_survival_rate")
-assert_unique_keys(registered_resident, c("adm_cd", "year"), "registered_resident_population")
-
-forbidden_input_cols <- intersect(c("quarter", "yq"), names(year_base))
-if (length(forbidden_input_cols) > 0L) {
-  stop(
-    sprintf(
-      "[ERROR] year_base still contains quarterly keys: %s",
-      paste(forbidden_input_cols, collapse = ", ")
-    ),
-    call. = FALSE
-  )
-}
+assert_unique_keys(quarter_base, c("adm_cd", "yq"), "quarter_base")
+assert_unique_keys(aux, c("adm_cd", "yq"), "aux_covariates")
+assert_unique_keys(living_inflow, c("adm_cd", "yq"), "living_population_external_inflow")
+assert_unique_keys(survival_rate, c("adm_cd", "yq"), "golmok_survival_rate")
+assert_unique_keys(registered_resident, c("adm_cd", "yq"), "registered_resident_population")
 
 registered_resident_cols <- c(
   "resident_pop", "age60_resident_pop", "age60_resident_share",
@@ -187,12 +195,12 @@ registered_resident_cols <- c(
   "registered_month_n", "age_group_total_abs_diff_max", "resident_population_source"
 )
 
-panel_merged_base <- year_base |>
+panel_merged_base <- quarter_base |>
   dplyr::select(-dplyr::any_of(registered_resident_cols)) |>
-  dplyr::left_join(aux, by = c("adm_cd", "year")) |>
-  dplyr::left_join(living_inflow, by = c("adm_cd", "year")) |>
-  dplyr::left_join(survival_rate, by = c("adm_cd", "year")) |>
-  dplyr::left_join(registered_resident, by = c("adm_cd", "year")) |>
+  dplyr::left_join(aux, by = quarter_keys) |>
+  dplyr::left_join(living_inflow, by = quarter_keys) |>
+  dplyr::left_join(survival_rate, by = quarter_keys) |>
+  dplyr::left_join(registered_resident, by = quarter_keys) |>
   dplyr::select(-dplyr::any_of(c(
     "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
     "vitality_sub_stability", "vitality_index_base", "vitality_index_entropy",
@@ -200,11 +208,11 @@ panel_merged_base <- year_base |>
     "worker_pop", "age60_worker_pop"
   )))
 
-if (nrow(panel_merged_base) != nrow(year_base)) {
+if (nrow(panel_merged_base) != nrow(quarter_base)) {
   stop(
     sprintf(
-      "[ERROR] merged base row mismatch: year_base=%d, merged=%d",
-      nrow(year_base), nrow(panel_merged_base)
+      "[ERROR] merged base row mismatch: quarter_base=%d, merged=%d",
+      nrow(quarter_base), nrow(panel_merged_base)
     ),
     call. = FALSE
   )
@@ -213,11 +221,11 @@ if (nrow(panel_merged_base) != nrow(year_base)) {
 panel_main_pre_vitality <- panel_merged_base |>
   dplyr::left_join(adm_area_lookup, by = "adm_cd")
 
-if (nrow(panel_main_pre_vitality) != nrow(year_base)) {
+if (nrow(panel_main_pre_vitality) != nrow(quarter_base)) {
   stop(
     sprintf(
-      "[ERROR] pre-vitality panel row mismatch: year_base=%d, panel_main_pre_vitality=%d",
-      nrow(year_base), nrow(panel_main_pre_vitality)
+      "[ERROR] pre-vitality panel row mismatch: quarter_base=%d, panel_main_pre_vitality=%d",
+      nrow(quarter_base), nrow(panel_main_pre_vitality)
     ),
     call. = FALSE
   )
@@ -225,7 +233,7 @@ if (nrow(panel_main_pre_vitality) != nrow(year_base)) {
 
 
 #==============================================================================
-# 3. Derive Shared Annual Variables
+# 3. Derive Shared Quarterly Variables
 #==============================================================================
 
 medical_detail_cols <- c(
@@ -419,7 +427,7 @@ panel_main_pre_vitality$apartment_available <- dplyr::coalesce(
 )
 
 panel_main_pre_vitality <- panel_main_pre_vitality |>
-  dplyr::group_by(year) |>
+  dplyr::group_by(yq) |>
   dplyr::mutate(
     city_age60_sales_share = dplyr::if_else(
       sum(total_sales, na.rm = TRUE) > 0,
@@ -439,24 +447,13 @@ panel_main_pre_vitality <- panel_main_pre_vitality |>
 # 4. Validate Shared Contemporaneous Contract
 #==============================================================================
 
-validate_panel_keys(panel_main_pre_vitality, c("adm_cd", "year"))
-
-forbidden_cols <- intersect(c("quarter", "yq"), names(panel_main_pre_vitality))
-if (length(forbidden_cols) > 0L) {
-  stop(
-    sprintf(
-      "[ERROR] annual pre-vitality panel still contains forbidden quarterly columns: %s",
-      paste(forbidden_cols, collapse = ", ")
-    ),
-    call. = FALSE
-  )
-}
+validate_panel_keys(panel_main_pre_vitality, c("adm_cd", "yq"))
 
 forbidden_temporal_cols <- grep("(_l[0-9]+$|_f[0-9]+$|_yoy$)", names(panel_main_pre_vitality), value = TRUE)
 if (length(forbidden_temporal_cols) > 0L) {
   stop(
     sprintf(
-      "[ERROR] forbidden temporal-derived columns remain in annual panel: %s",
+      "[ERROR] forbidden temporal-derived columns remain in quarterly panel: %s",
       paste(head(forbidden_temporal_cols, 12L), collapse = ", ")
     ),
     call. = FALSE
@@ -467,7 +464,7 @@ shift_cols <- grep("(_l[0-9]+$|_f[0-9]+$)", names(panel_main_pre_vitality), valu
 if (length(shift_cols) > 0L) {
   stop(
     sprintf(
-      "[ERROR] shared annual panel still contains forbidden shift columns: %s",
+      "[ERROR] shared quarterly panel still contains forbidden shift columns: %s",
       paste(head(shift_cols, 12L), collapse = ", ")
     ),
     call. = FALSE
@@ -479,7 +476,7 @@ if (length(shift_cols) > 0L) {
 # 5. Coverage QC and Structural Count QC
 #==============================================================================
 
-year_base_core_vars <- intersect(
+quarter_base_core_vars <- intersect(
   c(
     "age60_floating_share", "age60_sales_share",
     "total_household_commercial",
@@ -530,13 +527,13 @@ survival_core_vars <- intersect(
 )
 
 join_cov <- dplyr::bind_rows(
-  summarize_join_coverage(panel_main_pre_vitality, year_base_core_vars, "year_base"),
+  summarize_join_coverage(panel_main_pre_vitality, quarter_base_core_vars, "quarter_base"),
   summarize_join_coverage(panel_main_pre_vitality, registered_resident_core_vars, "registered_resident_population"),
   summarize_join_coverage(panel_main_pre_vitality, aux_core_vars, "aux"),
   summarize_join_coverage(panel_main_pre_vitality, living_pop_core_vars, "living_population_external_inflow"),
   summarize_join_coverage(panel_main_pre_vitality, survival_core_vars, "golmok_survival_rate")
 ) |>
-  dplyr::arrange(source, variable, year)
+  dplyr::arrange(source, variable, yq)
 
 join_cov_path <- file.path(cfg$dir_logs, "panel_join_coverage_qc.csv")
 write_csv_safe(join_cov, join_cov_path)
@@ -550,7 +547,7 @@ count_vars <- intersect(
 )
 if (length(count_vars) > 0) {
   count_flags <- panel_main_pre_vitality |>
-    dplyr::select(adm_cd, year, dplyr::all_of(count_vars)) |>
+    dplyr::select(adm_cd, yq, dplyr::all_of(count_vars)) |>
     tidyr::pivot_longer(cols = dplyr::all_of(count_vars), names_to = "variable", values_to = "value") |>
     dplyr::mutate(
       flag_negative = is.finite(value) & value < 0,
@@ -560,7 +557,7 @@ if (length(count_vars) > 0) {
 } else {
   count_flags <- tibble::tibble(
     adm_cd = character(0),
-    year = integer(0),
+    yq = character(0),
     variable = character(0),
     value = numeric(0),
     flag_negative = logical(0),
@@ -589,13 +586,13 @@ write_csv_safe(summarize_missing(panel_main_pre_vitality), cfg$logs$missing_data
 append_log(cfg$logs$data_qc, sprintf("- Panel merged base rows: %d", nrow(panel_merged_base)))
 append_log(
   cfg$logs$data_qc,
-  sprintf("- Pre-vitality annual panel published: %s (rows=%d)", basename(cfg$paths$panel_main_pre_vitality), nrow(panel_main_pre_vitality))
+  sprintf("- Pre-vitality quarterly panel published: %s (rows=%d)", basename(cfg$paths$panel_main_pre_vitality), nrow(panel_main_pre_vitality))
 )
 append_log(cfg$logs$data_qc, sprintf("- Panel join coverage QC: %s (rows=%d)", basename(join_cov_path), nrow(join_cov)))
-if (file.exists(year_aggregation_qc_path)) {
+if (file.exists(quarter_aggregation_qc_path)) {
   append_log(
     cfg$logs$data_qc,
-    sprintf("- Annualization QC carried forward: %s", basename(year_aggregation_qc_path))
+    sprintf("- Quarterly aggregation QC carried forward: %s", basename(quarter_aggregation_qc_path))
   )
 }
 append_log(

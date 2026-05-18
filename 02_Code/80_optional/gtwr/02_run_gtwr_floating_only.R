@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : 02_run_gtwr_floating_only.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Run the floating-only annual GTWR optional sidecar when enabled.
+# Purpose   : Run the floating-only quarterly GTWR optional sidecar when enabled.
 # Author    : Codex
 # Created   : 2026-04-22
 # Status    : OPTIONAL_SIDECAR
@@ -25,7 +25,7 @@ load_project_packages()
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", timestamp()))
 
 if (!isTRUE(cfg$run_gtwr_floating_sidecar)) {
-  append_log(cfg$logs$model_run, "- GTWR floating-only annual sidecar skipped by run flag")
+  append_log(cfg$logs$model_run, "- GTWR floating-only quarterly sidecar skipped by run flag")
 } else {
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for GTWR floating-only sidecar.", call. = FALSE)
@@ -74,7 +74,7 @@ if (!isTRUE(cfg$run_gtwr_floating_sidecar)) {
     write_csv_safe(empty_gtwr_local_beta_panel_tbl(), panel_path)
     write_csv_safe(empty_gtwr_controls_used_tbl(), controls_path)
     write_csv_safe(empty_gtwr_frozen_spec_tbl(), frozen_path)
-    append_log(cfg$logs$model_run, "- GTWR floating-only annual sidecar skipped: missing annual outcomes or floating exposure")
+    append_log(cfg$logs$model_run, "- GTWR floating-only quarterly sidecar skipped: missing quarterly outcomes or floating exposure")
   } else {
     panel_xy <- prepare_gtwr_points(panel)
     cache_dir <- cfg$get_gtwr_floating_spec_cache_dir(control_set)
@@ -195,7 +195,7 @@ if (!isTRUE(cfg$run_gtwr_floating_sidecar)) {
     append_log(
       cfg$logs$model_run,
       sprintf(
-        "- GTWR floating-only annual sidecar completed: control_set=%s, specs=%d, statuses=%s",
+        "- GTWR floating-only quarterly sidecar completed: control_set=%s, specs=%d, statuses=%s",
         control_set,
         nrow(summary_tbl),
         paste(unique(summary_tbl$status), collapse = "|")

@@ -39,36 +39,13 @@ append_log(cfg$logs$model_run, sprintf("\n# Pipeline Start: %s", timestamp()))
 #==============================================================================
 
 # 배열 순서 자체가 canonical pipeline order다.
-# default run은 active annual panel -> ESDA -> TWFE -> SPDM main ->
-# SPDM channel path -> robustness -> QC -> reporting 흐름에 설정된 optional sidecar를 append한다.
-# appendix interaction families,
-# manual QC scripts in 06_qc, and retired GTWR/GWR appendix families는
-# repo에 남아 있어도 default success contract에 포함하지 않는다.
-# Living-population inflow build는 월별 ZIP 처리 비용이 크므로 default에서는
-# 실행하지 않고, RUN_LIVING_POP_INFLOW=TRUE일 때만 auxiliary build 다음에 삽입한다.
-# resident-only GTWR는 비용이 큰 local-analysis sidecar이므로
-# cfg$run_gtwr_main_sidecar 값에 따라 main pipeline에 conditionally append한다.
+# default run은 active quarterly panel -> ESDA -> TWFE -> SPDM main ->
+# SPDM channel path -> robustness -> QC -> reporting 흐름만 실행한다.
+# optional/sidecar scripts는 quarterly contract에 맞게 유지하되 default
+# run_all success contract와 필수 test plan에서는 제외한다.
 # Fresh auxiliary geocoding requires KAKAO_REST_API_KEY only when the
 # existing cache files do not already resolve all needed addresses or queries.
 scripts <- cfg$canonical_pipeline_scripts
-
-if (isTRUE(cfg$run_living_pop_inflow)) {
-  insert_after <- match("02_Code/01_preprocess/03_build_auxiliary_covariates.R", scripts)
-  if (is.na(insert_after)) {
-    scripts <- c(cfg$optional_sidecar_scripts$living_pop_inflow, scripts)
-  } else {
-    scripts <- append(scripts, cfg$optional_sidecar_scripts$living_pop_inflow, after = insert_after)
-  }
-}
-
-if (isTRUE(cfg$run_gtwr_main_sidecar)) {
-  insert_after <- match("02_Code/04_robustness/01_run_spdm_w_robustness.R", scripts)
-  if (is.na(insert_after)) {
-    scripts <- c(scripts, cfg$optional_sidecar_scripts$gtwr_main)
-  } else {
-    scripts <- append(scripts, cfg$optional_sidecar_scripts$gtwr_main, after = insert_after)
-  }
-}
 
 
 #==============================================================================

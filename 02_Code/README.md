@@ -34,7 +34,7 @@ Rscript 02_Code/run_all.R
 The active default order is:
 
 - `01_build_adm_region_lookup.R`
-- `02_build_seoul_year_base.R`
+- `02_build_seoul_quarter_base.R`
 - `03_build_auxiliary_covariates.R`
 - `04_build_golmok_survival_rate.R`
 - `05_build_registered_resident_population.R`
@@ -60,10 +60,10 @@ Optional preprocessing and local-analysis sidecars:
 - parallel specs with `GTWR_PARALLEL_SPECS=<n>`
 - resume completed spec cache with `GTWR_RESUME_SPECS=TRUE`
 - clear spec cache and recompute all specs with `GTWR_REFRESH_SPEC_CACHE=TRUE`
-- bandwidth defaults to `GTWR_BANDWIDTH_STRATEGY=fixed` and `GTWR_ST_BW=120`
-- optional bandwidth search with `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr|anchor_year_bw_gtwr`, and recompute that cache with `GTWR_REFRESH_BW_CACHE=TRUE`
+- bandwidth defaults to `GTWR_BANDWIDTH_STRATEGY=fixed` and `GTWR_ST_BW=480`
+- optional bandwidth search with `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr|anchor_quarter_bw_gtwr`, and recompute that cache with `GTWR_REFRESH_BW_CACHE=TRUE`
 - main GTWR outputs are tagged by control set, e.g. `gtwr_main_models_lean.csv`
-- main reporting uses latest-year local beta; delta is written only to `gtwr_delta_*` appendix tables
+- main reporting uses latest-quarter local beta; delta is written only to `gtwr_delta_*` appendix tables
 
 Manual QC / reporting sidecars:
 
@@ -76,7 +76,7 @@ Manual QC / reporting sidecars:
 
 - `00_setup`: shared config and package loading
 - `R`: utility helpers
-- `01_preprocess`: active short-run annual-panel preprocessing
+- `01_preprocess`: active short-run quarterly-panel preprocessing
 - `02_esda`: spatial weights and ESDA
 - `03_models`: canonical TWFE and SPDM models
 - `04_robustness`: SPDM W robustness and supplementary robustness
@@ -85,7 +85,7 @@ Manual QC / reporting sidecars:
 - `80_optional`: opt-in preprocessing, TWFE, SPDM, and GTWR sidecars
 - `90_templates`: preprocessing and modeling templates
 
-Retired long-run harmonization and classification branches are no longer part of the project surface. The codebase now assumes a short-run Seoul annual panel only.
+Retired long-run harmonization and classification branches are no longer part of the project surface. The codebase now assumes a short-run Seoul quarterly panel only.
 
 ## Specification Navigation
 

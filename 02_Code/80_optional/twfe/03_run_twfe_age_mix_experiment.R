@@ -6,14 +6,14 @@
 #             resident and floating populations.
 # Author    : Codex
 # Created   : 2026-03-29
-# Status    : ANNUAL_APPENDIX / manual sidecar outside canonical workflow
+# Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : panel_modeling
 # Inputs    : panel_main.parquet, registered_resident_population.parquet,
 #             seoul_raw_integrated_wide.parquet
 # Outputs   : twfe_age_mix_experiment_models.csv,
 #             twfe_age_mix_experiment_controls_used.csv,
 #             twfe_age_mix_experiment_diagnostics.csv
-# DependsOn : 02_Code/01_preprocess/02_build_seoul_year_base.R,
+# DependsOn : 02_Code/01_preprocess/02_build_seoul_quarter_base.R,
 #             02_Code/01_preprocess/05_build_registered_resident_population.R,
 #             02_Code/01_preprocess/07_build_vitality_index.R
 #==============================================================================
@@ -118,7 +118,7 @@ for (ii in seq_len(nrow(family_registry))) {
   domain_df <- build_domain_age_shares(
     source_value = family_rec$source_type[[1]],
     domain = family_rec$domain[[1]],
-    annual_step = family_rec$annual_step[[1]],
+    quarterly_step = family_rec$quarterly_step[[1]],
     raw_cols = family_rec$raw_cols[[1]],
     asof_col = family_rec$asof_col[[1]]
   )

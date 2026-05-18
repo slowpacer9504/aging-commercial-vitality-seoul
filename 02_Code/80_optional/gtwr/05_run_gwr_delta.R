@@ -1,11 +1,11 @@
 #==============================================================================
 # Script    : 05_run_gwr_delta.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Emit an annual GWR-delta appendix bundle using the fixed
-#             2019-2021 vs 2023-2025 comparison window metadata.
+# Purpose   : Emit a quarterly GWR-delta appendix bundle using the fixed
+#             2019Q1-2021Q4 vs 2023Q1-2025Q4 comparison window metadata.
 # Author    : Codex
 # Created   : 2026-04-22
-# Status    : ANNUAL_APPENDIX / manual sidecar outside canonical workflow
+# Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet
 # Outputs   : gwr_delta_main_models.csv, gwr_delta_local_coefficients.csv,
@@ -114,9 +114,9 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
       tidyr::drop_na()
 
     message <- if (nrow(d_fit) < 400L || dplyr::n_distinct(d_fit$adm_cd) < 30L) {
-      "annual_gwr_delta_deferred: insufficient annual support for 3Y vs 3Y local comparison"
+      "quarterly_gwr_delta_deferred: insufficient quarterly support for 3Y vs 3Y local comparison"
     } else {
-      "annual_gwr_delta_deferred: appendix local delta estimation is not activated; annual comparison window metadata preserved"
+      "quarterly_gwr_delta_deferred: appendix local delta estimation is not activated; quarterly comparison window metadata preserved"
     }
 
     empty_gwr_delta_main_tbl() |>
@@ -131,7 +131,7 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
         early_end_year = 2021L,
         late_start_year = 2023L,
         late_end_year = 2025L,
-        window_scope = "annual_3y_vs_3y_mean",
+        window_scope = "quarterly_3y_vs_3y_mean",
         window_n_year = 3L,
         n_locations = dplyr::n_distinct(d_fit$adm_cd),
         n_valid = 0L,
@@ -147,10 +147,10 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
 }
 
 if (!isTRUE(cfg$run_gwr_delta)) {
-  append_log(cfg$logs$model_run, "- GWR delta annual appendix skipped (run_gwr_delta = FALSE)")
+  append_log(cfg$logs$model_run, "- GWR delta quarterly appendix skipped (run_gwr_delta = FALSE)")
 } else {
   if (!file.exists(cfg$paths$panel_main)) {
-    stop("[ERROR] panel_main missing for annual GWR delta appendix.", call. = FALSE)
+    stop("[ERROR] panel_main missing for quarterly GWR delta appendix.", call. = FALSE)
   }
 
   panel <- read_panel_main_view("gwr_delta") |>
@@ -187,7 +187,7 @@ if (!isTRUE(cfg$run_gwr_delta)) {
           selected_controls = optional_candidates,
           base_n_obs = bw_obs_n,
           base_n_units = n_locations,
-          selection_status = "annual_deferred",
+          selection_status = "quarterly_deferred",
           window_scope,
           window_n_year,
           status,
@@ -204,7 +204,7 @@ if (!isTRUE(cfg$run_gwr_delta)) {
           selected_controls = optional_candidates,
           base_n_obs = bw_obs_n,
           base_n_units = n_locations,
-          selection_status = "annual_deferred",
+          selection_status = "quarterly_deferred",
           window_scope,
           window_n_year,
           status,
@@ -228,7 +228,7 @@ if (!isTRUE(cfg$run_gwr_delta)) {
   append_log(
     cfg$logs$model_run,
     sprintf(
-      "- GWR delta annual appendix emitted deferred bundle: resident_rows=%d, floating_rows=%d",
+      "- GWR delta quarterly appendix emitted deferred bundle: resident_rows=%d, floating_rows=%d",
       nrow(main_tbl),
       nrow(floating_tbl)
     )

@@ -5,7 +5,7 @@
 #             export coefficient, diagnostic, and linear-combination summaries.
 # Author    : Codex
 # Created   : 2026-03-30
-# Status    : ANNUAL_APPENDIX / manual sidecar outside canonical workflow
+# Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : panel_modeling
 # Inputs    : panel_main.parquet, twfe_main_controls_used.csv
 # Outputs   : twfe_interaction_models.csv, twfe_interaction_controls_used.csv,
@@ -192,8 +192,8 @@ build_interaction_diag <- function(model_name, spec, interaction_family, model) 
     retained_controls = collapse_chr(value_or(meta$retained_controls, character(0))),
     dropped_collinear_controls = collapse_chr(value_or(meta$dropped_collinear_controls, character(0))),
     dropped_collinear_terms = collapse_chr(value_or(meta$dropped_collinear_terms, character(0))),
-    sample_min_year = if (has_sample) min(as.character(d$year), na.rm = TRUE) else NA_character_,
-    sample_max_year = if (has_sample) max(as.character(d$year), na.rm = TRUE) else NA_character_,
+    sample_min_yq = if (has_sample) min(as.character(d$yq), na.rm = TRUE) else NA_character_,
+    sample_max_yq = if (has_sample) max(as.character(d$yq), na.rm = TRUE) else NA_character_,
     n_covid_obs = if (has_sample && "covid_period" %in% names(d)) as.integer(sum(d$covid_period == 1, na.rm = TRUE)) else NA_integer_,
     n_non_covid_obs = if (has_sample && "covid_period" %in% names(d)) as.integer(sum(d$covid_period == 0, na.rm = TRUE)) else NA_integer_
   )
@@ -276,8 +276,8 @@ diag_tbl <- spec_registry |>
     retained_controls,
     dropped_collinear_controls,
     dropped_collinear_terms,
-    sample_min_year,
-    sample_max_year,
+    sample_min_yq,
+    sample_max_yq,
     n_covid_obs,
     n_non_covid_obs
   )

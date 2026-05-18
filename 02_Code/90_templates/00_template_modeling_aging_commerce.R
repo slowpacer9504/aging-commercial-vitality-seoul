@@ -1,8 +1,8 @@
 #==============================================================================
 # Script    : 00_template_modeling_aging_commerce.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Project-specific template for annual TWFE, residual Moran's I,
-#             SPDM, and robustness analysis on adm_cd x year panel data.
+# Purpose   : Project-specific template for quarterly TWFE, residual Moran's I,
+#             SPDM, and robustness analysis on adm_cd x yq panel data.
 # Author    : <AUTHOR>
 # Created   : 2026-04-22
 # Type      : panel_modeling
@@ -15,9 +15,9 @@
 # 0. Setup
 #==============================================================================
 
-# 이 템플릿은 현재 프로젝트의 annual modeling 코드가 어떤 구조를 가져야 하는가를
-# 보여 주는 학습용 뼈대다. active contract는 `adm_cd x year`, contemporaneous annual timing,
-# TWFE FE `adm_cd + year`, 그리고 resident-only SPDM main specification이다.
+# 이 템플릿은 현재 프로젝트의 quarterly modeling 코드가 어떤 구조를 가져야 하는가를
+# 보여 주는 학습용 뼈대다. active contract는 `adm_cd x yq`, contemporaneous quarterly timing,
+# TWFE FE `adm_cd + yq`, 그리고 resident-only SPDM main specification이다.
 
 ## 0-1. Load packages ----------------------------------------------------------
 required_packages <- c(
@@ -56,7 +56,7 @@ path_w_queen <- fs::path(dir_panel, "W_queen.rds")
 path_twfe_csv <- fs::path(dir_tables, "twfe_main_models.csv")
 path_twfe_html <- fs::path(dir_tables, "twfe_main_models.html")
 path_twfe_plot <- fs::path(dir_figures, "twfe_main_coefplot.png")
-path_twfe_residual_moran_by_year <- fs::path(dir_tables, "twfe_main_residual_moran_by_year.csv")
+path_twfe_residual_moran_by_yq <- fs::path(dir_tables, "twfe_main_residual_moran_by_yq.csv")
 path_spdm_csv <- fs::path(dir_tables, "spdm_main_models.csv")
 path_spdm_impacts <- fs::path(dir_tables, "spdm_impacts.csv")
 path_robustness_csv <- fs::path(dir_tables, "robustness_summary.csv")
@@ -100,7 +100,7 @@ build_twfe_formula <- function(outcome, exposure, controls = NULL, interaction_v
   }
 
   stats::as.formula(
-    sprintf("%s ~ %s | adm_cd + year", outcome, paste(rhs_terms, collapse = " + "))
+    sprintf("%s ~ %s | adm_cd + yq", outcome, paste(rhs_terms, collapse = " + "))
   )
 }
 
@@ -148,18 +148,18 @@ build_twfe_suite <- function(data, outcomes, exposures, controls = NULL) {
   results
 }
 
-compute_residual_moran_by_year <- function(data, residual_col, w_listw) {
-  assert_required_cols(data, c("adm_cd", "year", residual_col))
+compute_residual_moran_by_yq <- function(data, residual_col, w_listw) {
+  assert_required_cols(data, c("adm_cd", "yq", residual_col))
 
   data |>
     dplyr::filter(!is.na(.data[[residual_col]])) |>
-    dplyr::group_by(year) |>
-    dplyr::group_modify(function(df_year, ...) {
-      if (nrow(df_year) < 2L) {
+    dplyr::group_by(yq) |>
+    dplyr::group_modify(function(df_yq, ...) {
+      if (nrow(df_yq) < 2L) {
         return(tibble::tibble(moran_i = NA_real_, p_value = NA_real_))
       }
 
-      mt <- spdep::moran.test(df_year[[residual_col]], listw = w_listw, zero.policy = TRUE)
+      mt <- spdep::moran.test(df_yq[[residual_col]], listw = w_listw, zero.policy = TRUE)
 
       tibble::tibble(
         moran_i = unname(mt$estimate[["Moran I statistic"]]),
@@ -255,13 +255,13 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 #==============================================================================
 
 # 실제 메인 스크립트에서는 common sample 정렬과 W ordering alignment를 먼저 확정해야 한다.
-# 여기서는 annual contract에서 `by_year` diagnostics를 어떻게 남기는지의 패턴만 보여 준다.
+# 여기서는 quarterly contract에서 `by_yq` diagnostics를 어떻게 남기는지의 패턴만 보여 준다.
 #
 # if (file.exists(path_w_queen) && "fitstat" %in% getNamespaceExports("fixest")) {
 #   w_queen <- readRDS(path_w_queen)
 #   panel_main$resid_m2 <- residuals(twfe_models[[1L]])
-#   moran_by_year <- compute_residual_moran_by_year(panel_main, "resid_m2", w_queen)
-#   write_csv_safe(moran_by_year, path_twfe_residual_moran_by_year)
+#   moran_by_yq <- compute_residual_moran_by_yq(panel_main, "resid_m2", w_queen)
+#   write_csv_safe(moran_by_yq, path_twfe_residual_moran_by_yq)
 # }
 
 #==============================================================================
@@ -270,9 +270,9 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 
 # SPDM template rule:
 # - main exposure는 `age60_resident_share`
-# - annual panel time index는 `year`
+# - quarterly panel time index는 `yq`
 # - true SDM은 `W y`, `X`, `W X`를 함께 포함한다.
-# - `W X`는 annual panel에서 직접 생성하고 Durbin placeholder에 의존하지 않는다.
+# - `W X`는 quarterly panel에서 직접 생성하고 Durbin placeholder에 의존하지 않는다.
 # - 보고 중심은 coefficient가 아니라 `direct / indirect / total effects`
 # - SDM impact는 `S = (I - rho W)^(-1)`와 `S(beta I + theta W)` 행렬식으로 계산한다.
 # - W robustness는 별도 family로 분리한다.
@@ -285,8 +285,8 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 # 6. Template reminders
 #==============================================================================
 
-# - active modeling contract는 `adm_cd x year`다.
-# - FE는 `adm_cd + year`로 고정한다.
-# - quarterly suffix와 `yq`는 active modeling code에 재도입하지 않는다.
+# - active modeling contract는 `adm_cd x yq`다.
+# - FE는 `adm_cd + yq`로 고정한다.
+# - `year`, `quarter`, `yq`, `quarter_index` are canonical active modeling keys.
 # - GTWR는 optional local sidecar이며 main causal estimator가 아니다.
 # - GTWR lean control은 규모·지가 통제, extended control은 대중교통 접근성 composite를 추가한다.

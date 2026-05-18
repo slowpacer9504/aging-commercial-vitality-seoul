@@ -3,17 +3,17 @@
 #==============================================================================
 # Script    : 01_build_living_population_inflow.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Build annual external inflow population from Seoul Living
+# Purpose   : Build quarterly external inflow population from Seoul Living
 #             Population monthly ZIP sources without extracting raw CSV files.
 # Author    : Codex
 # Created   : 2026-05-01
 # Type      : panel_building
-# Inputs    : seoul_year_base.parquet, INNER_PEOPLE_YYYYMM.zip,
+# Inputs    : seoul_quarter_base.parquet, INNER_PEOPLE_YYYYMM.zip,
 #             METRO_PEOPLE_YYYYMM.zip
 # Outputs   : living_population_external_inflow.parquet,
 #             living_population_inflow_manifest.csv,
 #             living_population_inflow_qc.csv
-# DependsOn : 02_build_seoul_year_base.R
+# DependsOn : 02_build_seoul_quarter_base.R
 #==============================================================================
 
 #==============================================================================
@@ -28,8 +28,9 @@ load_project_packages(extra = "data.table")
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 01_build_living_population_inflow", timestamp()))
 
-if (!file.exists(cfg$paths$year_base)) {
-  stop("[ERROR] seoul_year_base.parquet is required before living-population inflow build", call. = FALSE)
+quarter_base_path <- value_or(cfg$paths$quarter_base, file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"))
+if (!file.exists(quarter_base_path)) {
+  stop("[ERROR] seoul_quarter_base.parquet is required before living-population inflow build", call. = FALSE)
 }
 if (!dir.exists(cfg$dir_living_population_inner)) {
   stop(sprintf("[ERROR] Living population inner raw directory not found: %s", cfg$dir_living_population_inner), call. = FALSE)
@@ -40,12 +41,12 @@ if (!dir.exists(cfg$dir_living_population_metro)) {
 if (Sys.which("unzip") == "") stop("[ERROR] shell command not found: unzip", call. = FALSE)
 if (Sys.which("zipinfo") == "") stop("[ERROR] shell command not found: zipinfo", call. = FALSE)
 
-base_year <- arrow::read_parquet(cfg$paths$year_base, col_select = c("adm_cd", "year")) |>
+base_quarter <- arrow::read_parquet(quarter_base_path, col_select = c("adm_cd", "year", "quarter", "yq", "quarter_index")) |>
   tibble::as_tibble() |>
   standardize_keys() |>
-  dplyr::distinct(adm_cd, year) |>
-  dplyr::arrange(adm_cd, year)
-validate_panel_keys(base_year, c("adm_cd", "year"))
+  dplyr::distinct(adm_cd, year, quarter, yq, quarter_index) |>
+  dplyr::arrange(adm_cd, year, quarter)
+validate_panel_keys(base_quarter, c("adm_cd", "yq"))
 
 
 #==============================================================================
@@ -460,11 +461,12 @@ process_zips <- function(files, dataset, usecols, hours, suppressed_value, encod
   list(result = result, manifest = manifest)
 }
 
-finalize_dataset <- function(base_year, aggregate, manifest, dataset, mean_col, slots_col, months_col) {
-  years <- sort(unique(base_year$year))
+finalize_dataset <- function(base_quarter, aggregate, manifest, dataset, mean_col, slots_col, months_col) {
+  years <- sort(unique(base_quarter$year))
   month_tbl <- manifest[
     status == "success",
     .(
+      quarter = ceiling(as.integer(substr(year_month, 5, 6)) / 3),
       n_slots_month = sum(n_slots, na.rm = TRUE),
       n_days_month = unique(month_success_days)[[1L]],
       coverage_flag = unique(month_coverage_flag)[[1L]]
@@ -472,10 +474,10 @@ finalize_dataset <- function(base_year, aggregate, manifest, dataset, mean_col, 
     by = .(year = as.integer(substr(year_month, 1, 4)), year_month)
   ][year %in% years]
 
-  base_dt <- data.table::as.data.table(base_year)
+  base_dt <- data.table::as.data.table(base_quarter)
   adm_grid <- unique(base_dt[, .(adm_cd)])
   adm_grid[, join_key := 1L]
-  month_grid <- month_tbl[, .(year, year_month, n_slots_month, n_days_month, coverage_flag)]
+  month_grid <- month_tbl[, .(year, quarter, year_month, n_slots_month, n_days_month, coverage_flag)]
   month_grid[, join_key := 1L]
   observed_month_grid <- merge(
     adm_grid,
@@ -493,14 +495,14 @@ finalize_dataset <- function(base_year, aggregate, manifest, dataset, mean_col, 
       NA_real_
     )
   ]
-  annual <- monthly[
+  quarterly <- monthly[
     ,
     .(
-      annual_mean = mean(monthly_mean[is.finite(monthly_mean)], na.rm = TRUE)
+      quarter_mean = mean(monthly_mean[is.finite(monthly_mean)], na.rm = TRUE)
     ),
-    by = .(year, adm_cd)
+    by = .(year, quarter, adm_cd)
   ]
-  annual[!is.finite(annual_mean), annual_mean := NA_real_]
+  quarterly[!is.finite(quarter_mean), quarter_mean := NA_real_]
 
   slot_tbl <- month_tbl[
     ,
@@ -508,21 +510,21 @@ finalize_dataset <- function(base_year, aggregate, manifest, dataset, mean_col, 
       n_slots = sum(n_slots_month, na.rm = TRUE),
       n_months = data.table::uniqueN(year_month)
     ),
-    by = year
+    by = .(year, quarter)
   ]
 
-  out <- merge(base_dt, annual, by = c("year", "adm_cd"), all.x = TRUE)
-  out <- merge(out, slot_tbl, by = "year", all.x = TRUE)
-  out[, (mean_col) := annual_mean]
+  out <- merge(base_dt, quarterly, by = c("year", "quarter", "adm_cd"), all.x = TRUE)
+  out <- merge(out, slot_tbl, by = c("year", "quarter"), all.x = TRUE)
+  out[, (mean_col) := quarter_mean]
   out[, (slots_col) := n_slots]
   out[, (months_col) := n_months]
-  out[, c("annual_mean", "n_slots", "n_months") := NULL]
+  out[, c("quarter_mean", "n_slots", "n_months") := NULL]
   out[]
 }
 
 
 #==============================================================================
-# 2. Build Annual External Inflow
+# 2. Build Quarterly External Inflow
 #==============================================================================
 
 hours <- parse_hours(cfg$living_pop_hours)
@@ -540,7 +542,7 @@ if (reuse_existing_output) {
 }
 
 if (!reuse_existing_output) {
-  years_target <- sort(unique(base_year$year))
+  years_target <- sort(unique(base_quarter$year))
   inner_files <- list_monthly_zips(cfg$dir_living_population_inner, "INNER_PEOPLE", years_target, sample_months)
   metro_files <- list_monthly_zips(cfg$dir_living_population_metro, "METRO_PEOPLE", years_target, sample_months)
 
@@ -567,8 +569,8 @@ if (!reuse_existing_output) {
     encoding_from = cfg$living_pop_encoding
   )
 
-  inner_annual <- finalize_dataset(
-    base_year,
+  inner_quarter <- finalize_dataset(
+    base_quarter,
     inner_out$result,
     inner_out$manifest,
     "inner",
@@ -576,8 +578,8 @@ if (!reuse_existing_output) {
     "inner_n_slots",
     "inner_n_months"
   )
-  metro_annual <- finalize_dataset(
-    base_year,
+  metro_quarter <- finalize_dataset(
+    base_quarter,
     metro_out$result,
     metro_out$manifest,
     "metro",
@@ -587,9 +589,9 @@ if (!reuse_existing_output) {
   )
 
   external <- dplyr::left_join(
-    tibble::as_tibble(inner_annual),
-    tibble::as_tibble(metro_annual),
-    by = c("adm_cd", "year")
+    tibble::as_tibble(inner_quarter),
+    tibble::as_tibble(metro_quarter),
+    by = c("adm_cd", "year", "quarter", "yq", "quarter_index")
   ) |>
     dplyr::mutate(
       external_inflow_pop = dplyr::if_else(
@@ -599,13 +601,13 @@ if (!reuse_existing_output) {
       )
     ) |>
     dplyr::select(
-      adm_cd, year,
+      adm_cd, year, quarter, yq, quarter_index,
       inner_external_inflow_pop, metro_external_inflow_pop, external_inflow_pop,
       inner_n_slots, metro_n_slots, inner_n_months, metro_n_months
     ) |>
-    dplyr::arrange(adm_cd, year)
+    dplyr::arrange(adm_cd, year, quarter)
 
-  validate_panel_keys(external, c("adm_cd", "year"))
+  validate_panel_keys(external, c("adm_cd", "yq"))
 
   manifest <- data.table::rbindlist(list(inner_out$manifest, metro_out$manifest), fill = TRUE) |>
     tibble::as_tibble()
@@ -616,7 +618,7 @@ if (!reuse_existing_output) {
       names_to = "variable",
       values_to = "value"
     ) |>
-    dplyr::group_by(variable, year) |>
+    dplyr::group_by(variable, yq) |>
     dplyr::summarise(
       row_n = dplyr::n(),
       finite_n = sum(is.finite(value)),
@@ -631,27 +633,27 @@ if (!reuse_existing_output) {
     external_coverage_fail <- qc |>
       dplyr::filter(.data$variable == "external_inflow_pop", .data$finite_n < .data$row_n)
     month_coverage_fail <- external |>
-      dplyr::group_by(year) |>
+      dplyr::group_by(yq) |>
       dplyr::summarise(
         inner_n_months = max(inner_n_months, na.rm = TRUE),
         metro_n_months = max(metro_n_months, na.rm = TRUE),
         .groups = "drop"
       ) |>
-      dplyr::filter(.data$inner_n_months < 12L | .data$metro_n_months < 12L)
+      dplyr::filter(.data$inner_n_months < 3L | .data$metro_n_months < 3L)
 
     if (nrow(external_coverage_fail) > 0L || nrow(month_coverage_fail) > 0L) {
       write_csv_safe(manifest, manifest_path)
       write_csv_safe(qc, qc_path)
       stop(
         sprintf(
-          "[ERROR] Living-population external inflow has incomplete annual coverage: finite={%s}; months={%s}",
+          "[ERROR] Living-population external inflow has incomplete quarterly coverage: finite={%s}; months={%s}",
           if (nrow(external_coverage_fail) == 0L) {
             "none"
           } else {
             paste(
               sprintf(
                 "%s finite=%d/%d",
-                external_coverage_fail$year,
+                external_coverage_fail$yq,
                 external_coverage_fail$finite_n,
                 external_coverage_fail$row_n
               ),
@@ -664,7 +666,7 @@ if (!reuse_existing_output) {
             paste(
               sprintf(
                 "%s inner_months=%d metro_months=%d",
-                month_coverage_fail$year,
+                month_coverage_fail$yq,
                 month_coverage_fail$inner_n_months,
                 month_coverage_fail$metro_n_months
               ),

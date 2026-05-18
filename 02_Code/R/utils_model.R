@@ -52,7 +52,7 @@ screen_control_candidates <- function(data,
                                       min_sd = 1e-8,
                                       fe_aware = FALSE,
                                       fe_unit = "adm_cd",
-                                      fe_time = "year") {
+                                      fe_time = "yq") {
   vars <- unique(as.character(candidates))
   if (length(vars) == 0L) return(tibble::tibble())
 
@@ -113,11 +113,11 @@ screen_control_candidates <- function(data,
 build_twfe_formula <- function(outcome, exposure, controls = NULL, interaction = NULL) {
   rhs <- c(exposure, controls)
   if (!is.null(interaction)) rhs <- c(rhs, sprintf("%s:%s", exposure, interaction))
-  stats::as.formula(sprintf("%s ~ %s | adm_cd + year", outcome, paste(rhs, collapse = " + ")))
+  stats::as.formula(sprintf("%s ~ %s | adm_cd + yq", outcome, paste(rhs, collapse = " + ")))
 }
 
 build_twfe_sample <- function(data, outcome, exposure, controls = NULL, interaction = NULL) {
-  need <- unique(c("adm_cd", "year", outcome, exposure, controls, interaction))
+  need <- unique(c("adm_cd", "yq", outcome, exposure, controls, interaction))
   need <- need[!is.na(need) & nzchar(need)]
   keep <- stats::complete.cases(data[, intersect(need, names(data)), drop = FALSE])
   data[keep, , drop = FALSE]
@@ -128,13 +128,13 @@ build_twfe_formula_multi <- function(outcome, exposures, controls = NULL, intera
   exposure_vec <- exposure_vec[!is.na(exposure_vec) & nzchar(exposure_vec)]
   rhs <- c(exposure_vec, controls)
   if (!is.null(interaction)) rhs <- c(rhs, sprintf("%s:%s", exposure_vec, interaction))
-  stats::as.formula(sprintf("%s ~ %s | adm_cd + year", outcome, paste(rhs, collapse = " + ")))
+  stats::as.formula(sprintf("%s ~ %s | adm_cd + yq", outcome, paste(rhs, collapse = " + ")))
 }
 
 build_twfe_sample_multi <- function(data, outcome, exposures, controls = NULL, interaction = NULL) {
   exposure_vec <- unique(as.character(exposures))
   exposure_vec <- exposure_vec[!is.na(exposure_vec) & nzchar(exposure_vec)]
-  need <- unique(c("adm_cd", "year", outcome, exposure_vec, controls, interaction))
+  need <- unique(c("adm_cd", "yq", outcome, exposure_vec, controls, interaction))
   need <- need[!is.na(need) & nzchar(need)]
   keep <- stats::complete.cases(data[, intersect(need, names(data)), drop = FALSE])
   data[keep, , drop = FALSE]
@@ -244,7 +244,7 @@ run_twfe <- function(data, outcome, exposure, controls = NULL, interaction = NUL
     d <- build_twfe_sample(data, outcome, exposure, retained_controls, interaction)
     if (nrow(d) < 50) return(NULL)
 
-    # 모든 메인 FE 회귀는 `adm_cd + year` 고정효과를 공유한다.
+    # 모든 메인 FE 회귀는 `adm_cd + yq` 고정효과를 공유한다.
     # 따라서 helper 수준에서 FE 구조를 통일해 두면 스크립트별 drift를 줄일 수 있다.
     fm <- build_twfe_formula(outcome, exposure, retained_controls, interaction)
 
@@ -369,7 +369,7 @@ select_usable_controls <- function(data,
                                    min_sd = 1e-8,
                                    fe_aware = FALSE,
                                    fe_unit = "adm_cd",
-                                   fe_time = "year") {
+                                   fe_time = "yq") {
   select_usable_controls_with_details(
     data,
     candidates,
@@ -389,7 +389,7 @@ select_usable_controls_with_details <- function(data,
                                                 min_sd = 1e-8,
                                                 fe_aware = FALSE,
                                                 fe_unit = "adm_cd",
-                                                fe_time = "year") {
+                                                fe_time = "yq") {
   screen_control_candidates(
     data,
     candidates,
@@ -465,7 +465,7 @@ screen_outcome_control_candidates <- function(data,
                                               min_sd = 1e-8,
                                               fe_aware = FALSE,
                                               fe_unit = "adm_cd",
-                                              fe_time = "year") {
+                                              fe_time = "yq") {
   vars <- unique(as.character(candidates))
   vars <- vars[!is.na(vars) & nzchar(vars)]
   if (length(vars) == 0L) {
@@ -503,7 +503,7 @@ select_outcome_controls_with_details <- function(data,
                                                  min_sd = 1e-8,
                                                  fe_aware = FALSE,
                                                  fe_unit = "adm_cd",
-                                                 fe_time = "year") {
+                                                 fe_time = "yq") {
   screen_outcome_control_candidates(
     data,
     outcome,
@@ -523,7 +523,7 @@ select_outcome_controls <- function(data,
                                     min_sd = 1e-8,
                                     fe_aware = FALSE,
                                     fe_unit = "adm_cd",
-                                    fe_time = "year") {
+                                    fe_time = "yq") {
   select_outcome_controls_with_details(
     data,
     outcome,
@@ -545,7 +545,7 @@ resolve_outcome_control_screen <- function(data,
                                            min_sd = 1e-8,
                                            fe_aware = FALSE,
                                            fe_unit = "adm_cd",
-                                           fe_time = "year") {
+                                           fe_time = "yq") {
   outcome_vals <- unique(as.character(value_or(outcomes, character())))
   outcome_vals <- outcome_vals[!is.na(outcome_vals) & nzchar(outcome_vals)]
 

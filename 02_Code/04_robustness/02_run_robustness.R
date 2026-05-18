@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : 02_run_robustness.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Run annual outcome-definition, sample-window, and W-Moran
+# Purpose   : Run quarterly outcome-definition, sample-window, and W-Moran
 #             sensitivity checks around the main TWFE specification.
 # Author    : Codex
 # Created   : 2026-02-28
@@ -25,7 +25,7 @@ load_project_packages()
 if (!file.exists(cfg$paths$panel_main)) stop("[ERROR] panel_main missing", call. = FALSE)
 panel <- read_panel_main_view("twfe") |>
   dplyr::mutate(adm_cd = as.character(adm_cd)) |>
-  dplyr::arrange(adm_cd, year)
+  dplyr::arrange(adm_cd, yq)
 
 label_outcome <- function(x) {
   dplyr::case_when(
@@ -72,7 +72,7 @@ if (length(robustness_outcomes) == 0L) {
 } else {
 
   #============================================================================
-  # 1. Shared Annual Contract
+  # 1. Shared Quarterly Contract
   #============================================================================
 
   control_candidates <- c(
@@ -181,12 +181,19 @@ if (length(robustness_outcomes) == 0L) {
 
 
   #============================================================================
-  # 3. W Sensitivity via Latest-Year Moran's I
+  # 3. W Sensitivity via Latest-Quarter Moran's I
   #============================================================================
 
-  latest_year <- suppressWarnings(max(panel$year, na.rm = TRUE))
+  latest_yq <- panel |>
+    dplyr::filter(!is.na(yq), nzchar(yq)) |>
+    dplyr::arrange(
+      dplyr::desc(if ("quarter_index" %in% names(panel)) quarter_index else dplyr::row_number()),
+      dplyr::desc(yq)
+    ) |>
+    dplyr::pull(yq) |>
+    dplyr::first()
   cs <- panel |>
-    dplyr::filter(year == latest_year)
+    dplyr::filter(yq == latest_yq)
   w_paths <- c(
     queen = cfg$paths$w_queen,
     rook = cfg$paths$w_rook,
@@ -343,7 +350,7 @@ if (length(robustness_outcomes) == 0L) {
       ) +
       ggplot2::facet_wrap(~ spec_axis, scales = "free_x") +
       ggplot2::labs(
-        title = "Annual TWFE Robustness Checks",
+        title = "Quarterly TWFE Robustness Checks",
         subtitle = "Outcome-definition and sample-window sensitivity",
         x = "Estimated Coefficient",
         y = NULL,

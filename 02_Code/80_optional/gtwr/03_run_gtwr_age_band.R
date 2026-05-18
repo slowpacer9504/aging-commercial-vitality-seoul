@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : 03_run_gtwr_age_band.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Run age-band annual GTWR sidecars for resident and floating
+# Purpose   : Run age-band quarterly GTWR sidecars for resident and floating
 #             age-share exposures when enabled.
 # Author    : Codex
 # Created   : 2026-04-22
@@ -13,7 +13,7 @@
 #             gtwr_age_band_local_coefficients_*.csv,
 #             gtwr_age_band_controls_used_*.csv,
 #             gtwr_age_band_frozen_spec_*.csv
-# DependsOn : 02_build_seoul_year_base.R,
+# DependsOn : 02_build_seoul_quarter_base.R,
 #             05_build_registered_resident_population.R,
 #             07_build_vitality_index.R, utils_gtwr_main.R
 #==============================================================================
@@ -93,12 +93,12 @@ add_age_band_payload_metadata <- function(payload, job) {
 }
 
 if (!isTRUE(cfg$run_gtwr_age_band_sidecar)) {
-  append_log(cfg$logs$model_run, "- GTWR age-band annual sidecar skipped by run flag")
+  append_log(cfg$logs$model_run, "- GTWR age-band quarterly sidecar skipped by run flag")
 } else {
   if (!file.exists(cfg$paths$panel_main) ||
       !file.exists(cfg$paths$registered_resident_population) ||
       !file.exists(cfg$paths$seoul_raw_integrated_wide)) {
-    stop("[ERROR] Required inputs missing for GTWR age-band annual sidecar.", call. = FALSE)
+    stop("[ERROR] Required inputs missing for GTWR age-band quarterly sidecar.", call. = FALSE)
   }
   if (!requireNamespace("GWmodel", quietly = TRUE)) {
     stop("[ERROR] GWmodel package is required for GTWR age-band sidecar.", call. = FALSE)
@@ -150,7 +150,7 @@ if (!isTRUE(cfg$run_gtwr_age_band_sidecar)) {
     write_csv_safe(empty_age_band_panel_tbl(), panel_path)
     write_csv_safe(empty_age_band_controls_tbl(), controls_path)
     write_csv_safe(empty_age_band_frozen_tbl(), frozen_path)
-    append_log(cfg$logs$model_run, "- GTWR age-band annual sidecar skipped: missing annual outcomes or valid age-band registry")
+    append_log(cfg$logs$model_run, "- GTWR age-band quarterly sidecar skipped: missing quarterly outcomes or valid age-band registry")
   } else {
     cache_dir <- cfg$get_gtwr_age_band_spec_cache_dir(control_set)
     bw_cache_dir <- cfg$get_gtwr_age_band_bw_cache_dir(control_set)
@@ -169,7 +169,7 @@ if (!isTRUE(cfg$run_gtwr_age_band_sidecar)) {
       domain_df <- build_domain_age_shares(
         source_value = rec$source_type[[1]],
         domain = domain,
-        annual_step = rec$annual_step[[1]],
+        quarterly_step = rec$quarterly_step[[1]],
         raw_cols = rec$raw_cols[[1]],
         asof_col = rec$asof_col[[1]]
       )
@@ -321,7 +321,7 @@ if (!isTRUE(cfg$run_gtwr_age_band_sidecar)) {
     append_log(
       cfg$logs$model_run,
       sprintf(
-        "- GTWR age-band annual sidecar completed: control_set=%s, specs=%d, statuses=%s",
+        "- GTWR age-band quarterly sidecar completed: control_set=%s, specs=%d, statuses=%s",
         control_set,
         nrow(summary_tbl),
         paste(unique(summary_tbl$status), collapse = "|")

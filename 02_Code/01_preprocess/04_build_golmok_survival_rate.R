@@ -2,16 +2,16 @@
 # Script    : 04_build_golmok_survival_rate.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Download Seoul Commercial District Service new-enterprise
-#             survival-rate JSON and publish an adm_cd-year annual layer.
+#             survival-rate JSON and publish an adm_cd-yq quarterly layer.
 # Author    : Codex
 # Created   : 2026-05-04
 # Type      : preprocessing
 # Inputs    : Seoul Commercial District Service selectSurvivalRate JSON,
-#             seoul_year_base.parquet
+#             seoul_quarter_base.parquet
 # Outputs   : golmok_survival_rate.parquet,
 #             golmok_survival_all_levels.parquet,
 #             golmok_survival_rate_qc.csv
-# DependsOn : 02_build_seoul_year_base.R
+# DependsOn : 02_build_seoul_quarter_base.R
 #==============================================================================
 
 #==============================================================================
@@ -27,8 +27,8 @@ ensure_dirs(cfg$required_dirs)
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 04_build_golmok_survival_rate", timestamp()))
 
-if (!file.exists(cfg$paths$year_base)) {
-  stop(sprintf("[ERROR] Missing required input: %s", cfg$paths$year_base), call. = FALSE)
+if (!file.exists(cfg$paths$quarter_base)) {
+  stop(sprintf("[ERROR] Missing required input: %s", cfg$paths$quarter_base), call. = FALSE)
 }
 
 
@@ -157,11 +157,7 @@ write_txt_safe <- function(txt, path) {
 }
 
 validate_survival_rates <- function(df) {
-  validate_panel_keys(df, c("adm_cd", "year"))
-  forbidden_cols <- intersect(c("quarter", "yq"), names(df))
-  if (length(forbidden_cols) > 0L) {
-    stop(sprintf("[ERROR] survival annual layer has forbidden columns: %s", paste(forbidden_cols, collapse = ", ")), call. = FALSE)
-  }
+  validate_panel_keys(df, c("adm_cd", "yq"))
 
   rate_cols <- intersect(c("survival_1y", "survival_3y", "survival_5y"), names(df))
   out_of_range <- vapply(
@@ -190,7 +186,7 @@ ratio_diff <- function(df, rate_col, survived_col, cohort_col) {
 }
 
 write_qc <- function(survival_dong, request_manifest, source_mode) {
-  expected_rows <- nrow(arrow::read_parquet(cfg$paths$year_base, col_select = tidyselect::all_of(c("adm_cd", "year"))))
+  expected_rows <- nrow(arrow::read_parquet(cfg$paths$quarter_base, col_select = tidyselect::all_of(c("adm_cd", "yq"))))
   qc <- tibble::tibble(
     run_ts = timestamp(),
     source_mode = source_mode,
@@ -199,8 +195,10 @@ write_qc <- function(survival_dong, request_manifest, source_mode) {
     adm_n = dplyr::n_distinct(survival_dong$adm_cd),
     year_min = suppressWarnings(min(survival_dong$year, na.rm = TRUE)),
     year_max = suppressWarnings(max(survival_dong$year, na.rm = TRUE)),
+    yq_min = suppressWarnings(min(survival_dong$yq, na.rm = TRUE)),
+    yq_max = suppressWarnings(max(survival_dong$yq, na.rm = TRUE)),
     key_dup_n = survival_dong |>
-      dplyr::count(adm_cd, year, name = "n") |>
+      dplyr::count(adm_cd, yq, name = "n") |>
       dplyr::filter(n > 1L) |>
       nrow(),
     survival_3y_missing_n = sum(is.na(survival_dong$survival_3y)),
@@ -227,29 +225,33 @@ if (file.exists(cfg$paths$golmok_survival_rate) && !isTRUE(cfg$golmok_survival_f
   survival_reused <- arrow::read_parquet(cfg$paths$golmok_survival_rate) |>
     tibble::as_tibble() |>
     standardize_keys()
-  validate_survival_rates(survival_reused)
-  reused_raw_json <- list.files(cfg$dir_golmok_survival_json, full.names = TRUE, pattern = "[.]json$")
-  reused_manifest <- if (length(reused_raw_json) == 0L) {
-    tibble::tibble(status = character(0), raw_json_path = character(0))
+  if (all(c("adm_cd", "yq") %in% names(survival_reused))) {
+    validate_survival_rates(survival_reused)
+    reused_raw_json <- list.files(cfg$dir_golmok_survival_json, full.names = TRUE, pattern = "[.]json$")
+    reused_manifest <- if (length(reused_raw_json) == 0L) {
+      tibble::tibble(status = character(0), raw_json_path = character(0))
+    } else {
+      tibble::tibble(status = rep("success", length(reused_raw_json)), raw_json_path = reused_raw_json)
+    }
+    qc <- write_qc(
+      survival_reused,
+      reused_manifest,
+      "reused"
+    )
+    append_log(
+      cfg$logs$data_qc,
+      sprintf("- Golmok survival layer reused: %s (rows=%d, missing_3y=%d)", basename(cfg$paths$golmok_survival_rate), nrow(survival_reused), qc$survival_3y_missing_n)
+    )
+    message(sprintf("[DONE] reused %s rows=%d", basename(cfg$paths$golmok_survival_rate), nrow(survival_reused)))
+    skip_survival_build <- TRUE
   } else {
-    tibble::tibble(status = rep("success", length(reused_raw_json)), raw_json_path = reused_raw_json)
+    append_log(cfg$logs$data_qc, "- Existing Golmok survival layer ignored because quarterly yq keys are missing")
   }
-  qc <- write_qc(
-    survival_reused,
-    reused_manifest,
-    "reused"
-  )
-  append_log(
-    cfg$logs$data_qc,
-    sprintf("- Golmok survival layer reused: %s (rows=%d, missing_3y=%d)", basename(cfg$paths$golmok_survival_rate), nrow(survival_reused), qc$survival_3y_missing_n)
-  )
-  message(sprintf("[DONE] reused %s rows=%d", basename(cfg$paths$golmok_survival_rate), nrow(survival_reused)))
-  skip_survival_build <- TRUE
 }
 
 
 #==============================================================================
-# 3. Fetch, Parse, Align to Annual Panel, and Publish
+# 3. Fetch, Parse, Align to Quarterly Panel, and Publish
 #==============================================================================
 
 if (!isTRUE(skip_survival_build)) {
@@ -296,17 +298,16 @@ if (!isTRUE(skip_survival_build)) {
     )
   }
 
-  validate_survival_rates(survival_dong)
-
-  year_base_keys <- arrow::read_parquet(cfg$paths$year_base, col_select = tidyselect::all_of(c("adm_cd", "year"))) |>
+  quarter_base_keys <- arrow::read_parquet(cfg$paths$quarter_base, col_select = tidyselect::all_of(c("adm_cd", "year", "quarter", "yq", "quarter_index"))) |>
     tibble::as_tibble() |>
     standardize_keys() |>
-    dplyr::distinct(adm_cd, year)
-  validate_panel_keys(year_base_keys, c("adm_cd", "year"))
+    dplyr::distinct(adm_cd, year, quarter, yq, quarter_index)
+  validate_panel_keys(quarter_base_keys, c("adm_cd", "yq"))
 
-  survival_panel <- year_base_keys |>
+  survival_panel <- quarter_base_keys |>
     dplyr::left_join(survival_dong, by = c("adm_cd", "year")) |>
-    dplyr::arrange(adm_cd, year)
+    dplyr::mutate(survival_source_precision = "year_matched_to_quarter") |>
+    dplyr::arrange(adm_cd, year, quarter)
 
   validate_survival_rates(survival_panel)
 
@@ -326,15 +327,15 @@ if (!isTRUE(skip_survival_build)) {
   append_log(
     cfg$logs$data_qc,
     sprintf(
-      "- Golmok survival layer published: %s (rows=%d, adm_n=%d, years=%d-%d, survival_3y_missing=%d)",
+      "- Golmok survival layer published: %s (rows=%d, adm_n=%d, yq=%s-%s, survival_3y_missing=%d)",
       basename(cfg$paths$golmok_survival_rate),
       nrow(survival_panel),
       dplyr::n_distinct(survival_panel$adm_cd),
-      min(survival_panel$year, na.rm = TRUE),
-      max(survival_panel$year, na.rm = TRUE),
+      min(survival_panel$yq, na.rm = TRUE),
+      max(survival_panel$yq, na.rm = TRUE),
       qc$survival_3y_missing_n
     )
   )
 
-  message(sprintf("[DONE] golmok survival annual layer rows=%d", nrow(survival_panel)))
+  message(sprintf("[DONE] golmok survival quarterly layer rows=%d", nrow(survival_panel)))
 }

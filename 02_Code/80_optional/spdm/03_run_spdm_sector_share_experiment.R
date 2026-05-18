@@ -5,7 +5,7 @@
 #             separate resident/floating aging-share exposures.
 # Author    : Codex
 # Created   : 2026-03-29
-# Status    : ANNUAL_APPENDIX / manual sidecar outside canonical workflow
+# Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, W_queen.rds
 # Outputs   : spdm_sector_share_experiment_models.csv,
@@ -52,6 +52,7 @@ if (!isTRUE(cfg$run_spdm_sector_share_sidecar)) {
   panel <- read_panel_main_view("spdm", extra_cols = extra_cols)
   panel$adm_cd <- as.character(panel$adm_cd)
   panel$year <- suppressWarnings(as.integer(panel$year))
+  panel$yq <- as.character(panel$yq)
 
   outcomes <- intersect(
     value_or(cfg$spdm_sector_share_outcomes, c(
@@ -416,7 +417,7 @@ if (!isTRUE(cfg$run_spdm_sector_share_sidecar)) {
     n_obs <- NA_integer_
 
     for (ctrl_try in control_ladder) {
-      vars <- unique(c("adm_cd", "year", outcome, exposure_var, ctrl_try))
+      vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", outcome, exposure_var, ctrl_try))
       d_try <- panel |>
         dplyr::select(dplyr::all_of(vars)) |>
         tidyr::drop_na()
@@ -441,11 +442,18 @@ if (!isTRUE(cfg$run_spdm_sector_share_sidecar)) {
         next
       }
 
+      yq_levels <- d_try |>
+        dplyr::distinct(yq, quarter_index) |>
+        dplyr::arrange(quarter_index, yq) |>
+        dplyr::pull(yq) |>
+        as.character()
+
       pdat_try <- d_try |>
         dplyr::filter(adm_cd %in% keep_ids) |>
         dplyr::mutate(
           adm_cd = factor(adm_cd, levels = keep_ids),
-          time_id = as.integer(factor(year, levels = sort(unique(year))))
+          yq = as.character(yq),
+          time_id = as.integer(factor(yq, levels = yq_levels))
         ) |>
         dplyr::arrange(adm_cd, time_id)
 
@@ -592,8 +600,8 @@ if (!isTRUE(cfg$run_spdm_sector_share_sidecar)) {
       n_periods = n_periods,
       n_units = n_units,
       n_obs = n_obs,
-      sample_min_year = suppressWarnings(as.integer(min(pdat_try$year, na.rm = TRUE))),
-      sample_max_year = suppressWarnings(as.integer(max(pdat_try$year, na.rm = TRUE))),
+      sample_min_yq = as.character(min(pdat_try$yq, na.rm = TRUE)),
+      sample_max_yq = as.character(max(pdat_try$yq, na.rm = TRUE)),
       model_family = "sdm",
       w_type = "queen",
       sim_R = as.integer(value_or(cfg$spdm_impact_sim_R, 1000L)),

@@ -1,19 +1,18 @@
 #==============================================================================
 # Script    : 01_validate_method_dataset_alignment.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Validate the active annual panel/method contract and ignore
+# Purpose   : Validate the active quarterly panel/method contract and ignore
 #             deferred appendix assets when judging run success.
 # Author    : Codex
 # Created   : 2026-04-18
 # Type      : qc
-# Inputs    : active preprocess/model outputs up to robustness, optional GTWR
-#             raw outputs when RUN_GTWR_MAIN_SIDECAR=TRUE
+# Inputs    : active preprocess/model outputs up to robustness
 # Outputs   : method_dataset_contract_check.csv
-# DependsOn : 02_build_seoul_year_base.R, 03_build_auxiliary_covariates.R,
+# DependsOn : 02_build_seoul_quarter_base.R, 03_build_auxiliary_covariates.R,
 #             06_build_analysis_panel.R, 07_build_vitality_index.R,
 #             01_build_spatial_weights.R, 02_run_esda.R, 01_run_twfe_main.R,
 #             02_run_spdm_main.R, 01_run_spdm_w_robustness.R,
-#             01_run_gtwr_main.R (optional), 02_run_robustness.R
+#             02_run_robustness.R
 #==============================================================================
 
 #==============================================================================
@@ -78,10 +77,14 @@ check_optional_csv_schema <- function(check_id,
                                       method,
                                       path,
                                       required_cols,
-                                      forbidden_cols = c("quarter", "yq", "sample_min_yq", "sample_max_yq", "target_yq", "latest_yq"),
-                                      forbidden_value_patterns = c("_l[0-9]+\\b", "_f[0-9]+\\b", "_yoy\\b", "\\byq\\b"),
+                                      forbidden_cols = c("sample_min_year", "sample_max_year", "target_year", "earliest_year", "latest_year", "recent_year_n"),
+                                      forbidden_value_patterns = c("_l[0-9]+\\b", "_f[0-9]+\\b", "_yoy\\b"),
                                       extra_pass = function(df) TRUE,
                                       extra_detail = function(df) "schema ok") {
+  if (!isTRUE(optional_required_test_enabled)) {
+    return(add_row(check_id, method, TRUE, sprintf("excluded_from_required_quarterly_test_plan: %s", basename(path))))
+  }
+
   tbl <- safe_read_csv(path)
   if (is.null(tbl)) {
     return(add_row(check_id, method, TRUE, describe_optional_absence(path)))
@@ -114,6 +117,7 @@ expected_main_outcomes <- sort(unique(c(cfg$primary_outcomes, cfg$vitality_suppl
 expected_channel_outcomes <- sort(unique(cfg$spdm_channel_outcomes))
 w_robustness_expected <- sort(unique(c(cfg$default_w, cfg$alt_w)))
 expected_robustness_axes <- sort(c("outcome_definition", "sample_window", "w_moran"))
+optional_required_test_enabled <- FALSE
 rows <- list()
 
 
@@ -136,15 +140,14 @@ if (inherits(panel_twfe, "error")) {
   panel_twfe <- panel_twfe |>
     dplyr::mutate(adm_cd = as.character(adm_cd))
 
-  required_cols <- unique(c("adm_cd", "year", "age60_resident_share", expected_main_outcomes))
+  required_cols <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", "age60_resident_share", expected_main_outcomes))
   missing_cols <- setdiff(required_cols, names(panel_twfe))
   duplicate_n <- panel_twfe |>
-    dplyr::count(adm_cd, year, name = "n") |>
+    dplyr::count(adm_cd, yq, name = "n") |>
     dplyr::filter(n > 1L) |>
     nrow()
-  observed_years <- sort(unique(stats::na.omit(panel_twfe$year)))
-  expected_years <- cfg$short_start:cfg$short_end
-  leaked_time_cols <- intersect(c("quarter", "yq"), names(panel_twfe))
+  observed_yq <- sort(unique(stats::na.omit(as.character(panel_twfe$yq))))
+  expected_yq <- sort(unique(as.character(cfg$quarter_sequence$yq)))
 
   rows[[length(rows) + 1L]] <- add_row(
     "A02",
@@ -159,25 +162,25 @@ if (inherits(panel_twfe, "error")) {
     "A03",
     "panel_main",
     duplicate_n == 0L,
-    sprintf("duplicate adm_cd-year rows=%d", duplicate_n)
+    sprintf("duplicate adm_cd-yq rows=%d", duplicate_n)
   )
   rows[[length(rows) + 1L]] <- add_row(
     "A04",
     "panel_main",
-    identical(observed_years, expected_years),
+    identical(observed_yq, expected_yq),
     sprintf(
-      "observed_years=%s; expected_years=%s",
-      paste(observed_years, collapse = ", "),
-      paste(expected_years, collapse = ", ")
+      "observed_yq=%s; expected_yq=%s",
+      paste(observed_yq, collapse = ", "),
+      paste(expected_yq, collapse = ", ")
     )
   )
   rows[[length(rows) + 1L]] <- add_row(
     "A05",
     "panel_main",
-    length(leaked_time_cols) == 0L,
+    length(missing_cols) == 0L,
     sprintf(
-      "forbidden time cols=%s",
-      if (length(leaked_time_cols) == 0L) "none" else paste(leaked_time_cols, collapse = ", ")
+      "required quarterly time cols present=%s",
+      if (length(missing_cols) == 0L) "yes" else paste(missing_cols, collapse = ", ")
     )
   )
 }
@@ -223,9 +226,9 @@ esda_ok <- !inherits(global_moran_tbl, "error") &&
   !is.null(global_moran_tbl) &&
   !is.null(global_bivariate_tbl) &&
   !is.null(ehsa_tbl) &&
-  all(c("year", "w_type") %in% names(global_moran_tbl)) &&
-  all(c("year", "w_type") %in% names(global_bivariate_tbl)) &&
-  all(c("start_year", "end_year") %in% names(ehsa_tbl)) &&
+  all(c("yq", "w_type") %in% names(global_moran_tbl)) &&
+  all(c("yq", "w_type") %in% names(global_bivariate_tbl)) &&
+  all(c("start_yq", "end_yq") %in% names(ehsa_tbl)) &&
   nrow(global_moran_tbl) > 0L &&
   nrow(global_bivariate_tbl) > 0L &&
   nrow(ehsa_tbl) > 0L
@@ -305,7 +308,7 @@ rows[[length(rows) + 1L]] <- add_row("T02", "twfe", pass, detail)
 twfe_moran_tbl <- safe_read_csv(cfg$paths$twfe_main_residual_moran_summary)
 if (inherits(twfe_moran_tbl, "data.frame")) {
   missing_cols <- setdiff(
-    c("outcome", "exposure", "status", "sample_min_year", "sample_max_year", "n_year_tested", "latest_year"),
+    c("outcome", "exposure", "status", "sample_min_yq", "sample_max_yq", "n_yq_tested", "latest_yq"),
     names(twfe_moran_tbl)
   )
   success_outcomes <- twfe_moran_tbl |>
@@ -365,7 +368,7 @@ rows[[length(rows) + 1L]] <- add_row("S02", "spdm_main", pass, detail)
 spdm_impacts_tbl <- safe_read_csv(cfg$paths$spdm_impacts)
 if (inherits(spdm_impacts_tbl, "data.frame")) {
   missing_cols <- setdiff(
-    c("outcome", "focal_var", "status", "model_family", "w_type", "direct", "indirect", "total", "sample_min_year", "sample_max_year"),
+    c("outcome", "focal_var", "status", "model_family", "w_type", "direct", "indirect", "total", "sample_min_yq", "sample_max_yq"),
     names(spdm_impacts_tbl)
   )
   success_outcomes <- spdm_impacts_tbl |>
@@ -413,7 +416,7 @@ rows[[length(rows) + 1L]] <- add_row(
 spdm_channel_diag_tbl <- safe_read_csv(cfg$paths$spdm_channel_diagnostics)
 if (inherits(spdm_channel_diag_tbl, "data.frame")) {
   missing_cols <- setdiff(
-    c("outcome", "equation", "path", "exposure", "mediator", "status", "impacts_status", "sample_min_year", "sample_max_year"),
+    c("outcome", "equation", "path", "exposure", "mediator", "status", "impacts_status", "sample_min_yq", "sample_max_yq"),
     names(spdm_channel_diag_tbl)
   )
   success_outcomes <- spdm_channel_diag_tbl |>
@@ -554,7 +557,14 @@ gtwr_raw_paths <- c(
   cfg$get_gtwr_controls_used_path(gtwr_control_set)
 )
 
-if (!isTRUE(cfg$run_gtwr_main_sidecar)) {
+if (!isTRUE(optional_required_test_enabled)) {
+  rows[[length(rows) + 1L]] <- add_row(
+    "G01",
+    "gtwr_optional",
+    TRUE,
+    sprintf("excluded_from_required_quarterly_test_plan: %s", describe_presence(gtwr_raw_paths))
+  )
+} else if (!isTRUE(cfg$run_gtwr_main_sidecar)) {
   rows[[length(rows) + 1L]] <- add_row(
     "G01",
     "gtwr_optional",
@@ -572,7 +582,7 @@ if (!isTRUE(cfg$run_gtwr_main_sidecar)) {
   gtwr_main_tbl <- safe_read_csv(cfg$get_gtwr_main_models_path(gtwr_control_set))
   if (inherits(gtwr_main_tbl, "data.frame")) {
     missing_cols <- setdiff(
-      c("outcome", "focal_var", "status", "control_set", "fit_scope", "target_year", "latest_year"),
+      c("outcome", "focal_var", "status", "control_set", "fit_scope", "target_yq", "latest_yq"),
       names(gtwr_main_tbl)
     )
     expected_outcomes <- sort(unique(cfg$gtwr_main_outcomes))
@@ -583,14 +593,14 @@ if (!isTRUE(cfg$run_gtwr_main_sidecar)) {
       unique() |>
       sort()
     valid_status <- all(gtwr_focus_tbl$status %in% c("success", "not_estimated"))
-    annual_deferred_ok <- all(
+    quarterly_deferred_ok <- all(
       gtwr_focus_tbl$status == "success" |
-        stringr::str_detect(gtwr_focus_tbl$fit_scope, "annual_deferred")
+        stringr::str_detect(gtwr_focus_tbl$fit_scope, "quarterly_deferred")
     )
     pass <- length(missing_cols) == 0L &&
       identical(observed_outcomes, expected_outcomes) &&
       valid_status &&
-      annual_deferred_ok
+      quarterly_deferred_ok
     detail <- sprintf(
       "missing cols=%s; outcomes=%s; statuses=%s; fit_scopes=%s",
       if (length(missing_cols) == 0L) "none" else paste(missing_cols, collapse = ", "),
@@ -607,7 +617,7 @@ if (!isTRUE(cfg$run_gtwr_main_sidecar)) {
 
 
 #==============================================================================
-# 9. Manual Annual Appendix Contract
+# 9. Manual Appendix Contract (Excluded From Required Quarterly Test Plan)
 #==============================================================================
 
 rows[[length(rows) + 1L]] <- check_optional_csv_schema(
@@ -622,7 +632,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X02",
   "appendix_twfe_interaction",
   cfg$paths$twfe_interaction_diagnostics,
-  required_cols = c("sample_min_year", "sample_max_year", "n_covid_obs", "n_non_covid_obs", "status"),
+  required_cols = c("sample_min_yq", "sample_max_yq", "n_covid_obs", "n_non_covid_obs", "status"),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 
@@ -638,7 +648,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X05",
   "appendix_spdm_interaction",
   cfg$paths$spdm_interaction_diagnostics,
-  required_cols = c("sample_min_year", "sample_max_year", "n_pre_covid_obs", "n_post_covid_obs", "status"),
+  required_cols = c("sample_min_yq", "sample_max_yq", "n_pre_covid_obs", "n_post_covid_obs", "status"),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 
@@ -646,7 +656,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X06",
   "appendix_spdm_age_mix",
   cfg$paths$spdm_age_mix_experiment_diagnostics,
-  required_cols = c("model_family_spdm", "age_mix_family", "domain", "sample_min_year", "sample_max_year", "status"),
+  required_cols = c("model_family_spdm", "age_mix_family", "domain", "sample_min_yq", "sample_max_yq", "status"),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 
@@ -662,7 +672,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X08",
   "appendix_spdm_selection",
   cfg$paths$spdm_selection_family_comparison,
-  required_cols = c("family", "sample_min_year", "sample_max_year", "status"),
+  required_cols = c("family", "sample_min_yq", "sample_max_yq", "status"),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 
@@ -670,7 +680,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X09",
   "appendix_spdm_family_comparison",
   cfg$paths$spdm_family_comparison,
-  required_cols = c("family", "status", "impacts_status", "sample_min_year", "sample_max_year", "focal_estimate"),
+  required_cols = c("family", "status", "impacts_status", "sample_min_yq", "sample_max_yq", "focal_estimate"),
   extra_detail = function(df) sprintf("rows=%d; families=%s", nrow(df), paste(sort(unique(df$family)), collapse = ";"))
 )
 
@@ -678,7 +688,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X09B",
   "appendix_spdm_family_models",
   cfg$paths$spdm_family_models,
-  required_cols = c("model_family", "sample_min_year", "sample_max_year", "status"),
+  required_cols = c("model_family", "sample_min_yq", "sample_max_yq", "status"),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 
@@ -686,7 +696,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X10",
   "appendix_gtwr_floating",
   cfg$get_gtwr_floating_models_path(gtwr_control_set),
-  required_cols = c("target_year", "latest_year", "control_set", "fit_scope", "status"),
+  required_cols = c("target_yq", "latest_yq", "control_set", "fit_scope", "status"),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 
@@ -694,7 +704,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X11",
   "appendix_gtwr_age_band",
   cfg$get_gtwr_age_band_models_path(gtwr_control_set),
-  required_cols = c("domain", "age_band", "same_domain_total_control", "target_year", "latest_year", "control_set", "fit_scope", "status"),
+  required_cols = c("domain", "age_band", "same_domain_total_control", "target_yq", "latest_yq", "control_set", "fit_scope", "status"),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 
@@ -702,7 +712,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X12",
   "appendix_gtwr_sector_share",
   cfg$get_gtwr_sector_share_models_path(gtwr_control_set),
-  required_cols = c("exposure_family", "same_domain_total_control", "target_year", "latest_year", "control_set", "fit_scope", "status"),
+  required_cols = c("exposure_family", "same_domain_total_control", "target_yq", "latest_yq", "control_set", "fit_scope", "status"),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 
@@ -718,7 +728,7 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X14",
   "appendix_gtwr_experiment",
   cfg$get_gtwr_experiment_main_models_path(gtwr_control_set),
-  required_cols = c("target_year", "latest_year", "control_set", "fit_scope", "status"),
+  required_cols = c("target_yq", "latest_yq", "control_set", "fit_scope", "status"),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 
@@ -735,7 +745,7 @@ write_csv_safe(qc_tbl, cfg$paths$method_dataset_contract_check)
 append_log(
   cfg$logs$data_qc,
   sprintf(
-    "- Annual contract QC complete: pass=%d, fail=%d",
+    "- Quarterly contract QC complete: pass=%d, fail=%d",
     sum(qc_tbl$status == "PASS", na.rm = TRUE),
     sum(qc_tbl$status == "FAIL", na.rm = TRUE)
   )

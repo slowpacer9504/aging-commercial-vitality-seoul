@@ -176,18 +176,8 @@ required_vars <- c(
   "survival_3y",
   "operating_months_rel_seoul"
 )
-assert_has_cols(panel_main_pre, c("adm_cd", "year", required_vars), "panel_main_pre")
-
-forbidden_cols <- intersect(c("quarter", "yq"), names(panel_main_pre))
-if (length(forbidden_cols) > 0L) {
-  stop(
-    sprintf(
-      "[ERROR] panel_main_pre_vitality still contains forbidden quarterly columns: %s",
-      paste(forbidden_cols, collapse = ", ")
-    ),
-    call. = FALSE
-  )
-}
+time_cols <- c("adm_cd", "year", "quarter", "yq", "quarter_index")
+assert_has_cols(panel_main_pre, c(time_cols, required_vars), "panel_main_pre")
 
 component_spec <- tibble::tribble(
   ~component,                    ~source_variable,             ~dimension,   ~transformation,      ~direction_rule,
@@ -208,7 +198,7 @@ component_spec <- tibble::tribble(
 # panel_main_pre 전체를 직접 mutate하지 않고 필요한 구성요소만 떼어내 계산하면,
 # 변환 규칙과 QC 대상을 한눈에 확인하기 쉽고 publication contract도 단순해진다.
 comp <- panel_main_pre |>
-  dplyr::select(adm_cd, year, dplyr::all_of(required_vars)) |>
+  dplyr::select(dplyr::all_of(time_cols), dplyr::all_of(required_vars)) |>
   dplyr::mutate(
     ln_floating_pop = log1p(pmax(floating_pop, 0)),
     ln_external_inflow_pop = log1p(pmax(external_inflow_pop, 0))
@@ -683,9 +673,9 @@ vitality_cols <- c(
   "vitality_sub_stability", "vitality_index_base", "vitality_index_entropy", "vitality_index_pca"
 )
 
-panel_main_view_specs_annual <- list(
+panel_main_view_specs_quarterly <- list(
   esda = unique(c(
-    "adm_cd", "year",
+    "adm_cd", "year", "quarter", "yq", "quarter_index",
     "age60_resident_share", "age60_floating_share", "age60_sales_share",
     cfg$resident_age_support_vars,
     "age60_resident_pop", "age60_floating_pop", "age60_sales_amount",
@@ -696,7 +686,7 @@ panel_main_view_specs_annual <- list(
     "vitality_sub_stability", "vitality_index_base"
   )),
   twfe = unique(c(
-    "adm_cd", "year", "covid_period",
+    "adm_cd", "year", "quarter", "yq", "quarter_index", "covid_period",
     "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
     "vitality_sub_stability", "vitality_index_base",
     "age60_resident_share", "age60_floating_share", "age60_sales_share",
@@ -704,7 +694,7 @@ panel_main_view_specs_annual <- list(
     "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
   )),
   spdm = unique(c(
-    "adm_cd", "year",
+    "adm_cd", "year", "quarter", "yq", "quarter_index",
     "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
     "vitality_sub_stability", "vitality_index_base",
     "age60_resident_share",
@@ -712,7 +702,7 @@ panel_main_view_specs_annual <- list(
     "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
   )),
   gtwr = unique(c(
-    "adm_cd", "year",
+    "adm_cd", "year", "quarter", "yq", "quarter_index",
     "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
     "vitality_sub_stability", "vitality_index_base",
     "age60_resident_share",
@@ -724,12 +714,12 @@ panel_main_view_specs_annual <- list(
 panel_main <- panel_main_pre |>
   dplyr::select(-dplyr::any_of(vitality_cols)) |>
   dplyr::left_join(
-    comp |> dplyr::select(adm_cd, year, dplyr::all_of(vitality_cols)),
-    by = c("adm_cd", "year")
+    comp |> dplyr::select(dplyr::all_of(time_cols), dplyr::all_of(vitality_cols)),
+    by = time_cols
   )
 
 validate_panel_extension(panel_main_pre, panel_main, vitality_cols)
-validate_panel_main_views(panel_main, panel_main_view_specs_annual)
+validate_panel_main_views(panel_main, panel_main_view_specs_quarterly)
 
 
 #==============================================================================

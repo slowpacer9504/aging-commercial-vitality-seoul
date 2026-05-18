@@ -11,7 +11,7 @@
 #             twfe_main_coefplot_supplementary.png,
 #             twfe_main_controls_used.csv, twfe_main_diagnostics.csv,
 #             twfe_main_residual_moran.csv,
-#             twfe_main_residual_moran_by_year.csv,
+#             twfe_main_residual_moran_by_yq.csv,
 #             twfe_main_residual_moran_summary.csv
 # DependsOn : 02_Code/01_preprocess/07_build_vitality_index.R
 #==============================================================================
@@ -215,8 +215,8 @@ residual_moran_seed <- as.integer(value_or(cfg$twfe_residual_moran_seed, value_o
 residual_moran_p_value_method <- "permutation_two_sided_abs"
 
 # Residual Moran uses permutation inference for a more robust post-estimation
-# spatial diagnostic. Seeds are derived from the spec/year label so reruns are
-# reproducible while each outcome-year test receives an independent stream.
+# spatial diagnostic. Seeds are derived from the spec/yq label so reruns are
+# reproducible while each outcome-quarter test receives an independent stream.
 deterministic_seed_from_label <- function(label, base_seed = residual_moran_seed) {
   ints <- utf8ToInt(enc2utf8(paste(label, collapse = "|")))
   mod <- 2147483647
@@ -252,12 +252,12 @@ with_deterministic_seed <- function(label, expr, base_seed = residual_moran_seed
   eval.parent(substitute(expr))
 }
 
-build_failed_moran_row <- function(model_name, outcome, exposure, year = NA_integer_, message) {
+build_failed_moran_row <- function(model_name, outcome, exposure, yq = NA_character_, message) {
   tibble::tibble(
     model_name = model_name,
     outcome = outcome,
     exposure = exposure,
-    year = suppressWarnings(as.integer(year)),
+    yq = as.character(yq),
     n_units = NA_integer_,
     n_missing = NA_integer_,
     missing_policy = NA_character_,
@@ -290,7 +290,7 @@ apply_fixest_obs_selection <- function(data, model_obj) {
   out
 }
 
-run_residual_moran_by_year <- function(model_name, model_obj, lw) {
+run_residual_moran_by_yq <- function(model_name, model_obj, lw) {
   meta <- value_or(model_obj$twfe_meta, list())
   outcome <- value_or(meta$outcome, NA_character_)
   exposure <- value_or(meta$exposure, NA_character_)
@@ -298,25 +298,29 @@ run_residual_moran_by_year <- function(model_name, model_obj, lw) {
   tryCatch({
     used_data <- apply_fixest_obs_selection(model_obj$data, model_obj)
     if (is.null(used_data) || nrow(used_data) == 0) stop("model data unavailable")
-    if (!all(c("adm_cd", "year") %in% names(used_data))) stop("model data missing adm_cd/year")
+    if (!all(c("adm_cd", "yq") %in% names(used_data))) stop("model data missing adm_cd/yq")
 
     resid_vec <- as.numeric(stats::residuals(model_obj))
     if (length(resid_vec) != nrow(used_data)) stop("residual length mismatch")
     used_data$resid_model <- resid_vec
 
     used_data <- used_data |>
-      dplyr::mutate(adm_cd = as.character(adm_cd))
+      dplyr::mutate(
+        adm_cd = as.character(adm_cd),
+        yq = as.character(yq)
+      )
 
-    year_vals <- sort(unique(as.integer(used_data$year)))
-    purrr::map_dfr(year_vals, function(year_val) {
+    yq_vals <- sort(unique(used_data$yq))
+    yq_vals <- yq_vals[!is.na(yq_vals) & nzchar(yq_vals)]
+    purrr::map_dfr(yq_vals, function(yq_val) {
       tryCatch({
         cs <- used_data |>
-          dplyr::filter(year == year_val)
+          dplyr::filter(yq == yq_val)
 
         aligned <- align_numeric_vector_to_listw(cs, lw, value_col = "resid_model", id_col = "adm_cd", min_units = 30L)
         seed_label <- sprintf(
-          "twfe_residual_moran|%s|%s|%s|%d|nsim=%d",
-          model_name, outcome, exposure, as.integer(year_val), residual_moran_nsim
+          "twfe_residual_moran|%s|%s|%s|%s|nsim=%d",
+          model_name, outcome, exposure, yq_val, residual_moran_nsim
         )
         seed_value <- deterministic_seed_from_label(seed_label)
         mt_analytic <- spdep::moran.test(aligned$values, aligned$lw, alternative = "two.sided", zero.policy = TRUE)
@@ -341,7 +345,7 @@ run_residual_moran_by_year <- function(model_name, model_obj, lw) {
           model_name = model_name,
           outcome = outcome,
           exposure = exposure,
-          year = as.integer(year_val),
+          yq = yq_val,
           n_units = aligned$n_complete,
           n_missing = aligned$n_missing,
           missing_policy = aligned$missing_policy,
@@ -356,7 +360,7 @@ run_residual_moran_by_year <- function(model_name, model_obj, lw) {
           message = NA_character_
         )
       }, error = function(e) {
-        build_failed_moran_row(model_name, outcome, exposure, year = year_val, message = e$message)
+        build_failed_moran_row(model_name, outcome, exposure, yq = yq_val, message = e$message)
       })
     })
   }, error = function(e) {
@@ -366,27 +370,27 @@ run_residual_moran_by_year <- function(model_name, model_obj, lw) {
 
 if (file.exists(cfg$paths$w_queen)) {
   lw <- readRDS(cfg$paths$w_queen)
-  moran_by_year <- purrr::pmap_dfr(m2_registry, function(outcome, exposure, spec, outcome_group, outcome_order, model_name, interaction_var, requested_controls) {
+  moran_by_yq <- purrr::pmap_dfr(m2_registry, function(outcome, exposure, spec, outcome_group, outcome_order, model_name, interaction_var, requested_controls) {
     model_obj <- mods[[model_name]]
     if (is.null(model_obj)) {
       return(build_failed_moran_row(model_name, outcome, exposure, message = "model_not_estimable"))
     }
-    run_residual_moran_by_year(model_name, model_obj, lw)
+    run_residual_moran_by_yq(model_name, model_obj, lw)
   })
 } else {
-  moran_by_year <- purrr::pmap_dfr(m2_registry, function(outcome, exposure, spec, outcome_group, outcome_order, model_name, interaction_var, requested_controls) {
+  moran_by_yq <- purrr::pmap_dfr(m2_registry, function(outcome, exposure, spec, outcome_group, outcome_order, model_name, interaction_var, requested_controls) {
     build_failed_moran_row(model_name, outcome, exposure, message = "w_queen_missing")
   })
 }
-moran_by_year <- moran_by_year |>
+moran_by_yq <- moran_by_yq |>
   annotate_outcomes(include_robustness = FALSE) |>
-  dplyr::arrange(outcome_order, exposure, model_name, year)
-write_csv_safe(moran_by_year, cfg$paths$twfe_main_residual_moran_by_year)
+  dplyr::arrange(outcome_order, exposure, model_name, yq)
+write_csv_safe(moran_by_yq, cfg$paths$twfe_main_residual_moran_by_yq)
 
-moran_tbl <- moran_by_year |>
+moran_tbl <- moran_by_yq |>
   dplyr::filter(status == "success") |>
   dplyr::group_by(model_name, outcome, exposure, outcome_group, outcome_order) |>
-  dplyr::slice_max(order_by = year, n = 1, with_ties = FALSE) |>
+  dplyr::slice_max(order_by = yq, n = 1, with_ties = FALSE) |>
   dplyr::ungroup()
 
 failed_only_models <- m2_registry |>
@@ -397,7 +401,7 @@ failed_only_models <- m2_registry |>
     by = "model_name"
   ) |>
   dplyr::mutate(
-    year = NA_integer_,
+    yq = NA_character_,
     n_units = NA_integer_,
     n_missing = NA_integer_,
     missing_policy = NA_character_,
@@ -409,7 +413,7 @@ failed_only_models <- m2_registry |>
     nsim = residual_moran_nsim,
     seed = NA_integer_,
     status = "failed",
-    message = "no_successful_moran_by_year"
+    message = "no_successful_moran_by_yq"
   ) |>
   annotate_outcomes(include_robustness = FALSE)
 
@@ -417,13 +421,13 @@ moran_tbl <- dplyr::bind_rows(moran_tbl, failed_only_models) |>
   dplyr::arrange(outcome_order, exposure, model_name)
 write_csv_safe(moran_tbl, cfg$paths$twfe_main_residual_moran)
 
-moran_summary_stats <- moran_by_year |>
+moran_summary_stats <- moran_by_yq |>
   dplyr::filter(status == "success") |>
   dplyr::group_by(outcome, exposure) |>
   dplyr::summarise(
-    sample_min_year = min(year, na.rm = TRUE),
-    sample_max_year = max(year, na.rm = TRUE),
-    n_year_tested = dplyr::n(),
+    sample_min_yq = min(yq, na.rm = TRUE),
+    sample_max_yq = max(yq, na.rm = TRUE),
+    n_yq_tested = dplyr::n(),
     mean_moran_i = mean(moran_i, na.rm = TRUE),
     median_moran_i = stats::median(moran_i, na.rm = TRUE),
     share_p_lt_0_05 = mean(p_value < 0.05, na.rm = TRUE),
@@ -437,7 +441,7 @@ moran_latest_stats <- moran_tbl |>
   dplyr::transmute(
     outcome,
     exposure,
-    latest_year = year,
+    latest_yq = yq,
     latest_moran_i = moran_i,
     latest_p = p_value,
     latest_p_analytic = p_value_analytic
@@ -448,9 +452,9 @@ moran_summary <- m2_registry |>
   dplyr::left_join(moran_summary_stats, by = c("outcome", "exposure")) |>
   dplyr::left_join(moran_latest_stats, by = c("outcome", "exposure")) |>
   dplyr::mutate(
-    status = dplyr::if_else(!is.na(n_year_tested) & n_year_tested > 0L, "success", "failed"),
-    n_year_tested = dplyr::coalesce(as.integer(n_year_tested), 0L),
-    message = dplyr::if_else(status == "success", NA_character_, "no_successful_moran_by_year")
+    status = dplyr::if_else(!is.na(n_yq_tested) & n_yq_tested > 0L, "success", "failed"),
+    n_yq_tested = dplyr::coalesce(as.integer(n_yq_tested), 0L),
+    message = dplyr::if_else(status == "success", NA_character_, "no_successful_moran_by_yq")
   ) |>
   annotate_outcomes(include_robustness = FALSE) |>
   dplyr::select(
@@ -459,16 +463,16 @@ moran_summary <- m2_registry |>
     outcome_group,
     outcome_order,
     status,
-    sample_min_year,
-    sample_max_year,
-    n_year_tested,
+    sample_min_yq,
+    sample_max_yq,
+    n_yq_tested,
     mean_moran_i,
     median_moran_i,
     share_p_lt_0_05,
     share_p_lt_0_10,
     p_value_method,
     nsim,
-    latest_year,
+    latest_yq,
     latest_moran_i,
     latest_p,
     latest_p_analytic,

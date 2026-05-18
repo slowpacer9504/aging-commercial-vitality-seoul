@@ -6,7 +6,7 @@
 #             comparison on that fixed contract.
 # Author    : Codex
 # Created   : 2026-03-30
-# Status    : ANNUAL_APPENDIX / manual sidecar outside canonical workflow
+# Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, W_queen.rds, spdm_main_diagnostics.csv,
 #             spdm_controls_used.csv
@@ -72,8 +72,8 @@ build_failed_family_model_row <- function(spec_id,
                                           n_units,
                                           n_periods,
                                           n_obs,
-                                          sample_min_year,
-                                          sample_max_year,
+                                          sample_min_yq,
+                                          sample_max_yq,
                                           w_type,
                                           message) {
   spdm_empty_coef_tbl() |>
@@ -85,8 +85,8 @@ build_failed_family_model_row <- function(spec_id,
       n_units = as.integer(n_units),
       n_periods = as.integer(n_periods),
       n_obs = as.integer(n_obs),
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       model_family = family,
       w_type = w_type,
       message = as.character(message)
@@ -101,8 +101,8 @@ build_failed_family_comparison_row <- function(spec_id,
                                                n_units,
                                                n_periods,
                                                n_obs,
-                                               sample_min_year,
-                                               sample_max_year,
+                                               sample_min_yq,
+                                               sample_max_yq,
                                                w_type,
                                                message,
                                                impacts_status = "failed") {
@@ -117,8 +117,8 @@ build_failed_family_comparison_row <- function(spec_id,
     n_units = n_units,
     n_periods = n_periods,
     n_obs = n_obs,
-    sample_min_year = sample_min_year,
-    sample_max_year = sample_max_year,
+    sample_min_yq = sample_min_yq,
+    sample_max_yq = sample_max_yq,
     selected_controls = selected_controls,
     focal_term = exposure,
     message = message
@@ -143,8 +143,8 @@ build_contract_fail_result <- function(spec_id,
                                        n_units = NA_integer_,
                                        n_periods = NA_integer_,
                                        n_obs = NA_integer_,
-                                       sample_min_year = NA_character_,
-                                       sample_max_year = NA_character_,
+                                       sample_min_yq = NA_character_,
+                                       sample_max_yq = NA_character_,
                                        message,
                                        w_type) {
   list(
@@ -158,8 +158,8 @@ build_contract_fail_result <- function(spec_id,
         n_units = n_units,
         n_periods = n_periods,
         n_obs = n_obs,
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+        sample_min_yq = sample_min_yq,
+        sample_max_yq = sample_max_yq,
         w_type = w_type,
         impacts_status = if (identical(family, "twfe_common")) "not_applicable" else "failed",
         message = message
@@ -174,8 +174,8 @@ build_contract_fail_result <- function(spec_id,
         n_units = n_units,
         n_periods = n_periods,
         n_obs = n_obs,
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+        sample_min_yq = sample_min_yq,
+        sample_max_yq = sample_max_yq,
         w_type = w_type,
         message = message
       )
@@ -268,8 +268,8 @@ for (i in seq_len(nrow(main_diag))) {
       n_units = main_row$n_units[[1]],
       n_periods = main_row$n_periods[[1]],
       n_obs = main_row$n_obs[[1]],
-      sample_min_year = main_row$sample_min_year[[1]],
-      sample_max_year = main_row$sample_max_year[[1]],
+      sample_min_yq = main_row$sample_min_yq[[1]],
+      sample_max_yq = main_row$sample_max_yq[[1]],
       message = "main SPDM control contract mismatch between diagnostics and controls output",
       w_type = w_type_main
     )
@@ -287,8 +287,8 @@ for (i in seq_len(nrow(main_diag))) {
       n_units = main_row$n_units[[1]],
       n_periods = main_row$n_periods[[1]],
       n_obs = main_row$n_obs[[1]],
-      sample_min_year = main_row$sample_min_year[[1]],
-      sample_max_year = main_row$sample_max_year[[1]],
+      sample_min_yq = main_row$sample_min_yq[[1]],
+      sample_max_yq = main_row$sample_max_yq[[1]],
       message = paste("main SPDM status:", main_row$status[[1]]),
       w_type = w_type_main
     )
@@ -316,8 +316,8 @@ for (i in seq_len(nrow(main_diag))) {
       n_units = main_row$n_units[[1]],
       n_periods = main_row$n_periods[[1]],
       n_obs = main_row$n_obs[[1]],
-      sample_min_year = main_row$sample_min_year[[1]],
-      sample_max_year = main_row$sample_max_year[[1]],
+      sample_min_yq = main_row$sample_min_yq[[1]],
+      sample_max_yq = main_row$sample_max_yq[[1]],
       message = prep$message,
       w_type = w_type_main
     )
@@ -343,8 +343,8 @@ for (i in seq_len(nrow(main_diag))) {
         n_units = prep$n_units,
         n_periods = prep$n_periods,
         n_obs = prep$n_obs,
-        sample_min_year = prep$sample_min_year,
-        sample_max_year = prep$sample_max_year,
+        sample_min_yq = prep$sample_min_yq,
+        sample_max_yq = prep$sample_max_yq,
         w_type = w_type_main,
         message = if (inherits(twfe_fit, "error")) paste("common twfe error:", twfe_fit$message) else "common twfe unavailable"
       )
@@ -360,8 +360,8 @@ for (i in seq_len(nrow(main_diag))) {
         n_units = prep$n_units,
         n_periods = prep$n_periods,
         n_obs = prep$n_obs,
-        sample_min_year = prep$sample_min_year,
-        sample_max_year = prep$sample_max_year,
+        sample_min_yq = prep$sample_min_yq,
+        sample_max_yq = prep$sample_max_yq,
         w_type = w_type_main,
         impacts_status = "not_applicable",
         message = if (inherits(twfe_fit, "error")) paste("common twfe error:", twfe_fit$message) else "common twfe unavailable"
@@ -376,8 +376,8 @@ for (i in seq_len(nrow(main_diag))) {
       n_units = prep$n_units,
       n_periods = prep$n_periods,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "twfe_common",
       w_type = w_type_main,
       message = prep$message
@@ -392,8 +392,8 @@ for (i in seq_len(nrow(main_diag))) {
       n_units = prep$n_units,
       n_periods = prep$n_periods,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "twfe_common",
       w_type = w_type_main,
       message = "impacts not applicable for TWFE"
@@ -412,8 +412,8 @@ for (i in seq_len(nrow(main_diag))) {
         n_units = prep$n_units,
         n_periods = prep$n_periods,
         n_obs = prep$n_obs,
-        sample_min_year = prep$sample_min_year,
-        sample_max_year = prep$sample_max_year,
+        sample_min_yq = prep$sample_min_yq,
+        sample_max_yq = prep$sample_max_yq,
         selected_controls = selected_controls,
         focal_term = twfe_focal$focal_term,
         focal_estimate = twfe_focal$focal_estimate,
@@ -449,8 +449,8 @@ for (i in seq_len(nrow(main_diag))) {
           n_units = prep$n_units,
           n_periods = prep$n_periods,
           n_obs = prep$n_obs,
-          sample_min_year = prep$sample_min_year,
-          sample_max_year = prep$sample_max_year,
+          sample_min_yq = prep$sample_min_yq,
+          sample_max_yq = prep$sample_max_yq,
           w_type = w_type_main,
           message = paste("spml error:", mod$message)
         )
@@ -466,8 +466,8 @@ for (i in seq_len(nrow(main_diag))) {
           n_units = prep$n_units,
           n_periods = prep$n_periods,
           n_obs = prep$n_obs,
-          sample_min_year = prep$sample_min_year,
-          sample_max_year = prep$sample_max_year,
+          sample_min_yq = prep$sample_min_yq,
+          sample_max_yq = prep$sample_max_yq,
           w_type = w_type_main,
           message = paste("spml error:", mod$message)
         )
@@ -484,8 +484,8 @@ for (i in seq_len(nrow(main_diag))) {
         n_units = prep$n_units,
         n_periods = prep$n_periods,
         n_obs = prep$n_obs,
-        sample_min_year = prep$sample_min_year,
-        sample_max_year = prep$sample_max_year,
+        sample_min_yq = prep$sample_min_yq,
+        sample_max_yq = prep$sample_max_yq,
         model_family = family,
         w_type = w_type_main,
         message = prep$message
@@ -499,8 +499,8 @@ for (i in seq_len(nrow(main_diag))) {
         n_units = prep$n_units,
         n_periods = prep$n_periods,
         n_obs = prep$n_obs,
-        sample_min_year = prep$sample_min_year,
-        sample_max_year = prep$sample_max_year,
+        sample_min_yq = prep$sample_min_yq,
+        sample_max_yq = prep$sample_max_yq,
         model_family = family,
         w_type = w_type_main,
         message = prep$message
@@ -517,8 +517,8 @@ for (i in seq_len(nrow(main_diag))) {
       n_periods = prep$n_periods,
       n_units = prep$n_units,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = family,
       w_type = w_type_main,
       sim_R = as.integer(value_or(cfg$spdm_impact_sim_R, 1000L)),
@@ -545,8 +545,8 @@ for (i in seq_len(nrow(main_diag))) {
         n_units = prep$n_units,
         n_periods = prep$n_periods,
         n_obs = prep$n_obs,
-        sample_min_year = prep$sample_min_year,
-        sample_max_year = prep$sample_max_year,
+        sample_min_yq = prep$sample_min_yq,
+        sample_max_yq = prep$sample_max_yq,
         selected_controls = selected_controls,
         focal_term = focal_stats$focal_term,
         focal_estimate = focal_stats$focal_estimate,

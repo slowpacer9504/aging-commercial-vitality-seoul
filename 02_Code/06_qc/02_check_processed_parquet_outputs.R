@@ -2,7 +2,7 @@
 # Script    : 02_check_processed_parquet_outputs.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Audit processed parquet outputs for readability, schema coverage,
-#             key integrity, and annual-contract compliance.
+#             key integrity, and quarterly-contract compliance.
 # Author    : Codex
 # Created   : 2026-02-28
 # Type      : qc
@@ -146,8 +146,23 @@ dup_count <- function(df, keys) {
 }
 
 range_check <- function(df, y_min_target = cfg$short_start, y_max_target = cfg$short_end) {
-  if (is.null(df) || !"year" %in% names(df)) {
-    return(list(pass = FALSE, detail = "year column missing"))
+  if (is.null(df)) {
+    return(list(pass = FALSE, detail = "data missing"))
+  }
+  if ("yq" %in% names(df)) {
+    observed <- sort(unique(stats::na.omit(as.character(df$yq))))
+    expected <- sort(unique(as.character(cfg$quarter_sequence$yq)))
+    return(list(
+      pass = identical(observed, expected),
+      detail = sprintf(
+        "observed_yq=%s; expected_yq=%s",
+        if (length(observed) == 0L) "none" else paste(observed, collapse = ", "),
+        paste(expected, collapse = ", ")
+      )
+    ))
+  }
+  if (!"year" %in% names(df)) {
+    return(list(pass = FALSE, detail = "year/yq column missing"))
   }
   years <- sort(unique(stats::na.omit(as.integer(df$year))))
   expected <- y_min_target:y_max_target
@@ -161,27 +176,27 @@ range_check <- function(df, y_min_target = cfg$short_start, y_max_target = cfg$s
   )
 }
 
-annual_contract_check <- function(df, name) {
+quarterly_contract_check <- function(df, name) {
   if (is.null(df)) {
     return(list(
       range = list(pass = FALSE, detail = sprintf("%s missing", name)),
       dup = list(pass = FALSE, detail = sprintf("%s missing", name)),
-      leakage = list(pass = FALSE, detail = sprintf("%s missing", name))
+      time_cols = list(pass = FALSE, detail = sprintf("%s missing", name))
     ))
   }
 
-  year_range <- range_check(df)
-  dup_n <- dup_count(df, c("adm_cd", "year"))
-  leakage_cols <- intersect(c("quarter", "yq"), names(df))
+  period_range <- range_check(df)
+  dup_n <- dup_count(df, c("adm_cd", "yq"))
+  missing_time_cols <- setdiff(c("year", "quarter", "yq", "quarter_index"), names(df))
   list(
-    range = list(pass = year_range$pass, detail = sprintf("%s %s", name, year_range$detail)),
-    dup = list(pass = !is.na(dup_n) && dup_n == 0L, detail = sprintf("%s dup(adm_cd,year)=%s", name, dup_n)),
-    leakage = list(
-      pass = length(leakage_cols) == 0L,
+    range = list(pass = period_range$pass, detail = sprintf("%s %s", name, period_range$detail)),
+    dup = list(pass = !is.na(dup_n) && dup_n == 0L, detail = sprintf("%s dup(adm_cd,yq)=%s", name, dup_n)),
+    time_cols = list(
+      pass = length(missing_time_cols) == 0L,
       detail = sprintf(
-        "%s forbidden cols=%s",
+        "%s missing quarterly time cols=%s",
         name,
-        if (length(leakage_cols) == 0L) "none" else paste(leakage_cols, collapse = ", ")
+        if (length(missing_time_cols) == 0L) "none" else paste(missing_time_cols, collapse = ", ")
       )
     )
   )
@@ -258,7 +273,7 @@ checks[[length(checks) + 1L]] <- add_check("P02", pass = read_fail_n == 0L, deta
 core_files <- c(
   "seoul_raw_integrated_wide.parquet",
   "seoul_raw_review.parquet",
-  "seoul_year_base.parquet",
+  "seoul_quarter_base.parquet",
   "adm_region_lookup.parquet",
   "aux_covariates.parquet",
   "registered_resident_population.parquet",
@@ -315,8 +330,9 @@ if (!is.null(df_seoul_raw_wide)) {
   )
 }
 
-annual_targets <- c(
-  "seoul_year_base.parquet",
+quarterly_targets <- c(
+  "seoul_quarter_base.parquet",
+  "aux_covariates.parquet",
   "registered_resident_population.parquet",
   "golmok_survival_rate.parquet",
   "panel_merged_base.parquet",
@@ -325,12 +341,12 @@ annual_targets <- c(
   "vitality_components.parquet"
 )
 
-for (ii in seq_along(annual_targets)) {
-  nm <- annual_targets[[ii]]
-  checks_set <- annual_contract_check(get_df(nm, data_map), nm)
-  checks[[length(checks) + 1L]] <- add_check(sprintf("PAY%02dA", ii), pass = checks_set$range$pass, detail = checks_set$range$detail)
-  checks[[length(checks) + 1L]] <- add_check(sprintf("PAY%02dB", ii), pass = checks_set$dup$pass, detail = checks_set$dup$detail)
-  checks[[length(checks) + 1L]] <- add_check(sprintf("PAY%02dC", ii), pass = checks_set$leakage$pass, detail = checks_set$leakage$detail)
+for (ii in seq_along(quarterly_targets)) {
+  nm <- quarterly_targets[[ii]]
+  checks_set <- quarterly_contract_check(get_df(nm, data_map), nm)
+  checks[[length(checks) + 1L]] <- add_check(sprintf("PQY%02dA", ii), pass = checks_set$range$pass, detail = checks_set$range$detail)
+  checks[[length(checks) + 1L]] <- add_check(sprintf("PQY%02dB", ii), pass = checks_set$dup$pass, detail = checks_set$dup$detail)
+  checks[[length(checks) + 1L]] <- add_check(sprintf("PQY%02dC", ii), pass = checks_set$time_cols$pass, detail = checks_set$time_cols$detail)
 }
 
 df_adm_region_lookup <- get_df("adm_region_lookup.parquet", data_map)
@@ -355,7 +371,7 @@ if (!is.null(df_panel_main)) {
   checks[[length(checks) + 1L]] <- add_check(
     "PAY06A",
     pass = length(missing_cols) == 0L,
-    detail = sprintf("panel_main missing annual canonical cols=%s", if (length(missing_cols) == 0L) "none" else paste(missing_cols, collapse = ", "))
+    detail = sprintf("panel_main missing quarterly canonical cols=%s", if (length(missing_cols) == 0L) "none" else paste(missing_cols, collapse = ", "))
   )
   checks[[length(checks) + 1L]] <- add_check(
     "PAY06B",

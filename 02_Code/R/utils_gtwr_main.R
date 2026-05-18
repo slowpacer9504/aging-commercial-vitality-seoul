@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : utils_gtwr_main.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Provide reusable helpers for the resident-only annual GTWR
+# Purpose   : Provide reusable helpers for the resident-only quarterly GTWR
 #             optional sidecar.
 # Author    : Codex
 # Created   : 2026-04-27
@@ -155,7 +155,7 @@ gtwr_controls_used_core_cols <- function() {
     "selection_status",
     "selection_strategy",
     "fit_scope",
-    "recent_year_n",
+    "recent_period_n",
     "location_frac",
     "location_n",
     "bw_obs_n",
@@ -199,7 +199,7 @@ format_gtwr_num_token <- function(x) {
 }
 
 gtwr_control_origin_label <- function() {
-  sprintf("annual_gtwr_%s_control_pool", cfg$gtwr_control_set)
+  sprintf("quarterly_gtwr_%s_control_pool", cfg$gtwr_control_set)
 }
 
 gtwr_control_selection_label <- function() {
@@ -212,10 +212,10 @@ empty_gtwr_main_tbl <- function() {
     outcome = character(),
     focal_var = character(),
     exposure = character(),
-    target_year = integer(),
+    target_yq = character(),
     estimate_type = character(),
-    earliest_year = integer(),
-    latest_year = integer(),
+    earliest_yq = character(),
+    latest_yq = character(),
     window_scope = character(),
     n_locations = integer(),
     n_valid = integer(),
@@ -239,7 +239,7 @@ empty_gtwr_main_tbl <- function() {
 	    max_local_cn_gtwr = numeric(),
     control_set = character(),
     fit_scope = character(),
-    recent_year_n = integer(),
+    recent_period_n = integer(),
     location_frac = numeric(),
     location_n = integer(),
     n_obs_fit = integer(),
@@ -264,18 +264,18 @@ empty_gtwr_local_tbl <- function() {
     earliest_estimate = numeric(),
     latest_estimate = numeric(),
     estimate_type = character(),
-    earliest_year = integer(),
-    latest_year = integer(),
+    earliest_yq = character(),
+    latest_yq = character(),
     window_scope = character(),
     status = character(),
     message = character(),
     n_obs = integer(),
     n_eff = integer(),
-    target_year = integer(),
+    target_yq = character(),
     method = character(),
     control_set = character(),
     fit_scope = character(),
-    recent_year_n = integer(),
+    recent_period_n = integer(),
     location_frac = numeric(),
     location_n = integer(),
     bw_obs_n = integer(),
@@ -297,6 +297,9 @@ empty_gtwr_local_beta_panel_tbl <- function() {
   tibble::tibble(
     adm_cd = character(),
     year = integer(),
+    quarter = integer(),
+    yq = character(),
+    quarter_index = integer(),
     time_id = integer(),
     outcome = character(),
     focal_var = character(),
@@ -307,11 +310,11 @@ empty_gtwr_local_beta_panel_tbl <- function() {
     message = character(),
     n_obs = integer(),
     n_eff = integer(),
-    target_year = integer(),
+    target_yq = character(),
     method = character(),
     control_set = character(),
     fit_scope = character(),
-    recent_year_n = integer(),
+    recent_period_n = integer(),
     location_frac = numeric(),
     location_n = integer(),
     bw_obs_n = integer(),
@@ -336,7 +339,7 @@ empty_gtwr_controls_used_tbl <- function() {
     selection_status = character(),
     selection_strategy = character(),
     fit_scope = character(),
-    recent_year_n = integer(),
+    recent_period_n = integer(),
     location_frac = numeric(),
     location_n = integer(),
     bw_obs_n = integer(),
@@ -380,9 +383,9 @@ empty_gtwr_lamda_sensitivity_tbl <- function() {
     baseline_lamda = numeric(),
     ksi = numeric(),
     is_baseline_lamda = logical(),
-    target_year = integer(),
-    earliest_year = integer(),
-    latest_year = integer(),
+    target_yq = character(),
+    earliest_yq = character(),
+    latest_yq = character(),
     window_scope = character(),
     n_locations = integer(),
     n_valid = integer(),
@@ -429,9 +432,9 @@ empty_gtwr_bandwidth_sensitivity_tbl <- function() {
     is_baseline_st_bw = logical(),
     lamda = numeric(),
     ksi = numeric(),
-    target_year = integer(),
-    earliest_year = integer(),
-    latest_year = integer(),
+    target_yq = character(),
+    earliest_yq = character(),
+    latest_yq = character(),
     window_scope = character(),
     n_locations = integer(),
     n_valid = integer(),
@@ -472,8 +475,8 @@ build_gtwr_deferred_main_row <- function(outcome,
                                          n_obs_fit,
                                          n_units,
                                          n_periods,
-                                         sample_min_year,
-                                         sample_max_year,
+                                         sample_min_yq = NA_character_,
+                                         sample_max_yq = NA_character_,
                                          control_origin,
                                          bandwidth_origin,
                                          message,
@@ -485,17 +488,17 @@ build_gtwr_deferred_main_row <- function(outcome,
       outcome = outcome,
       focal_var = focal_var,
       exposure = focal_var,
-      target_year = suppressWarnings(as.integer(sample_max_year)),
+      target_yq = as.character(sample_max_yq),
       estimate_type = "latest",
-      earliest_year = suppressWarnings(as.integer(sample_min_year)),
-      latest_year = suppressWarnings(as.integer(sample_max_year)),
-      window_scope = "annual_full_window",
+      earliest_yq = as.character(sample_min_yq),
+      latest_yq = as.character(sample_max_yq),
+      window_scope = "quarterly_full_window",
       n_locations = as.integer(n_units),
       n_valid = 0L,
       st_bw = selected_st_bw,
       control_set = control_set,
       fit_scope = fit_scope,
-      recent_year_n = as.integer(n_periods),
+      recent_period_n = as.integer(n_periods),
       location_frac = 1,
       location_n = as.integer(n_units),
       n_obs_fit = as.integer(n_obs_fit),
@@ -521,7 +524,7 @@ build_gtwr_deferred_controls_row <- function(outcome,
                                              n_periods,
                                              message,
                                              selected_st_bw = NA_real_,
-                                             fit_scope = "annual_deferred",
+                                             fit_scope = "quarterly_deferred",
                                              bandwidth_origin = "deferred") {
   unselected_controls_text <- collapse_chr(base::setdiff(control_candidates, usable_controls))
 
@@ -539,10 +542,10 @@ build_gtwr_deferred_controls_row <- function(outcome,
       selected_n_units = as.integer(n_units),
 	      retention_ratio = 1,
 	      retention_floor = 1,
-	      selection_status = "annual_not_estimated",
+	      selection_status = "quarterly_not_estimated",
 	      selection_strategy = gtwr_control_selection_label(),
       fit_scope = fit_scope,
-      recent_year_n = as.integer(n_periods),
+      recent_period_n = as.integer(n_periods),
       location_frac = 1,
       location_n = as.integer(n_units),
       bw_obs_n = suppressWarnings(as.integer(selected_st_bw)),
@@ -570,12 +573,19 @@ prepare_gtwr_points <- function(panel) {
     ) |>
     dplyr::distinct(adm_cd, .keep_all = TRUE)
 
-  years <- sort(unique(suppressWarnings(as.integer(panel$year))))
+  period_order <- panel |>
+    dplyr::distinct(.data$yq, .data$quarter_index) |>
+    dplyr::arrange(.data$quarter_index, .data$yq) |>
+    dplyr::pull(.data$yq) |>
+    as.character()
   panel |>
     dplyr::mutate(
       adm_cd = as.character(.data$adm_cd),
       year = suppressWarnings(as.integer(.data$year)),
-      time_id = as.integer(match(.data$year, years))
+      quarter = suppressWarnings(as.integer(.data$quarter)),
+      yq = as.character(.data$yq),
+      quarter_index = suppressWarnings(as.integer(.data$quarter_index)),
+      time_id = as.integer(match(.data$yq, period_order))
     ) |>
     dplyr::left_join(coord_tbl, by = "adm_cd")
 }
@@ -658,12 +668,77 @@ compute_gtwr_local_cn <- function(d_fit, rhs_vars, st_bw, st_dmat, target_idx) {
   }, numeric(1))
 }
 
-local_cn_for_window <- function(d_fit, rhs_vars, st_bw, st_dmat, threshold) {
-  earliest_year <- suppressWarnings(as.integer(min(d_fit$year, na.rm = TRUE)))
-  latest_year <- suppressWarnings(as.integer(max(d_fit$year, na.rm = TRUE)))
+gtwr_period_id <- function(d_fit) {
+  if ("time_id" %in% names(d_fit)) {
+    out <- suppressWarnings(as.integer(d_fit$time_id))
+    if (any(is.finite(out))) return(out)
+  }
+  if ("quarter_index" %in% names(d_fit)) {
+    out <- suppressWarnings(as.integer(d_fit$quarter_index))
+    if (any(is.finite(out))) return(out)
+  }
+  if ("yq" %in% names(d_fit)) {
+    yq <- as.character(d_fit$yq)
+    levels <- sort(unique(yq[!is.na(yq) & nzchar(yq)]))
+    return(as.integer(factor(yq, levels = levels)))
+  }
+  suppressWarnings(as.integer(d_fit$year))
+}
 
-  build_year_cn <- function(target_year, suffix) {
-    target_idx <- which(d_fit$year == target_year)
+gtwr_period_meta <- function(d_fit) {
+  period_id <- gtwr_period_id(d_fit)
+  valid_ids <- period_id[is.finite(period_id)]
+  period_levels <- sort(unique(valid_ids))
+  if (length(period_levels) == 0L) {
+    return(list(
+      period_id = period_id,
+      n_periods = 0L,
+      earliest_period_id = NA_integer_,
+      latest_period_id = NA_integer_,
+      earliest_year = NA_integer_,
+      latest_year = NA_integer_,
+      earliest_yq = NA_character_,
+      latest_yq = NA_character_
+    ))
+  }
+
+  pick_idx <- function(period_value) {
+    idx <- which(period_id == period_value)
+    if (length(idx) == 0L) NA_integer_ else idx[[1L]]
+  }
+  earliest_id <- period_levels[[1L]]
+  latest_id <- period_levels[[length(period_levels)]]
+  earliest_idx <- pick_idx(earliest_id)
+  latest_idx <- pick_idx(latest_id)
+
+  get_int <- function(col, idx) {
+    if (!col %in% names(d_fit) || !is.finite(idx)) return(NA_integer_)
+    suppressWarnings(as.integer(d_fit[[col]][[idx]]))
+  }
+  get_chr <- function(col, idx) {
+    if (!col %in% names(d_fit) || !is.finite(idx)) return(NA_character_)
+    val <- as.character(d_fit[[col]][[idx]])
+    if (length(val) == 0L || is.na(val) || !nzchar(val)) NA_character_ else val
+  }
+
+  list(
+    period_id = period_id,
+    n_periods = as.integer(length(period_levels)),
+    earliest_period_id = as.integer(earliest_id),
+    latest_period_id = as.integer(latest_id),
+    earliest_year = get_int("year", earliest_idx),
+    latest_year = get_int("year", latest_idx),
+    earliest_yq = get_chr("yq", earliest_idx),
+    latest_yq = get_chr("yq", latest_idx)
+  )
+}
+
+local_cn_for_window <- function(d_fit, rhs_vars, st_bw, st_dmat, threshold) {
+  period_meta <- gtwr_period_meta(d_fit)
+  period_id <- period_meta$period_id
+
+  build_period_cn <- function(target_period_id, suffix) {
+    target_idx <- which(period_id == target_period_id)
     target_idx <- target_idx[order(d_fit$adm_cd[target_idx])]
 
     cn <- if (length(target_idx) == 0L) {
@@ -686,14 +761,14 @@ local_cn_for_window <- function(d_fit, rhs_vars, st_bw, st_dmat, threshold) {
   }
 
   dplyr::full_join(
-    build_year_cn(earliest_year, "earliest"),
-    build_year_cn(latest_year, "latest"),
+    build_period_cn(period_meta$earliest_period_id, "earliest"),
+    build_period_cn(period_meta$latest_period_id, "latest"),
     by = "adm_cd"
   )
 }
 
-pick_year_value <- function(x, year, target_year) {
-  idx <- which(year == target_year & is.finite(x))
+pick_period_value <- function(x, period_id, target_period_id) {
+  idx <- which(period_id == target_period_id & is.finite(x))
   if (length(idx) == 0L) return(NA_real_)
   suppressWarnings(as.numeric(x[[idx[[1]]]]))
 }
@@ -821,7 +896,7 @@ build_gtwr_spec_signature <- function(outcome,
                                       extra_cache_stamp = NULL) {
   paste(
     c(
-      "annual_gtwr_spec_cache_v6_gwmodel_local_cn",
+      "quarterly_gtwr_spec_cache_v6_gwmodel_local_cn",
       paste("cache_context", cache_context, sep = "="),
       if (!is.null(extra_cache_stamp)) paste("extra_cache_stamp", extra_cache_stamp, sep = "=") else NULL,
       paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
@@ -830,7 +905,7 @@ build_gtwr_spec_signature <- function(outcome,
       paste("control_set", as.character(control_set), sep = "="),
       paste("controls", paste(selected_controls, collapse = ";"), sep = "="),
       paste("bw_strategy", as.character(cfg$gtwr_bandwidth_strategy), sep = "="),
-      paste("bw_anchor_year", as.character(cfg$gtwr_bw_anchor_year), sep = "="),
+      paste("bw_anchor_yq", as.character(value_or(cfg$gtwr_bw_anchor_yq, NA_character_)), sep = "="),
       paste("bw_approach", as.character(cfg$gtwr_bw_approach), sep = "="),
       paste("fallback_st_bw", as.character(cfg$gtwr_st_bw), sep = "="),
       paste("kernel", as.character(cfg$gtwr_kernel), sep = "="),
@@ -847,13 +922,13 @@ build_gtwr_bandwidth_signature <- function(outcome,
                                            selected_controls,
                                            control_set,
                                            bandwidth_scope,
-                                           bandwidth_years,
+                                           bandwidth_periods,
                                            lamda = cfg$gtwr_lamda,
                                            ksi = cfg$gtwr_ksi,
                                            cache_context = "main") {
 	  paste(
 	    c(
-	      "annual_gtwr_main_bandwidth_cache_v3_st_dmat",
+	      "quarterly_gtwr_main_bandwidth_cache_v3_st_dmat",
       paste("cache_context", cache_context, sep = "="),
 	      paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
 	      paste("outcome", outcome, sep = "="),
@@ -862,8 +937,8 @@ build_gtwr_bandwidth_signature <- function(outcome,
 	      paste("controls", paste(selected_controls, collapse = ";"), sep = "="),
 	      paste("bw_strategy", as.character(cfg$gtwr_bandwidth_strategy), sep = "="),
 	      paste("bandwidth_scope", as.character(bandwidth_scope), sep = "="),
-	      paste("bandwidth_years", paste(as.character(bandwidth_years), collapse = ";"), sep = "="),
-	      paste("anchor_year", as.character(cfg$gtwr_bw_anchor_year), sep = "="),
+		      paste("bandwidth_periods", paste(as.character(bandwidth_periods), collapse = ";"), sep = "="),
+		      paste("anchor_yq", as.character(value_or(cfg$gtwr_bw_anchor_yq, NA_character_)), sep = "="),
 	      paste("approach", as.character(cfg$gtwr_bw_approach), sep = "="),
       paste("kernel", as.character(cfg$gtwr_kernel), sep = "="),
       paste("adaptive", as.character(isTRUE(cfg$gtwr_adaptive)), sep = "="),
@@ -966,14 +1041,14 @@ write_gtwr_bandwidth_cache <- function(path, signature, payload) {
 build_gtwr_lamda_sensitivity_signature <- function(outcome, focal_var, selected_controls, control_set, lamda, ksi) {
   paste(
     c(
-      "annual_gtwr_lamda_sensitivity_cache_v2",
+      "quarterly_gtwr_lamda_sensitivity_cache_v2",
       paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
       paste("outcome", outcome, sep = "="),
       paste("focal_var", focal_var, sep = "="),
       paste("control_set", as.character(control_set), sep = "="),
       paste("controls", paste(selected_controls, collapse = ";"), sep = "="),
       paste("bw_strategy", as.character(cfg$gtwr_bandwidth_strategy), sep = "="),
-      paste("bw_anchor_year", as.character(cfg$gtwr_bw_anchor_year), sep = "="),
+      paste("bw_anchor_yq", as.character(value_or(cfg$gtwr_bw_anchor_yq, NA_character_)), sep = "="),
       paste("bw_approach", as.character(cfg$gtwr_bw_approach), sep = "="),
       paste("fallback_st_bw", as.character(cfg$gtwr_st_bw), sep = "="),
       paste("kernel", as.character(cfg$gtwr_kernel), sep = "="),
@@ -1030,7 +1105,7 @@ write_gtwr_lamda_sensitivity_cache <- function(path, signature, payload) {
 build_gtwr_bandwidth_sensitivity_signature <- function(outcome, focal_var, selected_controls, control_set, st_bw, baseline_st_bw, lamda, ksi) {
   paste(
     c(
-      "annual_gtwr_bandwidth_sensitivity_cache_v1",
+      "quarterly_gtwr_bandwidth_sensitivity_cache_v1",
       paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
       paste("outcome", outcome, sep = "="),
       paste("focal_var", focal_var, sep = "="),
@@ -1120,18 +1195,18 @@ resolve_gtwr_st_bw <- function(d_fit,
 	    return(list(st_bw = fallback_st_bw, bw_source = "fixed_env_or_default", bw_raw = NA_real_, bw_obs_n = NA_integer_))
 	  }
 
-	  if (identical(strategy, "anchor_year_bw_gtwr")) {
-	    anchor_year <- suppressWarnings(as.integer(cfg$gtwr_bw_anchor_year[[1]]))
-	    bw_idx <- which(d_fit$year == anchor_year)
+	  if (identical(strategy, "anchor_quarter_bw_gtwr")) {
+	    anchor_yq <- as.character(value_or(cfg$gtwr_bw_anchor_yq, NA_character_)[[1]])
+	    bw_idx <- which(as.character(d_fit$yq) == anchor_yq)
 	    d_bw <- d_fit[bw_idx, , drop = FALSE]
 	    st_dmat_bw <- if (!is.null(st_dmat) && length(bw_idx) > 0L) st_dmat[bw_idx, bw_idx, drop = FALSE] else NULL
-	    bandwidth_scope <- sprintf("anchor_year_%s", anchor_year)
-	    bandwidth_years <- anchor_year
+	    bandwidth_scope <- sprintf("anchor_quarter_%s", anchor_yq)
+	    bandwidth_periods <- anchor_yq
 	  } else {
 	    d_bw <- d_fit
 	    st_dmat_bw <- st_dmat
 	    bandwidth_scope <- "full_panel"
-	    bandwidth_years <- sort(unique(suppressWarnings(as.integer(d_fit$year))))
+	    bandwidth_periods <- sort(unique(as.character(d_fit$yq)))
 	  }
 	  min_bw_obs <- max(30L, length(rhs_vars) + 3L)
 	  if (nrow(d_bw) < min_bw_obs) {
@@ -1155,7 +1230,7 @@ resolve_gtwr_st_bw <- function(d_fit,
 	    selected_controls = selected_controls,
 	    control_set = control_set,
 	    bandwidth_scope = bandwidth_scope,
-	    bandwidth_years = bandwidth_years,
+	    bandwidth_periods = bandwidth_periods,
     lamda = lamda,
     ksi = ksi,
     cache_context = cache_context
@@ -1223,9 +1298,9 @@ resolve_gtwr_st_bw <- function(d_fit,
 	      st_bw = st_bw,
 	      bw_raw = bw_raw_num,
 	      bw_source = sprintf("bw.gtwr_%s_search", bandwidth_scope),
-	      bandwidth_strategy = strategy,
-	      bandwidth_scope = bandwidth_scope,
-	      bandwidth_years = bandwidth_years,
+		      bandwidth_strategy = strategy,
+		      bandwidth_scope = bandwidth_scope,
+		      bandwidth_periods = bandwidth_periods,
 	      approach = cfg$gtwr_bw_approach,
       lamda = lamda,
       ksi = ksi,
@@ -1293,8 +1368,8 @@ build_gtwr_lamda_sensitivity_deferred_row <- function(outcome,
                                                        ksi,
                                                        n_obs_fit,
                                                        n_units,
-                                                       sample_min_year,
-                                                       sample_max_year,
+                                         sample_min_yq = NA_character_,
+                                         sample_max_yq = NA_character_,
                                                        st_bw,
                                                        bw_source,
                                                        bw_obs_n,
@@ -1316,10 +1391,10 @@ build_gtwr_lamda_sensitivity_deferred_row <- function(outcome,
         suppressWarnings(as.numeric(cfg$gtwr_lamda)),
         tolerance = 1e-12
       )),
-      target_year = suppressWarnings(as.integer(sample_max_year)),
-      earliest_year = suppressWarnings(as.integer(sample_min_year)),
-      latest_year = suppressWarnings(as.integer(sample_max_year)),
-      window_scope = "annual_full_window",
+      target_yq = as.character(sample_max_yq),
+      earliest_yq = as.character(sample_min_yq),
+      latest_yq = as.character(sample_max_yq),
+      window_scope = "quarterly_full_window",
       n_locations = as.integer(n_units),
       n_valid = 0L,
       n_obs_fit = as.integer(n_obs_fit),
@@ -1392,9 +1467,9 @@ build_gtwr_lamda_baseline_rows <- function(summary_tbl) {
       baseline_lamda = suppressWarnings(as.numeric(cfg$gtwr_lamda)),
       ksi = suppressWarnings(as.numeric(cfg$gtwr_ksi)),
       is_baseline_lamda = TRUE,
-      target_year,
-      earliest_year,
-      latest_year,
+      target_yq = if ("target_yq" %in% names(summary_tbl)) .data$target_yq else NA_character_,
+      earliest_yq = if ("earliest_yq" %in% names(summary_tbl)) .data$earliest_yq else NA_character_,
+      latest_yq = if ("latest_yq" %in% names(summary_tbl)) .data$latest_yq else NA_character_,
       window_scope,
       n_locations,
       n_valid,
@@ -1443,8 +1518,8 @@ build_gtwr_bandwidth_sensitivity_deferred_row <- function(outcome,
                                                           ksi,
                                                           n_obs_fit,
                                                           n_units,
-                                                          sample_min_year,
-                                                          sample_max_year,
+                                         sample_min_yq = NA_character_,
+                                         sample_max_yq = NA_character_,
                                                           bw_source,
                                                           bw_obs_n,
                                                           status,
@@ -1462,10 +1537,10 @@ build_gtwr_bandwidth_sensitivity_deferred_row <- function(outcome,
       is_baseline_st_bw = isTRUE(suppressWarnings(as.integer(st_bw)) == suppressWarnings(as.integer(baseline_st_bw))),
       lamda = suppressWarnings(as.numeric(lamda)),
       ksi = suppressWarnings(as.numeric(ksi)),
-      target_year = suppressWarnings(as.integer(sample_max_year)),
-      earliest_year = suppressWarnings(as.integer(sample_min_year)),
-      latest_year = suppressWarnings(as.integer(sample_max_year)),
-      window_scope = "annual_full_window",
+      target_yq = as.character(sample_max_yq),
+      earliest_yq = as.character(sample_min_yq),
+      latest_yq = as.character(sample_max_yq),
+      window_scope = "quarterly_full_window",
       n_locations = as.integer(n_units),
       n_valid = 0L,
       n_obs_fit = as.integer(n_obs_fit),
@@ -1492,9 +1567,9 @@ build_gtwr_bandwidth_baseline_rows <- function(summary_tbl) {
       is_baseline_st_bw = TRUE,
       lamda = suppressWarnings(as.numeric(cfg$gtwr_lamda)),
       ksi = suppressWarnings(as.numeric(cfg$gtwr_ksi)),
-      target_year,
-      earliest_year,
-      latest_year,
+      target_yq = if ("target_yq" %in% names(summary_tbl)) .data$target_yq else NA_character_,
+      earliest_yq = if ("earliest_yq" %in% names(summary_tbl)) .data$earliest_yq else NA_character_,
+      latest_yq = if ("latest_yq" %in% names(summary_tbl)) .data$latest_yq else NA_character_,
       window_scope,
       n_locations,
       n_valid,
@@ -1551,12 +1626,12 @@ build_gtwr_bandwidth_sensitivity_row_from_payload <- function(payload,
       ksi = cfg$gtwr_ksi,
       n_obs_fit = 0L,
       n_units = 0L,
-      sample_min_year = NA_integer_,
-      sample_max_year = NA_integer_,
+      sample_min_yq = NA_character_,
+      sample_max_yq = NA_character_,
       bw_source = "not_estimated",
       bw_obs_n = NA_integer_,
       status = "not_estimated",
-      message = "annual_gtwr_bandwidth_sensitivity_deferred: invalid GTWR payload"
+      message = "quarterly_gtwr_bandwidth_sensitivity_deferred: invalid GTWR payload"
     ))
   }
 
@@ -1588,9 +1663,9 @@ build_gtwr_bandwidth_sensitivity_row_from_payload <- function(payload,
       is_baseline_st_bw = isTRUE(suppressWarnings(as.integer(round(summary$st_bw[[1]]))) == suppressWarnings(as.integer(baseline_st_bw))),
       lamda = suppressWarnings(as.numeric(cfg$gtwr_lamda)),
       ksi = suppressWarnings(as.numeric(cfg$gtwr_ksi)),
-      target_year = suppressWarnings(as.integer(summary$target_year[[1]])),
-      earliest_year = suppressWarnings(as.integer(summary$earliest_year[[1]])),
-      latest_year = suppressWarnings(as.integer(summary$latest_year[[1]])),
+      target_yq = if ("target_yq" %in% names(summary)) as.character(summary$target_yq[[1]]) else NA_character_,
+      earliest_yq = if ("earliest_yq" %in% names(summary)) as.character(summary$earliest_yq[[1]]) else NA_character_,
+      latest_yq = if ("latest_yq" %in% names(summary)) as.character(summary$latest_yq[[1]]) else NA_character_,
       window_scope = as.character(summary$window_scope[[1]]),
       n_locations = suppressWarnings(as.integer(summary$n_locations[[1]])),
       n_valid = if (is.finite(n_valid)) n_valid else 0L,
@@ -1639,20 +1714,21 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
                                             baseline_latest) {
   start_time <- Sys.time()
   rhs_vars <- unique(c(focal_var, selected_controls))
-  vars <- unique(c("adm_cd", "year", "time_id", "x", "y", outcome, rhs_vars))
+  vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", "time_id", "x", "y", outcome, rhs_vars))
   d_fit <- panel_xy |>
     dplyr::select(dplyr::all_of(vars)) |>
     dplyr::mutate(
       dplyr::across(dplyr::all_of(c(outcome, rhs_vars, "x", "y")), ~ suppressWarnings(as.numeric(.x)))
     ) |>
     tidyr::drop_na() |>
-    dplyr::arrange(.data$year, .data$adm_cd)
+    dplyr::arrange(.data$time_id, .data$adm_cd)
 
+  period_meta <- gtwr_period_meta(d_fit)
   n_units <- dplyr::n_distinct(d_fit$adm_cd)
-  n_periods <- dplyr::n_distinct(d_fit$year)
+  n_periods <- period_meta$n_periods
   n_obs_fit <- nrow(d_fit)
-  sample_min_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(min(d_fit$year, na.rm = TRUE))) else NA_integer_
-  sample_max_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(max(d_fit$year, na.rm = TRUE))) else NA_integer_
+  sample_min_yq <- period_meta$earliest_yq
+  sample_max_yq <- period_meta$latest_yq
   min_required_obs <- max(400L, length(rhs_vars) + 30L)
   formula_obj <- stats::reformulate(rhs_vars, response = outcome)
   st_bw <- resolve_fixed_gtwr_st_bw(n_obs_fit, rhs_vars)
@@ -1666,13 +1742,13 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
       ksi = ksi,
       n_obs_fit = n_obs_fit,
       n_units = n_units,
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       st_bw = st_bw,
       bw_source = "not_estimated",
       bw_obs_n = NA_integer_,
       status = "not_estimated",
-      message = "annual_gtwr_lamda_sensitivity_deferred: insufficient complete-case sample",
+      message = "quarterly_gtwr_lamda_sensitivity_deferred: insufficient complete-case sample",
       elapsed_sec = as.numeric(difftime(Sys.time(), start_time, units = "secs"))
     ))
   }
@@ -1734,13 +1810,13 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
       ksi = ksi,
       n_obs_fit = n_obs_fit,
       n_units = n_units,
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       st_bw = st_bw,
       bw_source = bw_source,
       bw_obs_n = bw_obs_n,
       status = "not_estimated",
-      message = sprintf("annual_gtwr_lamda_sensitivity_deferred: GTWR failed (%s)", fit$message),
+      message = sprintf("quarterly_gtwr_lamda_sensitivity_deferred: GTWR failed (%s)", fit$message),
       elapsed_sec = elapsed_sec
     ))
   }
@@ -1755,27 +1831,28 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
       ksi = ksi,
       n_obs_fit = n_obs_fit,
       n_units = n_units,
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       st_bw = st_bw,
       bw_source = bw_source,
       bw_obs_n = bw_obs_n,
       status = "not_estimated",
-      message = "annual_gtwr_lamda_sensitivity_deferred: focal coefficient extraction failed",
+      message = "quarterly_gtwr_lamda_sensitivity_deferred: focal coefficient extraction failed",
       elapsed_sec = elapsed_sec
     ))
   }
 
   focal_coef <- suppressWarnings(as.numeric(sdf[[focal_var]]))
+  period_id <- period_meta$period_id
   latest_beta <- d_fit |>
     dplyr::transmute(
       adm_cd,
       outcome = .env$outcome,
       focal_var = .env$focal_var,
-      year,
+      period_id = .env$period_id,
       estimate = .env$focal_coef
     ) |>
-    dplyr::filter(.data$year == .env$sample_max_year) |>
+    dplyr::filter(.data$period_id == .env$period_meta$latest_period_id) |>
     dplyr::select(adm_cd, outcome, focal_var, estimate)
 
   cn_tbl <- local_cn_for_window(
@@ -1800,13 +1877,13 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
       ksi = ksi,
       n_obs_fit = n_obs_fit,
       n_units = n_units,
-      sample_min_year = sample_min_year,
-      sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
       st_bw = st_bw,
       bw_source = bw_source,
       bw_obs_n = bw_obs_n,
       status = "not_estimated",
-      message = "annual_gtwr_lamda_sensitivity_deferred: no valid latest-year focal coefficients",
+      message = "quarterly_gtwr_lamda_sensitivity_deferred: no valid latest-quarter focal coefficients",
       elapsed_sec = elapsed_sec
     ))
   }
@@ -1829,10 +1906,10 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
         suppressWarnings(as.numeric(cfg$gtwr_lamda)),
         tolerance = 1e-12
       )),
-      target_year = as.integer(sample_max_year),
-      earliest_year = as.integer(sample_min_year),
-      latest_year = as.integer(sample_max_year),
-      window_scope = "annual_full_window",
+      target_yq = as.character(sample_max_yq),
+      earliest_yq = as.character(sample_min_yq),
+      latest_yq = as.character(sample_max_yq),
+      window_scope = "quarterly_full_window",
       n_locations = as.integer(n_units),
       n_valid = beta_stats$n_valid,
       n_obs_fit = as.integer(n_obs_fit),
@@ -1888,14 +1965,13 @@ run_gtwr_lamda_sensitivity_spec_safe <- function(panel_xy,
       baseline_latest = baseline_latest
     ),
     error = function(e) {
-      vars <- unique(c("adm_cd", "year", outcome, focal_var, selected_controls))
+      vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", "time_id", outcome, focal_var, selected_controls))
       d_fit <- panel_xy |>
         dplyr::select(dplyr::all_of(intersect(vars, names(panel_xy)))) |>
         tidyr::drop_na()
       n_obs_fit <- nrow(d_fit)
       n_units <- dplyr::n_distinct(d_fit$adm_cd)
-      sample_min_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(min(d_fit$year, na.rm = TRUE))) else NA_integer_
-      sample_max_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(max(d_fit$year, na.rm = TRUE))) else NA_integer_
+      period_meta <- gtwr_period_meta(d_fit)
       build_gtwr_lamda_sensitivity_deferred_row(
         outcome = outcome,
         focal_var = focal_var,
@@ -1904,13 +1980,13 @@ run_gtwr_lamda_sensitivity_spec_safe <- function(panel_xy,
         ksi = ksi,
         n_obs_fit = n_obs_fit,
         n_units = n_units,
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+        sample_min_yq = period_meta$earliest_yq,
+        sample_max_yq = period_meta$latest_yq,
         st_bw = resolve_fixed_gtwr_st_bw(n_obs_fit, unique(c(focal_var, selected_controls))),
         bw_source = "not_estimated",
         bw_obs_n = NA_integer_,
         status = "not_estimated",
-        message = sprintf("annual_gtwr_lamda_sensitivity_deferred: unexpected runtime error (%s)", e$message)
+        message = sprintf("quarterly_gtwr_lamda_sensitivity_deferred: unexpected runtime error (%s)", e$message)
       )
     }
   )
@@ -1958,20 +2034,21 @@ run_actual_gtwr_spec <- function(panel_xy,
                                  bw_cache_dir = NULL) {
   start_time <- Sys.time()
   rhs_vars <- unique(c(focal_var, selected_controls))
-  vars <- unique(c("adm_cd", "year", "time_id", "x", "y", outcome, rhs_vars))
+  vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", "time_id", "x", "y", outcome, rhs_vars))
   d_fit <- panel_xy |>
     dplyr::select(dplyr::all_of(vars)) |>
     dplyr::mutate(
       dplyr::across(dplyr::all_of(c(outcome, rhs_vars, "x", "y")), ~ suppressWarnings(as.numeric(.x)))
     ) |>
     tidyr::drop_na() |>
-    dplyr::arrange(.data$year, .data$adm_cd)
+    dplyr::arrange(.data$time_id, .data$adm_cd)
 
+  period_meta <- gtwr_period_meta(d_fit)
   n_units <- dplyr::n_distinct(d_fit$adm_cd)
-  n_periods <- dplyr::n_distinct(d_fit$year)
+  n_periods <- period_meta$n_periods
   n_obs_fit <- nrow(d_fit)
-  sample_min_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(min(d_fit$year, na.rm = TRUE))) else NA_integer_
-  sample_max_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(max(d_fit$year, na.rm = TRUE))) else NA_integer_
+  sample_min_yq <- period_meta$earliest_yq
+  sample_max_yq <- period_meta$latest_yq
   min_required_obs <- max(400L, length(rhs_vars) + 30L)
   formula_obj <- stats::reformulate(rhs_vars, response = outcome)
   formula_text <- paste(deparse(formula_obj), collapse = " ")
@@ -1984,18 +2061,18 @@ run_actual_gtwr_spec <- function(panel_xy,
   bw_source <- "fixed_env_or_default"
 
   if (n_obs_fit < min_required_obs || n_units < cfg$gtwr_control_min_units || n_periods < cfg$spdm_min_periods) {
-    message <- "annual_gtwr_deferred: insufficient annual complete-case sample for actual GTWR estimation"
+    message <- "quarterly_gtwr_deferred: insufficient quarterly complete-case sample for actual GTWR estimation"
     return(list(
       summary = build_gtwr_deferred_main_row(
         outcome = outcome,
         focal_var = focal_var,
         control_set = control_set,
-        fit_scope = "annual_deferred_insufficient_sample",
+        fit_scope = "quarterly_deferred_insufficient_sample",
         n_obs_fit = n_obs_fit,
         n_units = n_units,
         n_periods = n_periods,
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
         control_origin = gtwr_control_origin_label(),
         bandwidth_origin = "not_estimated",
         message = message,
@@ -2015,14 +2092,14 @@ run_actual_gtwr_spec <- function(panel_xy,
         n_periods = n_periods,
         message = message,
         selected_st_bw = st_bw,
-        fit_scope = "annual_deferred_insufficient_sample",
+        fit_scope = "quarterly_deferred_insufficient_sample",
         bandwidth_origin = "not_estimated"
       ),
       frozen = build_frozen_spec_row(
         outcome = outcome,
         focal_var = focal_var,
         control_set = control_set,
-        fit_scope = "annual_deferred_insufficient_sample",
+        fit_scope = "quarterly_deferred_insufficient_sample",
         formula_text = formula_text,
         selected_controls = selected_controls,
         st_bw = st_bw,
@@ -2059,7 +2136,7 @@ run_actual_gtwr_spec <- function(panel_xy,
     append_log(
       cfg$logs$model_run,
       sprintf(
-        "- GTWR actual fitting started: outcome=%s, focal=%s, controls=%s, n=%d, units=%d, years=%d, st_bw=%s, bw_source=%s",
+        "- GTWR actual fitting started: outcome=%s, focal=%s, controls=%s, n=%d, units=%d, periods=%d, st_bw=%s, bw_source=%s",
         outcome,
         focal_var,
         collapse_chr(selected_controls),
@@ -2099,18 +2176,18 @@ run_actual_gtwr_spec <- function(panel_xy,
 
   elapsed_sec <- as.numeric(difftime(Sys.time(), start_time, units = "secs"))
   if (inherits(fit, "error")) {
-    message <- sprintf("annual_gtwr_deferred: GWmodel::gtwr failed for optional sidecar (%s)", fit$message)
+    message <- sprintf("quarterly_gtwr_deferred: GWmodel::gtwr failed for optional sidecar (%s)", fit$message)
     return(list(
       summary = build_gtwr_deferred_main_row(
         outcome = outcome,
         focal_var = focal_var,
         control_set = control_set,
-        fit_scope = "annual_deferred_gtwr_error",
+        fit_scope = "quarterly_deferred_gtwr_error",
         n_obs_fit = n_obs_fit,
         n_units = n_units,
         n_periods = n_periods,
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
         control_origin = gtwr_control_origin_label(),
         bandwidth_origin = bw_source,
         message = message,
@@ -2130,14 +2207,14 @@ run_actual_gtwr_spec <- function(panel_xy,
         n_periods = n_periods,
         message = message,
         selected_st_bw = st_bw,
-        fit_scope = "annual_deferred_gtwr_error",
+        fit_scope = "quarterly_deferred_gtwr_error",
         bandwidth_origin = bw_source
       ),
       frozen = build_frozen_spec_row(
         outcome = outcome,
         focal_var = focal_var,
         control_set = control_set,
-        fit_scope = "annual_deferred_gtwr_error",
+        fit_scope = "quarterly_deferred_gtwr_error",
         formula_text = formula_text,
         selected_controls = selected_controls,
         st_bw = st_bw,
@@ -2150,18 +2227,18 @@ run_actual_gtwr_spec <- function(panel_xy,
 
   sdf <- tryCatch(as.data.frame(fit$SDF), error = function(e) NULL)
   if (is.null(sdf) || !focal_var %in% names(sdf) || nrow(sdf) != nrow(d_fit)) {
-    message <- "annual_gtwr_deferred: GTWR fit completed but focal coefficient extraction failed"
+    message <- "quarterly_gtwr_deferred: GTWR fit completed but focal coefficient extraction failed"
     return(list(
       summary = build_gtwr_deferred_main_row(
         outcome = outcome,
         focal_var = focal_var,
         control_set = control_set,
-        fit_scope = "annual_deferred_gtwr_extract_error",
+        fit_scope = "quarterly_deferred_gtwr_extract_error",
         n_obs_fit = n_obs_fit,
         n_units = n_units,
         n_periods = n_periods,
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+      sample_min_yq = sample_min_yq,
+      sample_max_yq = sample_max_yq,
         control_origin = gtwr_control_origin_label(),
         bandwidth_origin = bw_source,
         message = message,
@@ -2181,14 +2258,14 @@ run_actual_gtwr_spec <- function(panel_xy,
         n_periods = n_periods,
         message = message,
         selected_st_bw = st_bw,
-        fit_scope = "annual_deferred_gtwr_extract_error",
+        fit_scope = "quarterly_deferred_gtwr_extract_error",
         bandwidth_origin = bw_source
       ),
       frozen = build_frozen_spec_row(
         outcome = outcome,
         focal_var = focal_var,
         control_set = control_set,
-        fit_scope = "annual_deferred_gtwr_extract_error",
+        fit_scope = "quarterly_deferred_gtwr_extract_error",
         formula_text = formula_text,
         selected_controls = selected_controls,
         st_bw = st_bw,
@@ -2200,25 +2277,29 @@ run_actual_gtwr_spec <- function(panel_xy,
   }
 
   focal_coef <- suppressWarnings(as.numeric(sdf[[focal_var]]))
+  period_id <- period_meta$period_id
   beta_panel <- d_fit |>
     dplyr::transmute(
       adm_cd,
       year,
+      quarter,
+      yq,
+      quarter_index,
       time_id,
       outcome = .env$outcome,
       focal_var = .env$focal_var,
       estimate = .env$focal_coef,
       estimate_type = "local_beta",
-      window_scope = "annual_full_window",
+      window_scope = "quarterly_full_window",
       status = "success",
       message = "actual_gtwr_estimated",
       n_obs = as.integer(n_obs_fit),
       n_eff = as.integer(st_bw),
-      target_year = as.integer(sample_max_year),
+      target_yq = as.character(sample_max_yq),
       method = "GWmodel::gtwr",
       control_set = control_set,
-      fit_scope = "annual_actual",
-      recent_year_n = as.integer(n_periods),
+      fit_scope = "quarterly_actual",
+      recent_period_n = as.integer(n_periods),
       location_frac = 1,
       location_n = as.integer(n_units),
       bw_obs_n = as.integer(bw_obs_n),
@@ -2236,31 +2317,31 @@ run_actual_gtwr_spec <- function(panel_xy,
   local_tbl <- beta_panel |>
     dplyr::group_by(adm_cd, outcome, focal_var) |>
     dplyr::summarise(
-      earliest_estimate = pick_year_value(estimate, year, sample_min_year),
-      latest_estimate = pick_year_value(estimate, year, sample_max_year),
+      earliest_estimate = pick_period_value(estimate, time_id, .env$period_meta$earliest_period_id),
+      latest_estimate = pick_period_value(estimate, time_id, .env$period_meta$latest_period_id),
       .groups = "drop"
 	    ) |>
 	    dplyr::mutate(
 	      estimate = .data$latest_estimate,
 	      estimate_type = "latest",
-	      earliest_year = as.integer(sample_min_year),
-	      latest_year = as.integer(sample_max_year),
-	      window_scope = "annual_full_window",
+	      earliest_yq = as.character(sample_min_yq),
+	      latest_yq = as.character(sample_max_yq),
+	      window_scope = "quarterly_full_window",
 	      status = dplyr::case_when(
 	        is.finite(.data$latest_estimate) ~ "success",
 	        TRUE ~ "missing_latest_estimate"
 	      ),
 	      message = dplyr::case_when(
 	        .data$status == "success" ~ "actual_gtwr_estimated",
-	        TRUE ~ "actual_gtwr_estimated_but_latest_year_coefficient_missing"
+	        TRUE ~ "actual_gtwr_estimated_but_latest_quarter_coefficient_missing"
 	      ),
 	      n_obs = as.integer(n_obs_fit),
       n_eff = as.integer(st_bw),
-      target_year = as.integer(sample_max_year),
+      target_yq = as.character(sample_max_yq),
       method = "GWmodel::gtwr",
       control_set = control_set,
-      fit_scope = "annual_actual",
-      recent_year_n = as.integer(n_periods),
+      fit_scope = "quarterly_actual",
+      recent_period_n = as.integer(n_periods),
       location_frac = 1,
       location_n = as.integer(n_units),
       bw_obs_n = as.integer(bw_obs_n),
@@ -2309,11 +2390,11 @@ run_actual_gtwr_spec <- function(panel_xy,
       outcome = outcome,
       focal_var = focal_var,
       exposure = focal_var,
-      target_year = as.integer(sample_max_year),
+      target_yq = as.character(sample_max_yq),
       estimate_type = "latest",
-      earliest_year = as.integer(sample_min_year),
-      latest_year = as.integer(sample_max_year),
-      window_scope = "annual_full_window",
+      earliest_yq = as.character(sample_min_yq),
+      latest_yq = as.character(sample_max_yq),
+      window_scope = "quarterly_full_window",
       n_locations = as.integer(n_units),
       n_valid = beta_stats$n_valid,
       mean_beta = beta_stats$mean_beta,
@@ -2335,8 +2416,8 @@ run_actual_gtwr_spec <- function(panel_xy,
 	      latest_coverage_share = latest_coverage_share,
 	      max_local_cn_gtwr = if (any(is.finite(cn_vals))) max(cn_vals[is.finite(cn_vals)]) else NA_real_,
       control_set = control_set,
-      fit_scope = "annual_actual",
-      recent_year_n = as.integer(n_periods),
+      fit_scope = "quarterly_actual",
+      recent_period_n = as.integer(n_periods),
       location_frac = 1,
       location_n = as.integer(n_units),
       n_obs_fit = as.integer(n_obs_fit),
@@ -2369,8 +2450,8 @@ run_actual_gtwr_spec <- function(panel_xy,
       retention_floor = cfg$gtwr_control_min_sample_retention,
       selection_status = "success",
       selection_strategy = gtwr_control_selection_label(),
-      fit_scope = "annual_actual",
-      recent_year_n = as.integer(n_periods),
+      fit_scope = "quarterly_actual",
+      recent_period_n = as.integer(n_periods),
       location_frac = 1,
       location_n = as.integer(n_units),
       bw_obs_n = as.integer(bw_obs_n),
@@ -2387,7 +2468,7 @@ run_actual_gtwr_spec <- function(panel_xy,
     outcome = outcome,
     focal_var = focal_var,
     control_set = control_set,
-    fit_scope = "annual_actual",
+    fit_scope = "quarterly_actual",
     formula_text = formula_text,
     selected_controls = selected_controls,
     st_bw = st_bw,
@@ -2429,22 +2510,21 @@ run_actual_gtwr_spec_safe <- function(panel_xy,
       bw_cache_dir = bw_cache_dir
     ),
     error = function(e) {
-      vars <- unique(c("adm_cd", "year", outcome, focal_var, selected_controls))
+      vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", "time_id", outcome, focal_var, selected_controls))
       d_fit <- panel_xy |>
         dplyr::select(dplyr::all_of(intersect(vars, names(panel_xy)))) |>
         tidyr::drop_na()
       n_units <- dplyr::n_distinct(d_fit$adm_cd)
-      n_periods <- dplyr::n_distinct(d_fit$year)
+      period_meta <- gtwr_period_meta(d_fit)
+      n_periods <- period_meta$n_periods
       n_obs_fit <- nrow(d_fit)
-      sample_min_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(min(d_fit$year, na.rm = TRUE))) else NA_integer_
-      sample_max_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(max(d_fit$year, na.rm = TRUE))) else NA_integer_
       st_bw <- if (is.null(st_bw_override)) {
         resolve_fixed_gtwr_st_bw(n_obs_fit, unique(c(focal_var, selected_controls)))
       } else {
         clamp_gtwr_st_bw(st_bw_override, n_obs_fit, unique(c(focal_var, selected_controls)))
       }
       formula_text <- paste(deparse(stats::reformulate(unique(c(focal_var, selected_controls)), response = outcome)), collapse = " ")
-      message <- sprintf("annual_gtwr_deferred: unexpected optional GTWR export/runtime error (%s)", e$message)
+      message <- sprintf("quarterly_gtwr_deferred: unexpected optional GTWR export/runtime error (%s)", e$message)
       bandwidth_origin <- if (is.null(bw_source_override)) "fixed_env_or_default" else as.character(bw_source_override[[1]])
 
       list(
@@ -2452,12 +2532,12 @@ run_actual_gtwr_spec_safe <- function(panel_xy,
           outcome = outcome,
           focal_var = focal_var,
           control_set = control_set,
-          fit_scope = "annual_deferred_unexpected_error",
+          fit_scope = "quarterly_deferred_unexpected_error",
           n_obs_fit = n_obs_fit,
           n_units = n_units,
           n_periods = n_periods,
-          sample_min_year = sample_min_year,
-          sample_max_year = sample_max_year,
+        sample_min_yq = period_meta$earliest_yq,
+        sample_max_yq = period_meta$latest_yq,
           control_origin = gtwr_control_origin_label(),
           bandwidth_origin = bandwidth_origin,
           message = message,
@@ -2476,14 +2556,14 @@ run_actual_gtwr_spec_safe <- function(panel_xy,
           n_periods = n_periods,
           message = message,
           selected_st_bw = st_bw,
-          fit_scope = "annual_deferred_unexpected_error",
+          fit_scope = "quarterly_deferred_unexpected_error",
           bandwidth_origin = bandwidth_origin
         ),
         frozen = build_frozen_spec_row(
           outcome = outcome,
           focal_var = focal_var,
           control_set = control_set,
-          fit_scope = "annual_deferred_unexpected_error",
+          fit_scope = "quarterly_deferred_unexpected_error",
           formula_text = formula_text,
           selected_controls = selected_controls,
           st_bw = st_bw,
@@ -2508,7 +2588,7 @@ run_gtwr_bandwidth_sensitivity_spec_safe <- function(panel_xy,
   tryCatch(
     {
       rhs_vars <- unique(c(focal_var, selected_controls))
-      vars <- unique(c("adm_cd", "year", "time_id", "x", "y", outcome, rhs_vars))
+      vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", "time_id", "x", "y", outcome, rhs_vars))
       d_fit <- panel_xy |>
         dplyr::select(dplyr::all_of(vars)) |>
         dplyr::mutate(
@@ -2538,14 +2618,13 @@ run_gtwr_bandwidth_sensitivity_spec_safe <- function(panel_xy,
       )
     },
     error = function(e) {
-      vars <- unique(c("adm_cd", "year", outcome, focal_var, selected_controls))
+      vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", "time_id", outcome, focal_var, selected_controls))
       d_fit <- panel_xy |>
         dplyr::select(dplyr::all_of(intersect(vars, names(panel_xy)))) |>
         tidyr::drop_na()
       n_obs_fit <- nrow(d_fit)
       n_units <- dplyr::n_distinct(d_fit$adm_cd)
-      sample_min_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(min(d_fit$year, na.rm = TRUE))) else NA_integer_
-      sample_max_year <- if (n_obs_fit > 0L) suppressWarnings(as.integer(max(d_fit$year, na.rm = TRUE))) else NA_integer_
+      period_meta <- gtwr_period_meta(d_fit)
       st_bw_resolved <- clamp_gtwr_st_bw(st_bw, n_obs_fit, unique(c(focal_var, selected_controls)))
       build_gtwr_bandwidth_sensitivity_deferred_row(
         outcome = outcome,
@@ -2557,12 +2636,12 @@ run_gtwr_bandwidth_sensitivity_spec_safe <- function(panel_xy,
         ksi = cfg$gtwr_ksi,
         n_obs_fit = n_obs_fit,
         n_units = n_units,
-        sample_min_year = sample_min_year,
-        sample_max_year = sample_max_year,
+        sample_min_yq = period_meta$earliest_yq,
+        sample_max_yq = period_meta$latest_yq,
         bw_source = "not_estimated",
         bw_obs_n = NA_integer_,
         status = "not_estimated",
-        message = sprintf("annual_gtwr_bandwidth_sensitivity_deferred: unexpected runtime error (%s)", e$message)
+        message = sprintf("quarterly_gtwr_bandwidth_sensitivity_deferred: unexpected runtime error (%s)", e$message)
       )
     }
   )

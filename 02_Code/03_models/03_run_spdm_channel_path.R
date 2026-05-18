@@ -5,7 +5,7 @@
 #             resident aging -> floating aging -> commercial vitality.
 # Author    : Codex
 # Created   : 2026-03-27
-# Status    : ANNUAL_CANONICAL / SPDM channel path model
+# Status    : QUARTERLY_CANONICAL / SPDM channel path model
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, W_queen.rds
 # Outputs   : spdm_channel_models.csv, spdm_channel_impacts.csv,
@@ -153,8 +153,8 @@ channel_empty_path_effects_tbl <- function() {
     n_units = integer(),
     n_periods = integer(),
     n_obs = integer(),
-    sample_min_year = integer(),
-    sample_max_year = integer(),
+    sample_min_yq = character(),
+    sample_max_yq = character(),
     model_family = character(),
     w_type = character(),
     inference_method = character(),
@@ -198,8 +198,8 @@ channel_empty_diagnostics_tbl <- function() {
     n_units = integer(),
     n_periods = integer(),
     n_obs = integer(),
-    sample_min_year = integer(),
-    sample_max_year = integer(),
+    sample_min_yq = character(),
+    sample_max_yq = character(),
     selected_controls = character(),
     spatial_lagged_terms = character(),
     n_wx_terms = integer(),
@@ -228,7 +228,7 @@ empty_channel_outputs <- function(message = NA_character_) {
 }
 
 assess_path_dims <- function(data, w_ids) {
-  assess_spdm_balanced_dims(data, w_ids, required_years = spdm_required_years())
+  assess_spdm_balanced_dims(data, w_ids, required_periods = spdm_required_periods())
 }
 
 choose_controls_for_path <- function(panel, outcome, exposure, mediator, control_pool, w_ids) {
@@ -237,7 +237,7 @@ choose_controls_for_path <- function(panel, outcome, exposure, mediator, control
   selected <- character()
   for (ctrl in control_pool) {
     trial <- c(selected, ctrl)
-    vars <- unique(c("adm_cd", "year", outcome, exposure, mediator, trial))
+    vars <- unique(c("adm_cd", "year", "quarter", "yq", outcome, exposure, mediator, trial))
     d_try <- panel |>
       dplyr::select(dplyr::all_of(vars)) |>
       tidyr::drop_na()
@@ -248,7 +248,7 @@ choose_controls_for_path <- function(panel, outcome, exposure, mediator, control
 }
 
 prepare_path_sample <- function(panel, outcome, exposure, mediator, selected_controls, lw, w_ids) {
-  needed <- unique(c("adm_cd", "year", outcome, exposure, mediator, selected_controls))
+  needed <- unique(c("adm_cd", "year", "quarter", "yq", outcome, exposure, mediator, selected_controls))
   missing_vars <- setdiff(needed, names(panel))
   if (length(missing_vars) > 0L) {
     return(list(status = "failed", message = paste("missing vars:", paste(missing_vars, collapse = ", "))))
@@ -278,13 +278,15 @@ prepare_path_sample <- function(panel, outcome, exposure, mediator, selected_con
     ))
   }
 
-  year_levels <- spdm_required_years()
+  period_levels <- spdm_required_periods()
   pdat <- d_try |>
     dplyr::filter(adm_cd %in% keep_ids) |>
     dplyr::mutate(
       adm_cd = factor(adm_cd, levels = keep_ids),
       year = as.integer(year),
-      time_id = as.integer(factor(year, levels = year_levels))
+      quarter = as.integer(quarter),
+      yq = as.character(yq),
+      time_id = as.integer(factor(yq, levels = period_levels))
     ) |>
     dplyr::arrange(adm_cd, time_id)
 
@@ -296,8 +298,8 @@ prepare_path_sample <- function(panel, outcome, exposure, mediator, selected_con
     n_units = as.integer(dplyr::n_distinct(pdat$adm_cd)),
     n_periods = as.integer(dplyr::n_distinct(pdat$time_id)),
     n_obs = as.integer(nrow(pdat)),
-    sample_min_year = suppressWarnings(as.integer(min(pdat$year, na.rm = TRUE))),
-    sample_max_year = suppressWarnings(as.integer(max(pdat$year, na.rm = TRUE)))
+    sample_min_yq = as.character(min(pdat$yq, na.rm = TRUE)),
+    sample_max_yq = as.character(max(pdat$yq, na.rm = TRUE))
   )
 }
 
@@ -356,8 +358,8 @@ extract_channel_diag <- function(spec_id, outcome, equation, path, exposure, med
       n_units = prep$n_units,
       n_periods = prep$n_periods,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       selected_controls = collapse_chr(prep$selected_controls),
       spatial_lagged_terms = collapse_chr(wx_terms),
       n_wx_terms = length(wx_terms),
@@ -748,8 +750,8 @@ build_path_effect_rows <- function(spec_id, outcome, exposure, mediator, a_row, 
         n_units = suppressWarnings(as.integer(a_row$n_units[[1]])),
         n_periods = suppressWarnings(as.integer(a_row$n_periods[[1]])),
         n_obs = suppressWarnings(as.integer(a_row$n_obs[[1]])),
-        sample_min_year = suppressWarnings(as.integer(a_row$sample_min_year[[1]])),
-        sample_max_year = suppressWarnings(as.integer(a_row$sample_max_year[[1]])),
+        sample_min_yq = as.character(a_row$sample_min_yq[[1]]),
+        sample_max_yq = as.character(a_row$sample_max_yq[[1]]),
         model_family = "sdm",
         w_type = w_type_main,
         inference_method = inference_method,
@@ -838,8 +840,8 @@ run_path_spec <- function(spec_id, outcome, exposure, mediator, panel, lw, w_ids
       n_periods = prep$n_periods,
       n_units = prep$n_units,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "sdm",
       w_type = w_type_main,
       sim_R = impact_sim_R,
@@ -859,8 +861,8 @@ run_path_spec <- function(spec_id, outcome, exposure, mediator, panel, lw, w_ids
       n_periods = prep$n_periods,
       n_units = prep$n_units,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "sdm",
       w_type = w_type_main,
       sim_R = impact_sim_R,
@@ -880,8 +882,8 @@ run_path_spec <- function(spec_id, outcome, exposure, mediator, panel, lw, w_ids
       n_periods = prep$n_periods,
       n_units = prep$n_units,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "sdm",
       w_type = w_type_main,
       sim_R = impact_sim_R,
@@ -901,8 +903,8 @@ run_path_spec <- function(spec_id, outcome, exposure, mediator, panel, lw, w_ids
       n_periods = prep$n_periods,
       n_units = prep$n_units,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "sdm",
       w_type = w_type_main,
       sim_R = impact_sim_R,
@@ -929,8 +931,8 @@ run_path_spec <- function(spec_id, outcome, exposure, mediator, panel, lw, w_ids
       n_units = prep$n_units,
       n_periods = prep$n_periods,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "sdm",
       w_type = w_type_main,
       message = prep$message
@@ -945,8 +947,8 @@ run_path_spec <- function(spec_id, outcome, exposure, mediator, panel, lw, w_ids
       n_units = prep$n_units,
       n_periods = prep$n_periods,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "sdm",
       w_type = w_type_main,
       message = prep$message
@@ -961,8 +963,8 @@ run_path_spec <- function(spec_id, outcome, exposure, mediator, panel, lw, w_ids
       n_units = prep$n_units,
       n_periods = prep$n_periods,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "sdm",
       w_type = w_type_main,
       message = prep$message

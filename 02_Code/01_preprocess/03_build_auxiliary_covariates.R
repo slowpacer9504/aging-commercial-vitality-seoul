@@ -1,19 +1,19 @@
 #==============================================================================
 # Script    : 03_build_auxiliary_covariates.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Build annual and static auxiliary covariates aligned to
-#             `adm_cd-year` so the annual panel can attach structural controls
+# Purpose   : Build quarterly and static auxiliary covariates aligned to
+#             `adm_cd-yq` so the quarterly panel can attach structural controls
 #             without re-reading raw spatial sources.
 # Author    : Codex
 # Created   : 2026-02-28
 # Type      : panel_building
-# Inputs    : seoul_year_base.parquet plus raw land, park, transit, medical,
+# Inputs    : seoul_quarter_base.parquet plus raw land, park, transit, medical,
 #             mall, senior-facility, and walk-environment sources;
 #             Env: KAKAO_REST_API_KEY when unresolved geocoding requests are
 #             not already covered by cache files
 # Outputs   : aux_covariates.parquet, walk_betweenness_local800_len_v1.parquet,
 #             source-specific pre-aggregation records, and related source QC logs
-# DependsOn : 02_build_seoul_year_base.R
+# DependsOn : 02_build_seoul_quarter_base.R
 #==============================================================================
 
 #==============================================================================
@@ -21,11 +21,11 @@
 #==============================================================================
 
 # 이 스크립트는 여러 보조 데이터 source를 각각 전처리한 뒤,
-# 연 단위 `aux_covariates`로 묶는 가장 큰 preprocessing branch다.
+# 분기 단위 `aux_covariates`로 묶는 가장 큰 preprocessing branch다.
 # 흐름은 크게 네 단계다.
 # 1) source별 helper 준비
 # 2) source별 pre-aggregation record 생성
-# 3) 연단위 aux_covariates assemble
+# 3) 분기단위 aux_covariates assemble
 # 4) QC와 로그 저장
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
@@ -36,24 +36,23 @@ load_project_packages(extra = c("httr", "jsonlite", "sfnetworks", "tidygraph", "
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 03_build_auxiliary_covariates", timestamp()))
 
-year_base_path <- if (!is.null(cfg$paths$year_base)) {
-  cfg$paths$year_base
-} else {
-  file.path(cfg$dir_analysis, "seoul_year_base.parquet")
+quarter_base_path <- value_or(cfg$paths$quarter_base, file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"))
+
+if (!file.exists(quarter_base_path)) {
+  stop("[ERROR] seoul_quarter_base.parquet is required before building auxiliary covariates", call. = FALSE)
 }
 
-if (!file.exists(year_base_path)) {
-  stop("[ERROR] seoul_year_base.parquet is required before building auxiliary covariates", call. = FALSE)
-}
-
-q <- arrow::read_parquet(year_base_path) |>
+q <- arrow::read_parquet(quarter_base_path) |>
   tibble::as_tibble() |>
   standardize_keys()
-assert_required_cols(q, c("adm_cd", "year"))
+assert_required_cols(q, c("adm_cd", "year", "quarter", "yq", "quarter_index"))
 
-# year_base가 가진 adm_cd-year 조합이 aux branch의 기준 격자다.
-# 어떤 source를 읽든 최종 출력은 이 `base_year`에 맞춰 정렬된다.
+# quarter_base가 가진 adm_cd-yq 조합이 aux branch의 기준 격자다.
+# 어떤 source를 읽든 최종 출력은 이 `base_quarter`에 맞춰 정렬된다.
 years_target <- sort(unique(q$year))
+base_quarter <- q |>
+  dplyr::distinct(adm_cd, year, quarter, yq, quarter_index) |>
+  dplyr::arrange(adm_cd, year, quarter)
 base_year <- q |>
   dplyr::distinct(adm_cd, year) |>
   dplyr::arrange(adm_cd, year)
@@ -1427,7 +1426,7 @@ assign_subway_open_year <- function(df) {
 
 build_subway_station_panel <- function(subway_dir) {
   # 지하철은 현재 station master를 읽은 뒤,
-  # 노선별 개통연도 규칙을 적용해 과거 연도 패널로 확장한다.
+  # 노선별 개통연도 규칙을 적용해 과거 year-source panel로 확장한다.
   subway_file <- resolve_canonical_source_paths("subway_station")
   if (length(subway_file) == 0) {
     return(list(
@@ -4720,7 +4719,7 @@ append_log(cfg$logs$data_qc, "- Building park area static")
 park_static <- build_park_area_static()
 park_year <- expand_static_to_year(park_static, years_target)
 
-append_log(cfg$logs$data_qc, "- Building transit annual panel (latest bus snapshot per year + subway opening rules)")
+append_log(cfg$logs$data_qc, "- Building transit year-source panel (latest bus snapshot per year + subway opening rules)")
 transit_out <- build_transit_panel()
 bus_raw <- transit_out$bus_raw
 bus_year <- transit_out$bus_year
@@ -4750,17 +4749,17 @@ append_log(
   )
 )
 
-append_log(cfg$logs$data_qc, "- Building medical annual panel")
+append_log(cfg$logs$data_qc, "- Building medical year-source panel")
 medical_out <- build_medical_panel()
 medical_raw <- medical_out$raw
 hospital_year <- medical_out$year
 
-append_log(cfg$logs$data_qc, "- Building large-store annual panel")
+append_log(cfg$logs$data_qc, "- Building large-store year-source panel")
 mall_out <- build_mall_panel()
 mall_raw <- mall_out$raw
 mall_year <- mall_out$year
 
-append_log(cfg$logs$data_qc, "- Building apartment registry annual stock panel (point match + approval-year stock)")
+append_log(cfg$logs$data_qc, "- Building apartment registry year-source stock panel (point match + approval-year stock)")
 apartment_out <- build_apartment_registry_panel()
 apartment_raw <- apartment_out$raw
 apartment_year <- apartment_out$year
@@ -4886,9 +4885,10 @@ subway_station_source_year <- if (nrow(subway_station_source_preagg) == 0) {
 transit_source_year <- bus_stop_source_year |>
   dplyr::left_join(subway_station_source_year, by = c("adm_cd", "year"))
 
-# `aux`는 아직 저장 전 객체이고, 여기서 모든 source의 연단위 결과를
-# adm_cd-year 격자에 맞춰 하나로 합친다.
-aux <- base_year |>
+# `aux`는 아직 저장 전 객체이고, 여기서 모든 source의 as-of 결과를
+# adm_cd-yq 격자에 맞춰 하나로 합친다. 연도 정밀도 source는 같은 year의
+# 분기 row에 붙이고 source precision 한계는 QC와 설계 문서에 남긴다.
+aux <- base_quarter |>
   dplyr::left_join(
     land_price_adm |>
       dplyr::select(adm_cd, year, official_land_price),
@@ -4901,7 +4901,7 @@ aux <- base_year |>
   dplyr::left_join(mall_source_year, by = c("adm_cd", "year")) |>
   dplyr::left_join(apartment_source_year, by = c("adm_cd", "year")) |>
   dplyr::left_join(physical_year, by = c("adm_cd", "year")) |>
-  dplyr::arrange(adm_cd, year) |>
+  dplyr::arrange(adm_cd, year, quarter) |>
   dplyr::mutate(
     dplyr::across(
       c(
@@ -4916,6 +4916,8 @@ aux <- base_year |>
       safe_num
     )
   )
+
+validate_panel_keys(aux, c("adm_cd", "yq"))
 
 #==============================================================================
 # 4. Save Output and Coverage Logs
@@ -4937,4 +4939,4 @@ for (v in c(
 }
 
 append_log(cfg$logs$data_qc, "- aux_covariates assembled from current auxiliary source builders")
-append_log(cfg$logs$data_qc, "- source-specific preagg records were re-aggregated into annual auxiliary covariates where applicable")
+append_log(cfg$logs$data_qc, "- source-specific preagg records were aligned to quarterly auxiliary covariates where applicable")

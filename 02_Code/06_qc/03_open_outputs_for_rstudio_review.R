@@ -198,7 +198,7 @@ core_output_inventory <- output_inventory |>
   dplyr::filter(file_name %in% c(
     "seoul_raw_integrated_wide.parquet",
     "seoul_raw_review.parquet",
-    "seoul_year_base.parquet",
+    "seoul_quarter_base.parquet",
     "aux_covariates.parquet",
     "golmok_survival_rate.parquet",
     "walk_betweenness_local800_len_v1.parquet",

@@ -1,11 +1,11 @@
 #==============================================================================
 # Script    : 06_run_gtwr_experiment.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Emit an annual GTWR experiment registry and deferred result
+# Purpose   : Emit a quarterly GTWR experiment registry and deferred result
 #             bundle for manual appendix comparisons.
 # Author    : Codex
 # Created   : 2026-04-22
-# Status    : ANNUAL_APPENDIX / manual sidecar outside canonical workflow
+# Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet
 # Outputs   : gtwr_experiment_registry_*.csv, gtwr_experiment_main_models_*.csv,
@@ -46,7 +46,7 @@ build_variants <- function() {
   if (length(bw_approaches) == 0L) bw_approaches <- "CV"
   lamda_grid <- parse_num_tokens(cfg$gtwr_experiment_lamda_grid, default = 0.05)
   ksi_grid <- parse_num_tokens(cfg$gtwr_experiment_ksi_grid, default = 0)
-  min_st_bw_grid <- parse_num_tokens(cfg$gtwr_experiment_min_st_bw_grid, default = 120)
+  min_st_bw_grid <- parse_num_tokens(cfg$gtwr_experiment_min_st_bw_grid, default = 480)
   control_strategies <- split_tokens(cfg$gtwr_experiment_control_strategies)
   if (length(control_strategies) == 0L) control_strategies <- "baseline"
 
@@ -60,7 +60,7 @@ build_variants <- function() {
     dplyr::mutate(
       control_set_id = cfg$gtwr_control_set_token(cfg$gtwr_control_set),
       use_configured_control_set = TRUE,
-      experiment_id = sprintf("annual_exp_%03d", dplyr::row_number()),
+      experiment_id = sprintf("quarterly_exp_%03d", dplyr::row_number()),
       is_baseline_variant = dplyr::row_number() == 1L
     ) |>
     dplyr::relocate(experiment_id, .before = 1)
@@ -72,10 +72,10 @@ empty_summary_tbl <- function() {
     outcome = character(),
     focal_var = character(),
     exposure = character(),
-    target_year = integer(),
+    target_yq = character(),
     estimate_type = character(),
-    earliest_year = integer(),
-    latest_year = integer(),
+    earliest_yq = character(),
+    latest_yq = character(),
     window_scope = character(),
     n_locations = integer(),
     n_valid = integer(),
@@ -95,7 +95,7 @@ empty_summary_tbl <- function() {
     max_local_vif = numeric(),
     control_set = character(),
     fit_scope = character(),
-    recent_year_n = integer(),
+    recent_period_n = integer(),
     location_frac = numeric(),
     location_n = integer(),
     n_obs_fit = integer(),
@@ -132,18 +132,18 @@ empty_local_tbl <- function() {
     earliest_estimate = numeric(),
     latest_estimate = numeric(),
     estimate_type = character(),
-    earliest_year = integer(),
-    latest_year = integer(),
+    earliest_yq = character(),
+    latest_yq = character(),
     window_scope = character(),
     status = character(),
     message = character(),
     n_obs = integer(),
     n_eff = integer(),
-    target_year = integer(),
+    target_yq = character(),
     method = character(),
     control_set = character(),
     fit_scope = character(),
-    recent_year_n = integer(),
+    recent_period_n = integer(),
     location_frac = numeric(),
     location_n = integer(),
     bw_obs_n = integer(),
@@ -167,6 +167,9 @@ empty_panel_tbl <- function() {
   tibble::tibble(
     adm_cd = character(),
     year = integer(),
+    quarter = integer(),
+    yq = character(),
+    quarter_index = integer(),
     time_id = integer(),
     outcome = character(),
     focal_var = character(),
@@ -177,11 +180,11 @@ empty_panel_tbl <- function() {
     message = character(),
     n_obs = integer(),
     n_eff = integer(),
-    target_year = integer(),
+    target_yq = character(),
     method = character(),
     control_set = character(),
     fit_scope = character(),
-    recent_year_n = integer(),
+    recent_period_n = integer(),
     location_frac = numeric(),
     location_n = integer(),
     bw_obs_n = integer(),
@@ -221,7 +224,7 @@ empty_controls_tbl <- function() {
     selection_strategy = character(),
     control_set = character(),
     fit_scope = character(),
-    recent_year_n = integer(),
+    recent_period_n = integer(),
     location_frac = numeric(),
     location_n = integer(),
     bw_obs_n = integer(),
@@ -253,34 +256,43 @@ summarize_sample <- function(panel, vars) {
     dplyr::select(dplyr::all_of(intersect(vars, names(panel)))) |>
     tidyr::drop_na()
 
+  if ("yq" %in% names(d)) {
+    period_tbl <- d |>
+      dplyr::distinct(yq, quarter_index) |>
+      dplyr::arrange(quarter_index, yq)
+    period_values <- period_tbl$yq
+  } else {
+    period_values <- as.character(sort(unique(d$year)))
+  }
+
   list(
     n_obs_fit = nrow(d),
     n_units = dplyr::n_distinct(d$adm_cd),
-    n_periods = dplyr::n_distinct(d$year),
-    sample_min_year = if (nrow(d) > 0L) suppressWarnings(as.integer(min(d$year, na.rm = TRUE))) else NA_integer_,
-    sample_max_year = if (nrow(d) > 0L) suppressWarnings(as.integer(max(d$year, na.rm = TRUE))) else NA_integer_
+    n_periods = length(period_values),
+    sample_min_yq = if (length(period_values) > 0L) period_values[[1L]] else NA_character_,
+    sample_max_yq = if (length(period_values) > 0L) period_values[[length(period_values)]] else NA_character_
   )
 }
 
 build_message <- function(meta, experiment_id) {
   if (meta$n_obs_fit < 400L || meta$n_units < 30L || meta$n_periods < cfg$spdm_min_periods) {
     sprintf(
-      "annual_gtwr_experiment_deferred: insufficient annual support for %s after contemporaneous complete-case filtering",
+      "quarterly_gtwr_experiment_deferred: insufficient quarterly support for %s after contemporaneous complete-case filtering",
       experiment_id
     )
   } else {
     sprintf(
-      "annual_gtwr_experiment_deferred: %s preserved as manual annual experiment metadata but not estimated",
+      "quarterly_gtwr_experiment_deferred: %s preserved as manual quarterly experiment metadata but not estimated",
       experiment_id
     )
   }
 }
 
 if (!isTRUE(cfg$run_gtwr_experiment_sidecar)) {
-  append_log(cfg$logs$model_run, "- GTWR experiment annual sidecar skipped by run flag")
+  append_log(cfg$logs$model_run, "- GTWR experiment quarterly sidecar skipped by run flag")
 } else {
   if (!file.exists(cfg$paths$panel_main)) {
-    stop("[ERROR] panel_main missing for GTWR experiment annual sidecar.", call. = FALSE)
+    stop("[ERROR] panel_main missing for GTWR experiment quarterly sidecar.", call. = FALSE)
   }
 
   control_set <- normalize_control_set_main(cfg$gtwr_control_set)
@@ -306,8 +318,8 @@ if (!isTRUE(cfg$run_gtwr_experiment_sidecar)) {
   registry_tbl <- variants |>
     dplyr::mutate(
       control_set = control_set,
-      status = "annual_deferred",
-      message = "manual annual experiment registry; local estimation not activated"
+      status = "quarterly_deferred",
+      message = "manual quarterly experiment registry; local estimation not activated"
     )
 
   if (length(outcomes) == 0L || length(focal_vars) == 0L || nrow(variants) == 0L) {
@@ -318,7 +330,7 @@ if (!isTRUE(cfg$run_gtwr_experiment_sidecar)) {
     write_csv_safe(empty_controls_tbl(), state_controls_path)
     write_csv_safe(registry_tbl, registry_path)
     write_csv_safe(tibble::tibble(), ranked_path)
-    append_log(cfg$logs$model_run, "- GTWR experiment annual sidecar skipped: missing annual outcomes, resident exposure, or variants")
+    append_log(cfg$logs$model_run, "- GTWR experiment quarterly sidecar skipped: missing quarterly outcomes, resident exposure, or variants")
   } else {
     spec_rows <- tidyr::crossing(
       outcome = outcomes,
@@ -331,7 +343,7 @@ if (!isTRUE(cfg$run_gtwr_experiment_sidecar)) {
       dplyr::rowwise() |>
       dplyr::do({
         spec <- .
-        vars <- unique(c("adm_cd", "year", spec$outcome, spec$focal_var, control_candidates))
+        vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", spec$outcome, spec$focal_var, control_candidates))
         meta <- summarize_sample(panel, vars)
         message <- build_message(meta, spec$experiment_id)
 
@@ -341,22 +353,22 @@ if (!isTRUE(cfg$run_gtwr_experiment_sidecar)) {
             outcome = spec$outcome,
             focal_var = spec$focal_var,
             exposure = spec$focal_var,
-            target_year = meta$sample_max_year,
+            target_yq = meta$sample_max_yq,
             estimate_type = "latest_minus_earliest",
-            earliest_year = meta$sample_min_year,
-            latest_year = meta$sample_max_year,
-            window_scope = "annual_full_window",
+            earliest_yq = meta$sample_min_yq,
+            latest_yq = meta$sample_max_yq,
+            window_scope = "quarterly_full_window",
             n_locations = meta$n_units,
             n_valid = 0L,
             control_set = control_set,
-            fit_scope = "annual_deferred",
-            recent_year_n = meta$n_periods,
+            fit_scope = "quarterly_deferred",
+            recent_period_n = meta$n_periods,
             location_frac = 1,
             location_n = meta$n_units,
             n_obs_fit = meta$n_obs_fit,
-            control_origin = "annual_screened",
+            control_origin = "quarterly_screened",
             bandwidth_origin = "deferred",
-            frozen_spec_status = "annual_deferred",
+            frozen_spec_status = "quarterly_deferred",
             frozen_spec_reason = "manual_appendix_not_estimated",
             status = "not_estimated",
             message = message,
@@ -387,16 +399,16 @@ if (!isTRUE(cfg$run_gtwr_experiment_sidecar)) {
             selected_n_units = meta$n_units,
             retention_ratio = 1,
             retention_floor = 1,
-            selection_status = "annual_deferred",
+            selection_status = "quarterly_deferred",
             selection_strategy = spec$control_strategy,
             control_set = control_set,
-            fit_scope = "annual_deferred",
-            recent_year_n = meta$n_periods,
+            fit_scope = "quarterly_deferred",
+            recent_period_n = meta$n_periods,
             location_frac = 1,
             location_n = meta$n_units,
-            control_origin = "annual_screened",
+            control_origin = "quarterly_screened",
             bandwidth_origin = "deferred",
-            frozen_spec_status = "annual_deferred",
+            frozen_spec_status = "quarterly_deferred",
             frozen_spec_reason = "manual_appendix_not_estimated",
             status = "not_estimated",
             message = message,
@@ -451,7 +463,7 @@ if (!isTRUE(cfg$run_gtwr_experiment_sidecar)) {
     append_log(
       cfg$logs$model_run,
       sprintf(
-        "- GTWR experiment annual sidecar emitted deferred bundle: control_set=%s, specs=%d, variants=%d",
+        "- GTWR experiment quarterly sidecar emitted deferred bundle: control_set=%s, specs=%d, variants=%d",
         control_set,
         nrow(summary_tbl),
         nrow(registry_tbl)

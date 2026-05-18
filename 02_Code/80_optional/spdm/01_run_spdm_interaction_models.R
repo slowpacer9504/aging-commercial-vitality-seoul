@@ -6,7 +6,7 @@
 #             impacts, effect summaries, and selected controls.
 # Author    : Codex
 # Created   : 2026-03-29
-# Status    : ANNUAL_APPENDIX / manual sidecar outside canonical workflow
+# Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, W_queen.rds
 # Outputs   : spdm_interaction_models.csv, spdm_interaction_impacts.csv,
@@ -175,6 +175,7 @@ build_interaction_diag_row <- function(spec_id,
                                        interaction_family,
                                        outcome,
                                        status,
+                                       sample_yq = character(),
                                        sample_year = character(),
                                        sample_covid = numeric(),
                                        n_units = NA_integer_,
@@ -185,9 +186,11 @@ build_interaction_diag_row <- function(spec_id,
                                        covid_period_label = NA_character_,
                                        effect_label_definition = NA_character_,
                                        message = NA_character_) {
+  sample_yq <- as.character(sample_yq)
   sample_year <- as.character(sample_year)
   sample_covid <- suppressWarnings(as.numeric(sample_covid))
-  has_sample <- length(sample_year) > 0L
+  has_yq <- length(sample_yq) > 0L
+  has_year <- length(sample_year) > 0L
 
   tibble::tibble(
     spec_id = spec_id,
@@ -197,12 +200,12 @@ build_interaction_diag_row <- function(spec_id,
     n_units = as.integer(n_units),
     n_periods = as.integer(n_periods),
     n_obs = as.integer(n_obs),
-    sample_min_year = if (has_sample) as.character(min(sample_year, na.rm = TRUE)) else NA_character_,
-    sample_max_year = if (has_sample) as.character(max(sample_year, na.rm = TRUE)) else NA_character_,
-    n_covid_obs = if (has_sample) as.integer(sum(sample_covid == 1, na.rm = TRUE)) else NA_integer_,
-    n_non_covid_obs = if (has_sample) as.integer(sum(sample_covid == 0, na.rm = TRUE)) else NA_integer_,
-    n_pre_covid_obs = if (has_sample) as.integer(sum(sample_covid == 0 & sample_year < cfg$covid_start_year, na.rm = TRUE)) else NA_integer_,
-    n_post_covid_obs = if (has_sample) as.integer(sum(sample_covid == 0 & sample_year > cfg$covid_end_year, na.rm = TRUE)) else NA_integer_,
+    sample_min_yq = if (has_yq) as.character(min(sample_yq, na.rm = TRUE)) else NA_character_,
+    sample_max_yq = if (has_yq) as.character(max(sample_yq, na.rm = TRUE)) else NA_character_,
+    n_covid_obs = if (has_year) as.integer(sum(sample_covid == 1, na.rm = TRUE)) else NA_integer_,
+    n_non_covid_obs = if (has_year) as.integer(sum(sample_covid == 0, na.rm = TRUE)) else NA_integer_,
+    n_pre_covid_obs = if (has_year) as.integer(sum(sample_covid == 0 & sample_year < cfg$covid_start_year, na.rm = TRUE)) else NA_integer_,
+    n_post_covid_obs = if (has_year) as.integer(sum(sample_covid == 0 & sample_year > cfg$covid_end_year, na.rm = TRUE)) else NA_integer_,
     baseline_period_label = as.character(baseline_period_label),
     covid_period_label = as.character(covid_period_label),
     effect_label_definition = as.character(effect_label_definition),
@@ -548,7 +551,7 @@ run_one_spec <- function(spec_id,
   n_obs <- NA_integer_
 
   for (ctrl_try in control_ladder) {
-    vars <- unique(c("adm_cd", "year", "covid_period", outcome, rhs_vars, ctrl_try))
+    vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", "covid_period", outcome, rhs_vars, ctrl_try))
     d_try <- panel |>
       dplyr::select(dplyr::all_of(vars)) |>
       tidyr::drop_na()
@@ -573,11 +576,18 @@ run_one_spec <- function(spec_id,
       next
     }
 
+    yq_levels <- d_try |>
+      dplyr::distinct(yq, quarter_index) |>
+      dplyr::arrange(quarter_index, yq) |>
+      dplyr::pull(yq) |>
+      as.character()
+
     pdat_try <- d_try |>
       dplyr::filter(adm_cd %in% keep_ids) |>
       dplyr::mutate(
         adm_cd = factor(adm_cd, levels = keep_ids),
-        time_id = as.integer(factor(year, levels = sort(unique(year))))
+        yq = as.character(yq),
+        time_id = as.integer(factor(yq, levels = yq_levels))
       ) |>
       dplyr::arrange(adm_cd, time_id)
 
@@ -702,8 +712,8 @@ run_one_spec <- function(spec_id,
       n_periods = n_periods,
       n_units = n_units,
       n_obs = n_obs,
-      sample_min_year = suppressWarnings(as.integer(min(pdat_try$year, na.rm = TRUE))),
-      sample_max_year = suppressWarnings(as.integer(max(pdat_try$year, na.rm = TRUE))),
+      sample_min_yq = as.character(min(pdat_try$yq, na.rm = TRUE)),
+      sample_max_yq = as.character(max(pdat_try$yq, na.rm = TRUE)),
       model_family = "sdm",
       w_type = "queen",
       sim_R = as.integer(value_or(cfg$spdm_impact_sim_R, 1000L)),
@@ -737,6 +747,7 @@ run_one_spec <- function(spec_id,
     interaction_family = interaction_family,
     outcome = outcome,
     status = "success",
+    sample_yq = pdat_try$yq,
     sample_year = pdat_try$year,
     sample_covid = pdat_try$covid_period,
     n_units = n_units,
@@ -788,7 +799,7 @@ empty_summary <- tibble::tibble(
 )
 empty_diag <- tibble::tibble(
   spec_id = character(), interaction_family = character(), outcome = character(), status = character(),
-  n_units = integer(), n_periods = integer(), n_obs = integer(), sample_min_year = character(), sample_max_year = character(),
+  n_units = integer(), n_periods = integer(), n_obs = integer(), sample_min_yq = character(), sample_max_yq = character(),
   n_covid_obs = integer(), n_non_covid_obs = integer(), n_pre_covid_obs = integer(), n_post_covid_obs = integer(),
   baseline_period_label = character(), covid_period_label = character(), effect_label_definition = character(),
   selected_controls = character(), message = character()

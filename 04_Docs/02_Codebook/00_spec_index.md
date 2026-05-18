@@ -1,8 +1,8 @@
 # 연구 스펙 인덱스 (Spec Index)
 
-이 문서는 코딩 시 참조해야 하는 핵심 명세의 허브다. 현재 active contract는 **서울시 행정동 연도 패널(`adm_cd x year`)** 이다.
+이 문서는 코딩 시 참조해야 하는 핵심 명세의 허브다. 현재 active contract는 **서울시 행정동 분기 패널(`adm_cd x yq`)** 이다.
 
-구현 스크립트는 역할별 폴더 구조와 폴더-local 번호 체계를 따른다. 해석해야 할 canonical dataset/key/timing/output naming은 이 codebook이 선언하는 annual contract를 따른다.
+구현 스크립트는 역할별 폴더 구조와 폴더-local 번호 체계를 따른다. 해석해야 할 canonical dataset/key/timing/output naming은 이 codebook이 선언하는 quarterly contract를 따른다.
 
 ## 기준 설계 문서
 
@@ -27,7 +27,7 @@
 ## 빠른 참조 순서
 
 1. 데이터 계층, 출력 위치, QC 로그 확인: `01_data_spec.md`
-2. 변수 정의와 annualization rule 확인: `02_variable_dictionary.md`
+2. 변수 정의와 quarterly publication/as-of rule 확인: `02_variable_dictionary.md`
 3. 조인 키와 harmonization rule 확인: `03_join_harmonization_rules.md`
 4. 모형식, FE, timing, output contract 확인: `04_model_spec.md`
 5. 실제 스크립트 매핑 확인: `99_spec_to_code_map.csv`

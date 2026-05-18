@@ -5,7 +5,7 @@
 #             compact coefficient tables under the shared main-control contract.
 # Author    : Codex
 # Created   : 2026-03-30
-# Status    : ANNUAL_APPENDIX / manual sidecar outside canonical workflow
+# Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : panel_modeling
 # Inputs    : panel_main.parquet, twfe_main_controls_used.csv
 # Outputs   : twfe_channel_models.csv, twfe_channel_controls_used.csv

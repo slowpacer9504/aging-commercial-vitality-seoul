@@ -1,6 +1,6 @@
 # R 코드 스타일 가이드
 
-이 문서는 현재 active annual workflow를 구현하기 위한 프로젝트 전용 R 코드 작성 기준이다. 목적은 세 가지다.
+이 문서는 현재 active quarterly workflow를 구현하기 위한 프로젝트 전용 R 코드 작성 기준이다. 목적은 세 가지다.
 
 - 문서와 코드의 계약을 맞춘다.
 - canonical workflow와 optional/manual surface를 분리한다.
@@ -11,8 +11,8 @@
 아래 원칙은 코드에서 흔들리면 안 된다.
 
 1. 공간 단위는 `2020` 기준 서울시 행정동(`adm_cd`)이다.
-2. active canonical panel은 `2019~2025` 연도 패널이다.
-3. active shared panel의 시간 키는 `year`다.
+2. active canonical panel은 `2019Q1~2025Q4` 분기 패널이다.
+3. active shared panel의 시간 키는 `year`, `quarter`, `yq`, `quarter_index`이며 유일키는 `adm_cd-yq`다.
 4. main exposure는 `age60_resident_share`다.
 5. canonical timing contract는 동시점 `t`다.
 6. 기본 W는 `Queen`이고, `Rook`, `kNN6`, `kNN8`은 robustness다.
@@ -20,14 +20,14 @@
 8. TWFE는 baseline / spatial diagnostic layer다.
 9. SPDM은 main global model이다.
 10. GTWR는 resident-only optional local sidecar다.
-11. 분기 raw는 annualization을 위한 원천으로만 사용하고, active shared panel로 노출하지 않는다.
+11. 분기 raw는 active shared panel의 기본 시간단위로 직접 발행한다. 연도·정적 source는 명시적 as-of 규칙으로 `adm_cd-yq`에 결합한다.
 
 ## 2. 프로젝트 구조 해석
 
 디렉터리 구조는 active와 optional surface가 바로 구분되도록 아래처럼 읽는다.
 
 - `00_setup`: active config and package loading
-- `01_preprocess`: annual panel preprocessing
+- `01_preprocess`: quarterly panel preprocessing
 - `02_esda`: active ESDA and spatial weights
 - `03_models`: canonical TWFE and SPDM models
 - `04_robustness`: SPDM W robustness and supplementary robustness
@@ -42,7 +42,7 @@
 active canonical surface는 아래 순서를 따른다.
 
 - `01_build_adm_region_lookup.R`
-- `02_build_seoul_year_base.R`
+- `02_build_seoul_quarter_base.R`
 - `03_build_auxiliary_covariates.R`
 - `04_build_golmok_survival_rate.R`
 - `05_build_registered_resident_population.R`
@@ -100,9 +100,9 @@ optional/manual script라면 header나 early comment에 그 상태를 분명히 
 - 공간시차: `w_`
 - 종합지수: `vitality_index_*`
 
-활력지수 계산에서 `_z`는 전체 `2019~2025 adm_cd-year` 패널 표본의 평균과 표준편차를 기준으로 하는 pooled z-score를 기본값으로 한다. 연도별 cross-section 표준화가 필요한 보조 분석은 active variable name과 별도 suffix로 분리해야 한다.
+활력지수 계산에서 `_z`는 전체 `2019Q1~2025Q4 adm_cd-yq` 패널 표본의 평균과 표준편차를 기준으로 하는 pooled z-score를 기본값으로 한다. 분기별 cross-section 표준화가 필요한 보조 분석은 active variable name과 별도 suffix로 분리해야 한다.
 
-active shared panel에는 `quarter`, `yq`, 그리고 legacy shift/lead suffix를 남기지 않는다. 분기 raw를 다루더라도 preprocessing 내부 local object에서만 사용하고, annual publication 전에 제거한다.
+active shared panel에는 `year`, `quarter`, `yq`, `quarter_index`를 남긴다. legacy shift/lead suffix와 raw `quarter_code_raw`는 preprocessing 내부 local object에서만 사용하고, quarterly publication 전에 제거한다.
 
 ## 7. 주석 기준
 
@@ -111,8 +111,8 @@ active shared panel에는 `quarter`, `yq`, 그리고 legacy shift/lead suffix를
 반드시 설명해야 하는 지점:
 
 - canonical source selection
-- annualization rule
-- weighted vs unweighted annual aggregation choice
+- quarterly publication / as-of rule
+- weighted vs unweighted quarterly aggregation choice
 - control exclusion rules
 - complete-case sample determination
 - spatial weights construction and W choice
@@ -128,18 +128,18 @@ active shared panel에는 `quarter`, `yq`, 그리고 legacy shift/lead suffix를
 
 ## 8. 전처리 작성 원칙
 
-- `adm_cd-year` 유일키를 가장 먼저 강제한다.
-- additive flow와 level/share를 같은 방식으로 annualize하지 않는다.
-- annual/static auxiliary는 direct join하고, 분기 확장을 재도입하지 않는다.
+- `adm_cd-yq` 유일키를 가장 먼저 강제한다.
+- additive flow와 level/share를 같은 방식으로 집계하지 않는다.
+- annual/static auxiliary는 source precision을 유지한 뒤 quarter-end as-of 규칙으로 결합한다.
 - `panel_merged_base.parquet`는 provenance checkpoint로 유지한다.
-- `panel_main_pre_vitality.parquet`에는 shared annual transform과 동시점 변수만 남긴다.
+- `panel_main_pre_vitality.parquet`에는 shared quarterly transform과 동시점 변수만 남긴다.
 
 ## 9. 모델 작성 원칙
 
 ### TWFE
 
 - baseline model로 취급한다.
-- FE 구조는 `| adm_cd + year`로 고정한다.
+- FE 구조는 `| adm_cd + yq`로 고정한다.
 - residual Moran output을 필수 산출물로 남긴다.
 - outcome과 중복되는 control은 outcome별로 제외한다.
 
@@ -155,21 +155,21 @@ active shared panel에는 `quarter`, `yq`, 그리고 legacy shift/lead suffix를
 ### GTWR
 
 - `RUN_GTWR_MAIN_SIDECAR=TRUE`일 때만 실행한다.
-- annual resident-only local heterogeneity analysis에 한정한다.
+- quarterly resident-only local heterogeneity analysis에 한정한다.
 - `GTWR_CONTROL_SET=lean`을 기본으로 사용하고, extended는 명시적으로 선택할 때만 사용한다.
 - lean control은 `ln_resident_pop`, `ln_official_land_price` 두 개로 고정한다.
 - extended control은 lean control에 `transit_accessibility`를 추가한다.
 - `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만들고, 두 원천 count는 모델 통제변수로 직접 투입하지 않는다.
 - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 남긴다.
-- bandwidth는 main GTWR에서 `GTWR_BANDWIDTH_STRATEGY=fixed`, `GTWR_ST_BW=120`으로 통일한다. `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`인 경우에만 고정 grid `60,90,120,150,180` 민감도를 별도 cache/output으로 실행하고, `bw.gtwr()` 탐색은 명시적 진단 실행에서만 사용한다.
-- main output의 `estimate`는 latest-year local beta이며, delta는 별도 보조 reporting table에서만 계산한다.
+- bandwidth는 main GTWR에서 `GTWR_BANDWIDTH_STRATEGY=fixed`, `GTWR_ST_BW=480`으로 통일한다. `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`인 경우에만 고정 grid `240,360,480,600,720` 민감도를 별도 cache/output으로 실행하고, `bw.gtwr()` 탐색은 명시적 진단 실행에서만 사용한다.
+- main output의 `estimate`는 latest-quarter local beta이며, delta는 별도 보조 reporting table에서만 계산한다.
 - 장시간 실행은 outcome-exposure spec cache를 통해 재개 가능해야 하며, `GTWR_PARALLEL_SPECS`로 worker 수를 제한한다.
 
 ## 10. 로그와 QC
 
 - input missing은 즉시 명확한 에러로 중단한다.
 - optional source missing은 source-dependent artifact를 비우거나 건너뛰고, active run 전체를 실패시키지 않는다.
-- QC는 annual contract 기준으로만 실패를 판정해야 한다.
+- QC는 active quarterly contract 기준으로만 실패를 판정해야 한다. optional/sidecar는 required test plan에서 제외한다.
 ## 11. 문서 변경 규칙
 
 설계 변경이 생기면 최소한 아래 순서를 같이 본다.
@@ -182,4 +182,4 @@ active shared panel에는 `quarter`, `yq`, 그리고 legacy shift/lead suffix를
 6. `run_all.R`
 7. QC / reporting
 
-문서 선행 단계에서는 문서가 먼저 annual final state를 선언할 수 있다. 다만 다음 코드 단계에서 config, preprocess, model, QC를 같은 계약으로 즉시 따라오게 해야 한다.
+문서 선행 단계에서는 문서가 먼저 quarterly final state를 선언할 수 있다. 다만 다음 코드 단계에서 config, preprocess, model, QC를 같은 계약으로 즉시 따라오게 해야 한다.

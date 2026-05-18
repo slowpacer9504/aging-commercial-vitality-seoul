@@ -80,7 +80,7 @@ find_commercial_boundary_shp <- function(boundary_dir) {
 #==============================================================================
 
 load_commercial_boundary <- function(boundary_dir, target_crs = 5179L) {
-  # short-run annual panel과 auxiliary join이 모두 참조하는 기준
+  # short-run quarterly panel과 auxiliary join이 모두 참조하는 기준
   # 행정동 경계를 읽는 canonical loader다.
   # 상권 경계는 이 프로젝트의 최종 분석 단위이므로,
   # 여기서 만든 `adm_cd`가 downstream panel key의 사실상 원점이 된다.

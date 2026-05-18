@@ -58,8 +58,7 @@ standardize_keys <- function(df) {
 }
 
 make_yq <- function(year, quarter) {
-  # raw provenance 단계에서만 year-quarter 문자열이 필요할 때 쓰는 helper다.
-  # active annual panel/QC/reporting contract에서는 이 키를 사용하지 않는다.
+  # active quarterly panel key helper.
   sprintf("%dQ%d", as.integer(year), as.integer(quarter))
 }
 
@@ -68,8 +67,8 @@ make_yq <- function(year, quarter) {
 # 3. Panel Quality Checks
 #==============================================================================
 
-validate_panel_keys <- function(df, keys = c("adm_cd", "year")) {
-  # active canonical panel은 `adm_cd-year` 유일키를 가져야 한다.
+validate_panel_keys <- function(df, keys = c("adm_cd", "yq")) {
+  # active canonical panel은 `adm_cd-yq` 유일키를 가져야 한다.
   # 중복이 있으면 회귀 표본이 조용히 늘어나거나 집계가 틀어질 수 있다.
   assert_required_cols(df, keys)
   dups <- df |>
@@ -83,7 +82,7 @@ validate_panel_keys <- function(df, keys = c("adm_cd", "year")) {
 }
 
 validate_quarter_panel_keys <- function(df, keys = c("adm_cd", "year", "quarter")) {
-  # raw quarterly staging을 점검할 때만 쓰는 별도 helper다.
+  # quarterly staging and active quarterly panel helper.
   validate_panel_keys(df, keys = keys)
 }
 

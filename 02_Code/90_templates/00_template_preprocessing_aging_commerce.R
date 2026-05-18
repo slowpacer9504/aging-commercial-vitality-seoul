@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : 00_template_preprocessing_aging_commerce.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Project-specific template for annual preprocessing, harmonization,
+# Purpose   : Project-specific template for quarterly preprocessing, harmonization,
 #             and panel construction under the 2020 Seoul administrative-dong rule.
 # Author    : <AUTHOR>
 # Created   : 2026-04-22
@@ -15,9 +15,9 @@
 # 0. Setup
 #==============================================================================
 
-# 이 템플릿은 연도 패널 preprocessing 스크립트를 새로 만들 때 따라야 하는
-# 기본 골격을 보여 준다. 핵심 계약은 `adm_cd x year`, contemporaneous annual timing,
-# 그리고 "분기 raw는 annualization까지만 사용하고 active panel에는 남기지 않는다"는 점이다.
+# 이 템플릿은 분기 패널 preprocessing 스크립트를 새로 만들 때 따라야 하는
+# 기본 골격을 보여 준다. 핵심 계약은 `adm_cd x yq`, contemporaneous quarterly timing,
+# 그리고 "분기 raw는 active panel의 기본 시간 단위로 발행한다"는 점이다.
 
 ## 0-1. Load packages ----------------------------------------------------------
 required_packages <- c(
@@ -210,7 +210,7 @@ weighted_mean_or_na <- function(x, w = NULL) {
   stats::weighted.mean(x, w = w)
 }
 
-annualize_flow <- function(df, value_cols, group_cols = c("adm_cd", "year")) {
+quarterize_flow <- function(df, value_cols, group_cols = c("adm_cd", "year", "quarter", "yq")) {
   assert_required_cols(df, c(group_cols, value_cols))
 
   df |>
@@ -225,7 +225,7 @@ annualize_flow <- function(df, value_cols, group_cols = c("adm_cd", "year")) {
     )
 }
 
-annualize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("adm_cd", "year")) {
+quarterize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("adm_cd", "year", "quarter", "yq")) {
   assert_required_cols(df, c(group_cols, value_cols))
   if (!is.null(weight_col)) {
     assert_required_cols(df, weight_col)
@@ -247,7 +247,7 @@ annualize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("a
 # 4. Example preprocessing flow
 #==============================================================================
 
-# 아래는 실제 실행 코드가 아니라, annual preprocessing 스크립트에서
+# 아래는 실제 실행 코드가 아니라, quarterly preprocessing 스크립트에서
 # 어떤 순서로 객체를 만들고 어떤 계약을 지켜야 하는지 보여 주는 예시다.
 
 ## 4-1. Read and clean raw source ----------------------------------------------
@@ -257,13 +257,13 @@ annualize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("a
 #
 # assert_required_cols(df_raw_quarterly, c("adm_cd", "year", "quarter", "sales_amount", "sales_count"))
 
-## 4-2. Annualize quarterly flow and level sources ------------------------------
-# annual_sales <- annualize_flow(
+## 4-2. Publish quarterly flow and level sources --------------------------------
+# quarterly_sales <- quarterize_flow(
 #   df = df_raw_quarterly,
 #   value_cols = c("sales_amount", "sales_count")
 # )
 #
-# annual_floating <- annualize_level(
+# quarterly_floating <- quarterize_level(
 #   df = df_raw_quarterly,
 #   value_cols = c("floating_pop", "age60_floating_share"),
 #   weight_col = "floating_pop"
@@ -275,21 +275,21 @@ annualize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("a
 #   standardize_panel_keys() |>
 #   dplyr::select(adm_cd, year, resident_pop, age60_resident_share)
 
-## 4-4. Build annual panel grid ------------------------------------------------
+## 4-4. Build quarterly panel grid ------------------------------------------------
 # panel_grid <- tidyr::expand_grid(
 #   adm_cd = sort(unique(df_raw_annual$adm_cd)),
-#   year = short_panel_years
+#   cfg$quarter_sequence
 # )
 
-## 4-5. Join annual sources ----------------------------------------------------
+## 4-5. Join quarterly and year/static sources ---------------------------------
 # panel_base <- panel_grid |>
-#   dplyr::left_join(annual_sales, by = c("adm_cd", "year")) |>
-#   dplyr::left_join(annual_floating, by = c("adm_cd", "year")) |>
+#   dplyr::left_join(quarterly_sales, by = c("adm_cd", "year", "quarter", "yq")) |>
+#   dplyr::left_join(quarterly_floating, by = c("adm_cd", "year", "quarter", "yq")) |>
 #   dplyr::left_join(df_raw_annual, by = c("adm_cd", "year"))
 #
 # validate_panel_keys(panel_base)
 
-## 4-6. Add shared annual transforms -------------------------------------------
+## 4-6. Add shared quarterly transforms -------------------------------------------
 # panel_base <- panel_base |>
 #   dplyr::mutate(
 #     covid_period = dplyr::if_else(
@@ -303,13 +303,13 @@ annualize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("a
 #     ln_resident_pop = safe_log1p(resident_pop)
 #   )
 
-## 4-7. Publish annual outputs -------------------------------------------------
-# path_year_base <- fs::path(dir_analysis_ready, "seoul_year_base.parquet")
+## 4-7. Publish quarterly outputs -------------------------------------------------
+# path_quarter_base <- fs::path(dir_analysis_ready, "seoul_quarter_base.parquet")
 # path_panel_merged <- fs::path(dir_panel, "panel_merged_base.parquet")
 # path_panel_pre <- fs::path(dir_panel, "panel_main_pre_vitality.parquet")
-# path_agg_qc <- fs::path(dir_logs, "panel_year_aggregation_qc.csv")
+# path_agg_qc <- fs::path(dir_logs, "panel_quarter_aggregation_qc.csv")
 #
-# write_parquet_safe(panel_base, path_year_base)
+# write_parquet_safe(panel_base, path_quarter_base)
 # write_parquet_safe(panel_base, path_panel_merged)
 # write_parquet_safe(panel_base, path_panel_pre)
 # write_csv_safe(summarize_missingness(panel_base), path_agg_qc)
@@ -318,8 +318,8 @@ annualize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("a
 # 5. Template reminders
 #==============================================================================
 
-# - active publication key는 `adm_cd x year`다.
-# - 분기 raw는 annualization helper 안에서만 사용하고 active panel에 남기지 않는다.
+# - active publication key는 `adm_cd x yq`다.
+# - 분기 raw는 quarterly publication helper를 거쳐 active panel에 남긴다.
 # - additive flow와 level-share를 같은 함수로 집계하지 않는다.
-# - canonical shared panel은 동시점 annual contract만 유지한다.
-# - quarter-step overlay와 `yq` contract는 active workflow에 재도입하지 않는다.
+# - canonical shared panel은 동시점 quarterly contract만 유지한다.
+# - legacy shift/lead overlays are excluded unless explicitly reopened as appendix diagnostics.

@@ -2,7 +2,7 @@
 # Script    : 01_build_spatial_weights.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Build Queen, Rook, and kNN spatial weights on the 2020
-#             commercial-administrative boundary used by the annual panel.
+#             commercial-administrative boundary used by the quarterly panel.
 # Author    : Codex
 # Created   : 2026-02-28
 # Type      : spatial_preprocessing
@@ -34,7 +34,7 @@ ensure_dirs(cfg$required_dirs)
 # 가중행렬은 `panel_main`이 쓰는 2020 상권-행정동 경계와 정확히 같은
 # 공간 지지체 위에서 정의해야 한다. 그래야 ESDA, TWFE 잔차 Moran,
 # SPDM이 서로 다른 공간 단위를 섞지 않는다.
-# Spatial weights are defined on the exact geometry used by annual Seoul
+# Spatial weights are defined on the exact geometry used by quarterly Seoul
 # panel keys so ESDA and panel models share the same spatial support.
 b2020 <- load_commercial_boundary(cfg$dir_boundary, cfg$target_crs)
 

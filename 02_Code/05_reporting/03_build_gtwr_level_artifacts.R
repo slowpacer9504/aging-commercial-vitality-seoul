@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : 03_build_gtwr_level_artifacts.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Build paper-ready annual GTWR level artifacts from existing GTWR
+# Purpose   : Build paper-ready quarterly GTWR level artifacts from existing GTWR
 #             local-beta outputs without rerunning GTWR.
 # Author    : Codex
 # Created   : 2026-05-04
@@ -100,9 +100,8 @@ has_usable_gtwr_local_beta_panel <- function(path) {
     error = function(e) NULL
   )
   if (is.null(x) || nrow(x) == 0L) return(FALSE)
-  required <- c("adm_cd", "year", "time_id", "outcome", "focal_var", "estimate", "estimate_type", "status")
+  required <- c("adm_cd", "yq", "time_id", "outcome", "focal_var", "estimate", "estimate_type", "status")
   if (length(setdiff(required, names(x))) > 0L) return(FALSE)
-  if (length(intersect(c("quarter", "yq"), names(x))) > 0L) return(FALSE)
   any(x$status == "success" & x$estimate_type == "local_beta", na.rm = TRUE)
 }
 
@@ -134,7 +133,7 @@ gtwr_sources_tbl <- discover_gtwr_sources()
 if (nrow(gtwr_sources_tbl) == 0L) {
   stop(
     sprintf(
-      "[ERROR] No annual GTWR level source found for control_set=%s under %s.",
+      "[ERROR] No quarterly GTWR level source found for control_set=%s under %s.",
       paste(control_set_priority, collapse = " -> "), paste(input_table_dirs, collapse = ";")
     ),
     call. = FALSE
@@ -167,7 +166,7 @@ report_png_path <- function(stem) {
 append_log(
   cfg$logs$model_run,
   paste0(
-    "- GTWR annual level artifact sources resolved: ",
+    "- GTWR quarterly level artifact sources resolved: ",
     paste(gtwr_sources_tbl$control_set, collapse = "; ")
   )
 )
@@ -431,8 +430,8 @@ safe_max <- function(x) {
   if (length(x) == 0L) NA_real_ else max(x)
 }
 
-value_at_year <- function(x, years, target_year, default = NA_real_) {
-  idx <- which(years == target_year)
+value_at_period <- function(x, periods, target_period, default = NA_real_) {
+  idx <- which(periods == target_period)
   if (length(idx) == 0L) return(default)
   x[[idx[[1L]]]]
 }
@@ -518,15 +517,15 @@ summarise_region_distribution <- function(data, region_cols) {
     )
 }
 
-build_region_year_summary <- function(panel_tbl, region_lookup) {
+build_region_period_summary <- function(panel_tbl, region_lookup) {
   base_tbl <- panel_tbl |>
     dplyr::left_join(region_lookup, by = "adm_cd") |>
     dplyr::mutate(outcome_label = make_outcome_label(.data$outcome))
 
   common_cols <- c(
     "outcome", "outcome_label", "outcome_group", "outcome_order",
-    "focal_var", "year", "time_id", "control_set", "fit_scope",
-    "window_scope", "recent_year_n", "location_frac", "location_n"
+    "focal_var", "yq", "time_id", "control_set", "fit_scope",
+    "window_scope", "recent_period_n", "location_frac", "location_n"
   )
 
   living_tbl <- base_tbl |>
@@ -554,7 +553,7 @@ build_region_year_summary <- function(panel_tbl, region_lookup) {
     ))
 
   dplyr::bind_rows(living_tbl, gu_tbl) |>
-    dplyr::arrange(.data$outcome_order, .data$year, .data$region_level, .data$region_order)
+    dplyr::arrange(.data$outcome_order, .data$time_id, .data$region_level, .data$region_order)
 }
 
 build_region_snapshot_summary <- function(snapshot_pairs, region_lookup) {
@@ -563,7 +562,7 @@ build_region_snapshot_summary <- function(snapshot_pairs, region_lookup) {
       dplyr::transmute(
         adm_cd, outcome, outcome_label, outcome_group, outcome_order, focal_var,
         estimate_scope = "earliest_level",
-        reference_year = as.character(earliest_year),
+        reference_period = as.character(earliest_yq),
         estimate = earliest_estimate,
         control_set, fit_scope, window_scope
       ),
@@ -571,7 +570,7 @@ build_region_snapshot_summary <- function(snapshot_pairs, region_lookup) {
       dplyr::transmute(
         adm_cd, outcome, outcome_label, outcome_group, outcome_order, focal_var,
         estimate_scope = "latest_level",
-        reference_year = as.character(latest_year),
+        reference_period = as.character(latest_yq),
         estimate = latest_estimate,
         control_set, fit_scope, window_scope
       ),
@@ -579,7 +578,7 @@ build_region_snapshot_summary <- function(snapshot_pairs, region_lookup) {
       dplyr::transmute(
         adm_cd, outcome, outcome_label, outcome_group, outcome_order, focal_var,
         estimate_scope = "delta_latest_minus_earliest",
-        reference_year = paste(earliest_year, latest_year, sep = " -> "),
+        reference_period = paste(earliest_yq, latest_yq, sep = " -> "),
         estimate = delta_estimate,
         control_set, fit_scope, window_scope
       )
@@ -588,7 +587,7 @@ build_region_snapshot_summary <- function(snapshot_pairs, region_lookup) {
 
   common_cols <- c(
     "outcome", "outcome_label", "outcome_group", "outcome_order",
-    "focal_var", "estimate_scope", "reference_year",
+    "focal_var", "estimate_scope", "reference_period",
     "control_set", "fit_scope", "window_scope"
   )
 
@@ -625,7 +624,7 @@ build_distribution_summary <- function(snapshot_pairs) {
     dplyr::transmute(
       outcome, outcome_group, outcome_order, focal_var,
       estimate_scope = "earliest_level",
-      reference_year = as.character(earliest_year),
+      reference_period = as.character(earliest_yq),
       estimate = earliest_estimate
     )
 
@@ -633,7 +632,7 @@ build_distribution_summary <- function(snapshot_pairs) {
     dplyr::transmute(
       outcome, outcome_group, outcome_order, focal_var,
       estimate_scope = "latest_level",
-      reference_year = as.character(latest_year),
+      reference_period = as.character(latest_yq),
       estimate = latest_estimate
     )
 
@@ -641,14 +640,14 @@ build_distribution_summary <- function(snapshot_pairs) {
     dplyr::transmute(
       outcome, outcome_group, outcome_order, focal_var,
       estimate_scope = "delta_latest_minus_earliest",
-      reference_year = paste(earliest_year, latest_year, sep = " -> "),
+      reference_period = paste(earliest_yq, latest_yq, sep = " -> "),
       estimate = delta_estimate
     )
 
   dplyr::bind_rows(earliest_tbl, latest_tbl, delta_tbl) |>
     dplyr::group_by(
       outcome, outcome_group, outcome_order, focal_var,
-      estimate_scope, reference_year
+      estimate_scope, reference_period
     ) |>
     dplyr::summarise(
       n_valid = sum(is.finite(estimate)),
@@ -674,8 +673,8 @@ build_mean_trajectories <- function(panel_tbl) {
   panel_tbl |>
     dplyr::group_by(
       outcome, outcome_group, outcome_order, focal_var,
-      year, time_id, control_set, fit_scope, window_scope,
-      recent_year_n, location_frac, location_n
+      yq, time_id, control_set, fit_scope, window_scope,
+      recent_period_n, location_frac, location_n
     ) |>
     dplyr::summarise(
       n_units = sum(is.finite(estimate)),
@@ -691,7 +690,7 @@ build_mean_trajectories <- function(panel_tbl) {
       .groups = "drop"
     ) |>
     dplyr::mutate(outcome_label = make_outcome_label(outcome)) |>
-    dplyr::arrange(outcome_order, year)
+    dplyr::arrange(outcome_order, time_id)
 }
 
 build_sign_transition_summary <- function(snapshot_pairs) {
@@ -826,7 +825,7 @@ build_gtwr_level_artifacts_for_source <- function(source_row) {
   append_log(
     cfg$logs$model_run,
     paste0(
-      "- GTWR annual level artifact build start: control_set=", control_set_selected,
+      "- GTWR quarterly level artifact build start: control_set=", control_set_selected,
       ", input_tables_dir=", input_tables_dir
     )
   )
@@ -839,45 +838,41 @@ panel_tbl <- read_gtwr_csv(panel_path)
 main_tbl <- read_gtwr_csv(main_path)
 local_tbl <- if (file.exists(local_path)) read_gtwr_csv(local_path) else tibble::tibble()
 
-required_panel_cols <- c("adm_cd", "year", "time_id", "outcome", "focal_var", "estimate", "estimate_type", "status")
+required_panel_cols <- c("adm_cd", "year", "yq", "time_id", "outcome", "focal_var", "estimate", "estimate_type", "status")
 missing_panel_cols <- setdiff(required_panel_cols, names(panel_tbl))
 if (length(missing_panel_cols) > 0L) {
   stop(
-    sprintf("[ERROR] GTWR local beta panel is not annual/current. Missing columns: %s", paste(missing_panel_cols, collapse = ", ")),
-    call. = FALSE
-  )
-}
-
-forbidden_time_cols <- intersect(c("quarter", "yq"), names(panel_tbl))
-if (length(forbidden_time_cols) > 0L) {
-  stop(
-    sprintf("[ERROR] Quarterly GTWR columns found in annual artifact input: %s", paste(forbidden_time_cols, collapse = ", ")),
+    sprintf("[ERROR] GTWR local beta panel is not quarterly/current. Missing columns: %s", paste(missing_panel_cols, collapse = ", ")),
     call. = FALSE
   )
 }
 
 panel_tbl <- panel_tbl |>
-  ensure_cols("control_set") |>
+  ensure_cols(c("control_set", "fit_scope", "window_scope", "recent_period_n", "location_frac", "location_n")) |>
   dplyr::mutate(
     adm_cd = as.character(adm_cd),
     year = as.integer(year),
+    yq = as.character(yq),
     time_id = as.integer(time_id),
-    estimate = suppressWarnings(as.numeric(estimate))
+    estimate = suppressWarnings(as.numeric(estimate)),
+    recent_period_n = suppressWarnings(as.integer(recent_period_n)),
+    location_frac = suppressWarnings(as.numeric(location_frac)),
+    location_n = suppressWarnings(as.integer(location_n))
   ) |>
   dplyr::filter(status == "success", estimate_type == "local_beta")
 
 if (nrow(panel_tbl) == 0L) {
-  stop("[ERROR] GTWR local beta panel has no successful annual local_beta rows.", call. = FALSE)
+  stop("[ERROR] GTWR local beta panel has no successful quarterly local_beta rows.", call. = FALSE)
 }
 
-observed_years <- sort(unique(stats::na.omit(panel_tbl$year)))
-expected_years <- cfg$short_start:cfg$short_end
-if (!identical(observed_years, expected_years)) {
+observed_yq <- sort(unique(stats::na.omit(panel_tbl$yq)))
+expected_yq <- as.character(cfg$quarter_sequence$yq)
+if (!identical(observed_yq, expected_yq)) {
   stop(
     sprintf(
-      "[ERROR] Annual GTWR local beta panel has stale or incomplete years: observed=%s, expected=%s.",
-      paste(observed_years, collapse = ","),
-      paste(expected_years, collapse = ",")
+      "[ERROR] Quarterly GTWR local beta panel has stale or incomplete yq values: observed=%s, expected=%s.",
+      paste(observed_yq, collapse = ","),
+      paste(expected_yq, collapse = ",")
     ),
     call. = FALSE
   )
@@ -885,7 +880,7 @@ if (!identical(observed_years, expected_years)) {
 
 main_meta <- main_tbl |>
   ensure_cols(c(
-    "outcome_group", "outcome_order", "target_year", "earliest_year", "latest_year",
+    "outcome_group", "outcome_order", "target_yq", "earliest_yq", "latest_yq",
     "st_bw", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr",
     "latest_coverage_share", "status"
   )) |>
@@ -898,7 +893,7 @@ main_meta <- main_tbl |>
   dplyr::select(
     dplyr::any_of(c(
       "outcome", "focal_var", "outcome_group", "outcome_order",
-      "target_year", "earliest_year", "latest_year", "st_bw",
+      "target_yq", "earliest_yq", "latest_yq", "st_bw",
       "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr",
       "latest_coverage_share", "status"
     ))
@@ -931,24 +926,24 @@ if (!"adstrd_nm" %in% names(boundary_tbl)) {
 
 region_lookup_tbl <- read_adm_region_lookup()
 
-earliest_target_year <- min(expected_years)
-latest_target_year <- max(expected_years)
+earliest_target_yq <- expected_yq[[1L]]
+latest_target_yq <- expected_yq[[length(expected_yq)]]
 
 snapshot_pairs <- panel_tbl |>
   dplyr::group_by(outcome, focal_var, adm_cd) |>
-  dplyr::arrange(year, time_id, .by_group = TRUE) |>
+  dplyr::arrange(time_id, .by_group = TRUE) |>
   dplyr::summarise(
-    earliest_year = earliest_target_year,
-    latest_year = latest_target_year,
-    earliest_time_id = value_at_year(time_id, year, earliest_target_year, NA_integer_),
-    latest_time_id = value_at_year(time_id, year, latest_target_year, NA_integer_),
-    earliest_estimate = value_at_year(estimate, year, earliest_target_year, NA_real_),
-    latest_estimate = value_at_year(estimate, year, latest_target_year, NA_real_),
+    earliest_yq = earliest_target_yq,
+    latest_yq = latest_target_yq,
+    earliest_time_id = value_at_period(time_id, yq, earliest_target_yq, NA_integer_),
+    latest_time_id = value_at_period(time_id, yq, latest_target_yq, NA_integer_),
+    earliest_estimate = value_at_period(estimate, yq, earliest_target_yq, NA_real_),
+    latest_estimate = value_at_period(estimate, yq, latest_target_yq, NA_real_),
     delta_estimate = latest_estimate - earliest_estimate,
     control_set = dplyr::first(control_set),
     fit_scope = dplyr::first(fit_scope),
     window_scope = dplyr::first(window_scope),
-    recent_year_n = dplyr::first(recent_year_n),
+    recent_period_n = dplyr::first(recent_period_n),
     location_frac = dplyr::first(location_frac),
     location_n = dplyr::first(location_n),
     outcome_group = dplyr::first(outcome_group),
@@ -982,7 +977,7 @@ if (nrow(local_tbl) > 0L) {
 
 distribution_summary_tbl <- build_distribution_summary(snapshot_pairs)
 mean_trajectories_tbl <- build_mean_trajectories(panel_tbl)
-region_year_summary_tbl <- build_region_year_summary(panel_tbl, region_lookup_tbl)
+region_period_summary_tbl <- build_region_period_summary(panel_tbl, region_lookup_tbl)
 region_snapshot_summary_tbl <- build_region_snapshot_summary(snapshot_pairs, region_lookup_tbl)
 sign_transition_bundle <- build_sign_transition_summary(snapshot_pairs)
 sign_transition_local_tbl <- sign_transition_bundle$local |>
@@ -997,7 +992,7 @@ trajectory_tbl <- panel_tbl |>
     representative_units_tbl |>
       dplyr::select(
         outcome, focal_var, adm_cd, adstrd_nm, representative_role,
-        earliest_year, latest_year, delta_estimate, latest_estimate
+        earliest_yq, latest_yq, delta_estimate, latest_estimate
       ),
     by = c("outcome", "focal_var", "adm_cd")
   ) |>
@@ -1005,12 +1000,12 @@ trajectory_tbl <- panel_tbl |>
     outcome_label = make_outcome_label(outcome),
     representative_label = paste0(representative_role, ": ", adstrd_nm, " (", adm_cd, ")")
   ) |>
-  dplyr::arrange(outcome_order, representative_role, year)
+  dplyr::arrange(outcome_order, representative_role, time_id)
 
 snapshot_pairs_path <- report_csv_path("gtwr_level_snapshot_pairs")
 distribution_summary_path <- report_csv_path("gtwr_level_distribution_summary")
 mean_trajectories_path <- report_csv_path("gtwr_level_mean_trajectories")
-region_year_summary_path <- report_csv_path("gtwr_level_region_year_summary")
+region_period_summary_path <- report_csv_path("gtwr_level_region_period_summary")
 region_snapshot_summary_path <- report_csv_path("gtwr_level_region_snapshot_summary")
 sign_transition_summary_path <- report_csv_path("gtwr_level_sign_transition_summary")
 sign_transition_local_path <- report_csv_path("gtwr_level_sign_transition_local")
@@ -1020,22 +1015,22 @@ trajectory_path <- report_csv_path("gtwr_level_representative_trajectories")
 manifest_path <- report_csv_path("gtwr_level_artifact_manifest")
 
 write_csv_safe(snapshot_pairs, snapshot_pairs_path)
-register_artifact("gtwr_level_snapshot_pairs", snapshot_pairs_path, "csv", "earliest/latest/delta annual local coefficients by adm_cd and outcome")
+register_artifact("gtwr_level_snapshot_pairs", snapshot_pairs_path, "csv", "earliest/latest/delta quarterly local coefficients by adm_cd and outcome")
 
 write_csv_safe(distribution_summary_tbl, distribution_summary_path)
-register_artifact("gtwr_level_distribution_summary", distribution_summary_path, "csv", "distribution summary for annual earliest/latest level snapshots and delta")
+register_artifact("gtwr_level_distribution_summary", distribution_summary_path, "csv", "distribution summary for quarterly earliest/latest level snapshots and delta")
 
 write_csv_safe(mean_trajectories_tbl, mean_trajectories_path)
-register_artifact("gtwr_level_mean_trajectories", mean_trajectories_path, "csv", "annual mean local beta trajectories across all administrative districts")
+register_artifact("gtwr_level_mean_trajectories", mean_trajectories_path, "csv", "quarterly mean local beta trajectories across all administrative districts")
 
-write_csv_safe(region_year_summary_tbl, region_year_summary_path)
-register_artifact("gtwr_level_region_year_summary", region_year_summary_path, "csv", "annual local beta summaries by Seoul living area and gu")
+write_csv_safe(region_period_summary_tbl, region_period_summary_path)
+register_artifact("gtwr_level_region_period_summary", region_period_summary_path, "csv", "quarterly local beta summaries by Seoul living area and gu")
 
 write_csv_safe(region_snapshot_summary_tbl, region_snapshot_summary_path)
 register_artifact("gtwr_level_region_snapshot_summary", region_snapshot_summary_path, "csv", "earliest/latest/delta local beta summaries by Seoul living area and gu")
 
 write_csv_safe(sign_transition_summary_tbl, sign_transition_summary_path)
-register_artifact("gtwr_level_sign_transition_summary", sign_transition_summary_path, "csv", "sign-transition counts and shares between earliest and latest annual GTWR snapshots")
+register_artifact("gtwr_level_sign_transition_summary", sign_transition_summary_path, "csv", "sign-transition counts and shares between earliest and latest quarterly GTWR snapshots")
 
 write_csv_safe(sign_transition_local_tbl, sign_transition_local_path)
 register_artifact("gtwr_level_sign_transition_local", sign_transition_local_path, "csv", "local sign-transition classifications by adm_cd and outcome")
@@ -1044,10 +1039,10 @@ write_csv_safe(delta_rankings_tbl, delta_rankings_path)
 register_artifact("gtwr_level_delta_rankings", delta_rankings_path, "csv", "top positive and negative latest-minus-earliest delta rankings by outcome")
 
 write_csv_safe(representative_units_tbl, representative_units_path)
-register_artifact("gtwr_level_representative_units", representative_units_path, "csv", "selected representative districts for annual GTWR trajectory plots")
+register_artifact("gtwr_level_representative_units", representative_units_path, "csv", "selected representative districts for quarterly GTWR trajectory plots")
 
 write_csv_safe(trajectory_tbl, trajectory_path)
-register_artifact("gtwr_level_representative_trajectories", trajectory_path, "csv", "annual local beta trajectories for representative districts")
+register_artifact("gtwr_level_representative_trajectories", trajectory_path, "csv", "quarterly local beta trajectories for representative districts")
 
 
 #==============================================================================
@@ -1068,7 +1063,7 @@ mean_trajectory_plot <- mean_trajectories_tbl |>
   ggplot2::geom_line(color = "#08519C", linewidth = 0.7) +
   ggplot2::geom_point(color = "#08519C", size = 1.5) +
   ggplot2::facet_wrap(~ outcome_label, scales = "free_y", ncol = 2) +
-  ggplot2::scale_x_continuous(breaks = expected_years) +
+  ggplot2::scale_x_continuous(breaks = expected_yq) +
   ggplot2::labs(
     title = sprintf("GTWR Mean Local Beta Trajectories (%s)", tag_selected),
     subtitle = "Annual mean across administrative districts; ribbon shows p25 to p75",
@@ -1082,7 +1077,7 @@ mean_trajectory_plot <- mean_trajectories_tbl |>
   )
 
 save_plot_safe(mean_trajectory_plot, mean_trajectory_plot_path, width = 10.5, height = 7.5)
-register_artifact("gtwr_level_mean_trajectories_plot", mean_trajectory_plot_path, "png", "faceted annual mean local beta trajectories")
+register_artifact("gtwr_level_mean_trajectories_plot", mean_trajectory_plot_path, "png", "faceted quarterly mean local beta trajectories")
 
 trajectory_plot <- trajectory_tbl |>
   dplyr::mutate(
@@ -1093,7 +1088,7 @@ trajectory_plot <- trajectory_tbl |>
   ggplot2::geom_line(linewidth = 0.6) +
   ggplot2::geom_point(size = 1.4) +
   ggplot2::facet_wrap(~ outcome_label, scales = "free_y", ncol = 2) +
-  ggplot2::scale_x_continuous(breaks = expected_years) +
+  ggplot2::scale_x_continuous(breaks = expected_yq) +
   ggplot2::scale_color_brewer(palette = "Dark2") +
   ggplot2::labs(
     title = sprintf("GTWR Representative Local Beta Trajectories (%s)", tag_selected),
@@ -1109,7 +1104,7 @@ trajectory_plot <- trajectory_tbl |>
   )
 
 save_plot_safe(trajectory_plot, trajectory_plot_path, width = 11.5, height = 8)
-register_artifact("gtwr_level_representative_trajectories_plot", trajectory_plot_path, "png", "faceted annual representative local beta trajectories")
+register_artifact("gtwr_level_representative_trajectories_plot", trajectory_plot_path, "png", "faceted quarterly representative local beta trajectories")
 
 
 #==============================================================================
@@ -1117,7 +1112,7 @@ register_artifact("gtwr_level_representative_trajectories_plot", trajectory_plot
 #==============================================================================
 
 outcome_registry <- snapshot_pairs |>
-  dplyr::distinct(outcome, outcome_label, focal_var, outcome_order, earliest_year, latest_year) |>
+  dplyr::distinct(outcome, outcome_label, focal_var, outcome_order, earliest_yq, latest_yq) |>
   dplyr::arrange(outcome_order)
 
 triptych_panel_rows <- list()
@@ -1126,8 +1121,8 @@ for (i in seq_len(nrow(outcome_registry))) {
   outcome_i <- outcome_registry$outcome[[i]]
   outcome_label_i <- outcome_registry$outcome_label[[i]]
   focal_i <- outcome_registry$focal_var[[i]]
-  earliest_year_i <- outcome_registry$earliest_year[[i]]
-  latest_year_i <- outcome_registry$latest_year[[i]]
+  earliest_yq_i <- outcome_registry$earliest_yq[[i]]
+  latest_yq_i <- outcome_registry$latest_yq[[i]]
 
   snapshot_i <- snapshot_pairs |>
     dplyr::filter(outcome == outcome_i, focal_var == focal_i)
@@ -1145,7 +1140,7 @@ for (i in seq_len(nrow(outcome_registry))) {
     cfg$dir_report,
     sprintf(
       "gtwr_level_early_latest_delta_triptych__%s__%s__%s__%s__%s.png",
-      tag_selected, outcome_i, focal_i, earliest_year_i, latest_year_i
+      tag_selected, outcome_i, focal_i, earliest_yq_i, latest_yq_i
     )
   )
 
@@ -1153,7 +1148,7 @@ for (i in seq_len(nrow(outcome_registry))) {
     data = map_tbl_i,
     estimate_col = "earliest_estimate",
     max_abs = max_abs_level_i,
-    title = sprintf("Early: %s", earliest_year_i),
+    title = sprintf("Early: %s", earliest_yq_i),
     subtitle = sprintf("%s | %s", outcome_label_i, focal_i),
     fill_label = "beta\n(level)",
     show_legend = FALSE
@@ -1163,7 +1158,7 @@ for (i in seq_len(nrow(outcome_registry))) {
     data = map_tbl_i,
     estimate_col = "latest_estimate",
     max_abs = max_abs_level_i,
-    title = sprintf("Latest: %s", latest_year_i),
+    title = sprintf("Latest: %s", latest_yq_i),
     subtitle = "shared level scale",
     fill_label = "beta\n(level)"
   )
@@ -1189,7 +1184,7 @@ for (i in seq_len(nrow(outcome_registry))) {
     artifact_name = sprintf("gtwr_level_early_latest_delta_triptych__%s", outcome_i),
     artifact_path = triptych_map_path_i,
     artifact_type = "png",
-    note = sprintf("early/latest/delta annual GTWR triptych for %s", outcome_i)
+    note = sprintf("early/latest/delta quarterly GTWR triptych for %s", outcome_i)
   )
 
   clean_early_plot_i <- make_map_plot(
@@ -1240,7 +1235,7 @@ register_artifact(
   artifact_name = "gtwr_level_early_latest_delta_triptych_panel_clean",
   artifact_path = triptych_panel_clean_path,
   artifact_type = "png",
-  note = "paper-ready clean panel of early/latest/delta annual GTWR triptychs with shared column headers"
+  note = "paper-ready clean panel of early/latest/delta quarterly GTWR triptychs with shared column headers"
 )
 
 
@@ -1250,10 +1245,10 @@ register_artifact(
 
 manifest_tbl <- dplyr::bind_rows(artifact_rows) |>
   dplyr::mutate(
-    expected_years = paste(expected_years, collapse = "|"),
-    observed_years = paste(observed_years, collapse = "|"),
-    observed_earliest_year = min(panel_tbl$year, na.rm = TRUE),
-    observed_latest_year = max(panel_tbl$year, na.rm = TRUE)
+    expected_yq = paste(expected_yq, collapse = "|"),
+    observed_yq = paste(observed_yq, collapse = "|"),
+    observed_earliest_yq = expected_yq[[1L]],
+    observed_latest_yq = expected_yq[[length(expected_yq)]]
   )
 
 write_csv_safe(manifest_tbl, manifest_path)
@@ -1261,7 +1256,7 @@ write_csv_safe(manifest_tbl, manifest_path)
 append_log(
   cfg$logs$model_run,
 	  paste0(
-	    "- GTWR annual level artifacts created: control_set=", control_set_selected,
+	    "- GTWR quarterly level artifacts created: control_set=", control_set_selected,
 	    ", tables=", sum(manifest_tbl$artifact_type == "csv"),
 	    ", plots=", sum(manifest_tbl$artifact_type == "png"),
 	    ", manifest=", basename(manifest_path)
@@ -1278,7 +1273,7 @@ all_manifest_tbl <- dplyr::bind_rows(lapply(seq_len(nrow(gtwr_sources_tbl)), fun
 append_log(
   cfg$logs$model_run,
   paste0(
-    "- GTWR annual level artifact build complete: sources=",
+    "- GTWR quarterly level artifact build complete: sources=",
     paste(unique(all_manifest_tbl$control_set), collapse = ";"),
     ", artifacts=", nrow(all_manifest_tbl)
   )

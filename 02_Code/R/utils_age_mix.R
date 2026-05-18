@@ -1,14 +1,14 @@
 #==============================================================================
 # Script    : utils_age_mix.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Shared helpers for annual resident/floating age-mix appendix
+# Purpose   : Shared helpers for quarterly resident/floating age-mix appendix
 #             sidecars.
 # Author    : Codex
 # Created   : 2026-04-22
 # Type      : utility
 # Inputs    : registered_resident_population.parquet,
 #             seoul_raw_integrated_wide.parquet, panel views, cfg
-# Outputs   : In-memory annual age-share tibbles merged into modeling panels
+# Outputs   : In-memory quarterly age-share tibbles merged into modeling panels
 # DependsOn : utils_io.R, utils_model.R, utils_qc.R, arrow
 #==============================================================================
 
@@ -27,7 +27,7 @@ resolve_age_mix_family_registry <- function(domains = c("resident", "floating"))
     model_family = c("resident_age_mix", "floating_age_mix"),
     domain = c("resident", "floating"),
     source_type = c("resident", "floating"),
-    annual_step = c(FALSE, FALSE),
+    quarterly_step = c(FALSE, FALSE),
     asof_col = c(NA_character_, NA_character_),
     same_domain_total_control = c("ln_resident_pop", NA_character_),
     raw_cols = list(
@@ -60,7 +60,7 @@ resolve_age_mix_family_registry <- function(domains = c("resident", "floating"))
 
 
 #==============================================================================
-# 2. Annual Age-Share Construction
+# 2. Quarterly Age-Share Construction
 #==============================================================================
 
 safe_num_age_mix <- function(x) {
@@ -78,7 +78,7 @@ read_age_mix_source <- function(source_value, raw_cols) {
 
 build_domain_age_shares <- function(source_value,
                                     domain,
-                                    annual_step = FALSE,
+                                    quarterly_step = FALSE,
                                     raw_cols,
                                     asof_col = NA_character_) {
   age_labels <- c("age20", "age30", "age40", "age50", "age60plus")
@@ -89,7 +89,7 @@ build_domain_age_shares <- function(source_value,
       standardize_keys()
 
     required_cols <- c(
-      "adm_cd", "year",
+      "adm_cd", "year", "quarter", "yq", "quarter_index",
       "age20_resident_pop", "age30_resident_pop", "age40_resident_pop",
       "age50_resident_pop", "age60_resident_pop",
       "age20_resident_share", "age30_resident_share", "age40_resident_share",
@@ -102,6 +102,9 @@ build_domain_age_shares <- function(source_value,
         dplyr::transmute(
           adm_cd,
           year,
+          quarter,
+          yq,
+          quarter_index,
           age_mix_total = age20_resident_pop + age30_resident_pop +
             age40_resident_pop + age50_resident_pop + age60_resident_pop,
           age20_resident_share,
@@ -110,7 +113,7 @@ build_domain_age_shares <- function(source_value,
           age50_resident_share,
           age60plus_resident_share
         ) |>
-        dplyr::arrange(adm_cd, year)
+        dplyr::arrange(adm_cd, quarter_index)
     )
   }
 
@@ -121,18 +124,19 @@ build_domain_age_shares <- function(source_value,
     name = sprintf("%s_age_mix_source", domain)
   )
 
-  annual_counts <- source_df |>
+  quarter_counts <- source_df |>
     dplyr::transmute(
       adm_cd,
       year,
       quarter,
+      yq = make_yq(year, quarter),
       age20 = safe_num_age_mix(.data[[raw_cols[["age20"]]]]),
       age30 = safe_num_age_mix(.data[[raw_cols[["age30"]]]]),
       age40 = safe_num_age_mix(.data[[raw_cols[["age40"]]]]),
       age50 = safe_num_age_mix(.data[[raw_cols[["age50"]]]]),
       age60plus = safe_num_age_mix(.data[[raw_cols[["age60plus"]]]])
     ) |>
-    dplyr::group_by(adm_cd, year) |>
+    dplyr::group_by(adm_cd, year, quarter, yq) |>
     dplyr::summarise(
       dplyr::across(
         dplyr::all_of(age_labels),
@@ -141,24 +145,31 @@ build_domain_age_shares <- function(source_value,
       .groups = "drop"
     )
 
-  age_matrix <- as.matrix(dplyr::select(annual_counts, dplyr::all_of(age_labels)))
-  annual_counts$age_mix_total <- rowSums(age_matrix, na.rm = TRUE)
-  annual_counts$age_mix_total[rowSums(is.finite(age_matrix)) == 0L] <- NA_real_
+  quarter_counts <- quarter_counts |>
+    dplyr::left_join(
+      cfg$quarter_sequence |>
+        dplyr::select(year, quarter, yq, quarter_index),
+      by = c("year", "quarter", "yq")
+    )
+
+  age_matrix <- as.matrix(dplyr::select(quarter_counts, dplyr::all_of(age_labels)))
+  quarter_counts$age_mix_total <- rowSums(age_matrix, na.rm = TRUE)
+  quarter_counts$age_mix_total[rowSums(is.finite(age_matrix)) == 0L] <- NA_real_
 
   share_cols <- sprintf("%s_%s_share", age_labels, domain)
   for (ii in seq_along(age_labels)) {
     age_col <- age_labels[[ii]]
     share_col <- share_cols[[ii]]
-    annual_counts[[share_col]] <- dplyr::if_else(
-      is.finite(annual_counts$age_mix_total) & annual_counts$age_mix_total > 0,
-      annual_counts[[age_col]] / annual_counts$age_mix_total,
+    quarter_counts[[share_col]] <- dplyr::if_else(
+      is.finite(quarter_counts$age_mix_total) & quarter_counts$age_mix_total > 0,
+      quarter_counts[[age_col]] / quarter_counts$age_mix_total,
       NA_real_
     )
   }
 
-  annual_counts |>
-    dplyr::select(adm_cd, year, age_mix_total, dplyr::all_of(share_cols)) |>
-    dplyr::arrange(adm_cd, year)
+  quarter_counts |>
+    dplyr::select(adm_cd, year, quarter, yq, quarter_index, age_mix_total, dplyr::all_of(share_cols)) |>
+    dplyr::arrange(adm_cd, quarter_index)
 }
 
 add_current_age_shares <- function(base_panel, domain_df, domain) {
@@ -166,6 +177,6 @@ add_current_age_shares <- function(base_panel, domain_df, domain) {
 
   base_panel |>
     dplyr::select(-dplyr::any_of(c("age_mix_total", share_cols))) |>
-    dplyr::left_join(domain_df, by = c("adm_cd", "year")) |>
-    dplyr::relocate(dplyr::any_of(share_cols), .after = "year")
+    dplyr::left_join(domain_df, by = c("adm_cd", "year", "quarter", "yq", "quarter_index")) |>
+    dplyr::relocate(dplyr::any_of(share_cols), .after = "quarter_index")
 }

@@ -1,8 +1,8 @@
 #==============================================================================
 # Script    : 01_make_tables_figures.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Produce annual descriptive tables and time-series figures after
-#             the main annual modeling steps have finished.
+# Purpose   : Produce quarterly descriptive tables and time-series figures after
+#             the main quarterly modeling steps have finished.
 # Author    : Codex
 # Created   : 2026-02-28
 # Type      : reporting
@@ -68,10 +68,10 @@ summarise_descriptive_variable <- function(data, variable, label, role, order) {
   finite <- is.finite(x)
   x_obs <- x[finite]
 
-  year_obs <- integer()
-  if ("year" %in% names(data)) {
-    year_obs <- suppressWarnings(as.integer(data$year[finite]))
-    year_obs <- year_obs[is.finite(year_obs)]
+  yq_obs <- character()
+  if ("yq" %in% names(data)) {
+    yq_obs <- as.character(data$yq[finite])
+    yq_obs <- yq_obs[!is.na(yq_obs) & nzchar(yq_obs)]
   }
 
   adm_obs <- character()
@@ -99,9 +99,9 @@ summarise_descriptive_variable <- function(data, variable, label, role, order) {
     median = safe_numeric_quantile(x_obs, 0.50),
     p75 = safe_numeric_quantile(x_obs, 0.75),
     max = if (observed_n > 0L) max(x_obs) else NA_real_,
-    sample_min_year = if (length(year_obs) > 0L) min(year_obs) else NA_integer_,
-    sample_max_year = if (length(year_obs) > 0L) max(year_obs) else NA_integer_,
-    n_years = dplyr::n_distinct(year_obs),
+    sample_min_yq = if (length(yq_obs) > 0L) min(yq_obs) else NA_character_,
+    sample_max_yq = if (length(yq_obs) > 0L) max(yq_obs) else NA_character_,
+    n_yq = dplyr::n_distinct(yq_obs),
     n_adm = dplyr::n_distinct(adm_obs)
   )
 }
@@ -230,7 +230,7 @@ adm_name_lookup <- local({
 build_gtwr_rankings <- function(local_tbl, group_cols = character()) {
   local_tbl <- ensure_cols(
     local_tbl,
-    c(group_cols, "adm_cd", "outcome", "focal_var", "estimate", "estimate_type", "earliest_year", "latest_year", "window_scope", "control_set", "status", "message", "collinearity_warn_flag", "collinearity_warn_stage")
+    c(group_cols, "adm_cd", "outcome", "focal_var", "estimate", "estimate_type", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "collinearity_warn_flag", "collinearity_warn_stage")
   )
   local_tbl$adm_cd <- as.character(local_tbl$adm_cd)
   local_tbl <- local_tbl |>
@@ -239,7 +239,7 @@ build_gtwr_rankings <- function(local_tbl, group_cols = character()) {
   success_tbl <- local_tbl |>
     dplyr::filter(status == "success", is.finite(estimate))
 
-  out_cols <- c(group_cols, "outcome", "focal_var", "rank_group", "rank_order", "adm_cd", "adstrd_nm", "estimate", "estimate_type", "earliest_year", "latest_year", "window_scope", "control_set", "collinearity_warn_flag", "collinearity_warn_stage")
+  out_cols <- c(group_cols, "outcome", "focal_var", "rank_group", "rank_order", "adm_cd", "adstrd_nm", "estimate", "estimate_type", "earliest_yq", "latest_yq", "window_scope", "control_set", "collinearity_warn_flag", "collinearity_warn_stage")
   local_tbl <- ensure_cols(local_tbl, out_cols)
   if (nrow(success_tbl) == 0L) {
     return(tibble::as_tibble(local_tbl[0, out_cols, drop = FALSE]))
@@ -271,7 +271,7 @@ build_gtwr_rankings <- function(local_tbl, group_cols = character()) {
 build_gtwr_latest_local <- function(local_tbl) {
   ensure_cols(
     local_tbl,
-    c("adm_cd", "outcome", "focal_var", "estimate", "estimate_type", "latest_estimate", "earliest_year", "latest_year", "window_scope", "control_set", "status", "message", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
+    c("adm_cd", "outcome", "focal_var", "estimate", "estimate_type", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
   ) |>
     dplyr::mutate(
       estimate = dplyr::coalesce(
@@ -284,7 +284,7 @@ build_gtwr_latest_local <- function(local_tbl) {
 	        TRUE ~ .data$status
 	      ),
 	      message = dplyr::case_when(
-	        .data$status == "missing_latest_estimate" ~ "actual_gtwr_estimated_but_latest_year_coefficient_missing",
+	        .data$status == "missing_latest_estimate" ~ "actual_gtwr_estimated_but_latest_quarter_coefficient_missing",
 	        TRUE ~ .data$message
 	      ),
 	      collinearity_warn_flag = dplyr::coalesce(.data$collinearity_warn_latest, FALSE),
@@ -296,10 +296,10 @@ build_gtwr_latest_local <- function(local_tbl) {
 }
 
 build_gtwr_latest_summary <- function(latest_local_tbl, gtwr_summary_tbl) {
-  out_cols <- c("outcome", "focal_var", "target_year", "estimate_type", "earliest_year", "latest_year", "window_scope", "n_locations", "n_valid", "mean_beta", "sd_beta", "p25_beta", "p50_beta", "p75_beta", "share_positive", "latest_missing_n", "latest_coverage_share", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr", "control_set", "fit_scope", "status", "message")
+  out_cols <- c("outcome", "focal_var", "target_yq", "estimate_type", "earliest_yq", "latest_yq", "window_scope", "n_locations", "n_valid", "mean_beta", "sd_beta", "p25_beta", "p50_beta", "p75_beta", "share_positive", "latest_missing_n", "latest_coverage_share", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr", "control_set", "fit_scope", "status", "message")
   template <- gtwr_summary_tbl |>
-    ensure_cols(c("outcome", "focal_var", "target_year", "earliest_year", "latest_year", "window_scope", "n_locations", "latest_missing_n", "latest_coverage_share", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr", "control_set", "fit_scope", "status", "message")) |>
-    dplyr::select(outcome, focal_var, target_year, earliest_year, latest_year, window_scope, n_locations, latest_missing_n, latest_coverage_share, collinearity_warn_n, collinearity_warn_share, max_local_cn_gtwr, control_set, fit_scope, status, message)
+    ensure_cols(c("outcome", "focal_var", "target_yq", "earliest_yq", "latest_yq", "window_scope", "n_locations", "latest_missing_n", "latest_coverage_share", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr", "control_set", "fit_scope", "status", "message")) |>
+    dplyr::select(outcome, focal_var, target_yq, earliest_yq, latest_yq, window_scope, n_locations, latest_missing_n, latest_coverage_share, collinearity_warn_n, collinearity_warn_share, max_local_cn_gtwr, control_set, fit_scope, status, message)
 
   success_latest <- latest_local_tbl |>
     ensure_cols(c("outcome", "focal_var", "estimate", "status")) |>
@@ -334,7 +334,7 @@ build_gtwr_latest_summary <- function(latest_local_tbl, gtwr_summary_tbl) {
 
   template |>
     dplyr::left_join(success_latest, by = c("outcome", "focal_var")) |>
-    dplyr::mutate(estimate_type = "latest", .before = target_year) |>
+    dplyr::mutate(estimate_type = "latest", .before = target_yq) |>
     ensure_cols(out_cols) |>
     dplyr::select(dplyr::all_of(out_cols))
 }
@@ -342,7 +342,7 @@ build_gtwr_latest_summary <- function(latest_local_tbl, gtwr_summary_tbl) {
 build_gtwr_delta_local <- function(local_tbl) {
   ensure_cols(
     local_tbl,
-    c("adm_cd", "outcome", "focal_var", "earliest_estimate", "latest_estimate", "earliest_year", "latest_year", "window_scope", "control_set", "status", "message", "collinearity_warn_earliest", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
+    c("adm_cd", "outcome", "focal_var", "earliest_estimate", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "collinearity_warn_earliest", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
   ) |>
     dplyr::mutate(
       estimate = suppressWarnings(as.numeric(.data$latest_estimate)) - suppressWarnings(as.numeric(.data$earliest_estimate)),
@@ -361,14 +361,14 @@ build_gtwr_delta_summary <- function(delta_local_tbl, gtwr_summary_tbl, group_co
   keys <- c(group_cols, "outcome", "focal_var")
   out_cols <- c(
     group_cols,
-    "outcome", "focal_var", "target_year", "estimate_type", "earliest_year", "latest_year",
+    "outcome", "focal_var", "target_yq", "estimate_type", "earliest_yq", "latest_yq",
     "window_scope", "n_locations", "n_valid", "mean_beta", "sd_beta", "p25_beta",
     "p50_beta", "p75_beta", "share_positive", "control_set", "fit_scope", "status", "message"
   )
 
   template <- gtwr_summary_tbl |>
-    ensure_cols(c(group_cols, "outcome", "focal_var", "target_year", "earliest_year", "latest_year", "window_scope", "n_locations", "control_set", "fit_scope", "status", "message")) |>
-    dplyr::select(dplyr::all_of(c(group_cols, "outcome", "focal_var", "target_year", "earliest_year", "latest_year", "window_scope", "n_locations", "control_set", "fit_scope", "status", "message")))
+    ensure_cols(c(group_cols, "outcome", "focal_var", "target_yq", "earliest_yq", "latest_yq", "window_scope", "n_locations", "control_set", "fit_scope", "status", "message")) |>
+    dplyr::select(dplyr::all_of(c(group_cols, "outcome", "focal_var", "target_yq", "earliest_yq", "latest_yq", "window_scope", "n_locations", "control_set", "fit_scope", "status", "message")))
 
   success_delta <- delta_local_tbl |>
     ensure_cols(c(group_cols, "outcome", "focal_var", "estimate", "status")) |>
@@ -387,7 +387,7 @@ build_gtwr_delta_summary <- function(delta_local_tbl, gtwr_summary_tbl, group_co
 
   template |>
     dplyr::left_join(success_delta, by = keys) |>
-    dplyr::mutate(estimate_type = "latest_minus_earliest", .before = target_year) |>
+    dplyr::mutate(estimate_type = "latest_minus_earliest", .before = target_yq) |>
     ensure_cols(out_cols) |>
     dplyr::select(dplyr::all_of(out_cols))
 }
@@ -450,11 +450,11 @@ desc_var_registry <- tibble::tribble(
   "vitality_index_base",             "Composite vitality index",                  "vitality_outcome",
   "vitality_index_entropy",          "Entropy-weighted vitality index",           "robustness_outcome",
   "vitality_index_pca",              "PCA vitality index",                        "robustness_outcome",
-  "ln_sales_count",                  "Log annual sales count",                    "economic_component",
-  "ln_total_sales",                  "Log annual total sales amount",             "economic_component",
-  "ln_sales_per_store",              "Log annual sales per store",                "economic_support",
-  "ln_floating_pop",                 "Log annual floating population",            "social_component",
-  "ln_external_inflow_pop",          "Log annual external inflow population",      "social_component",
+  "ln_sales_count",                  "Log quarterly sales count",                 "economic_component",
+  "ln_total_sales",                  "Log quarterly total sales amount",          "economic_component",
+  "ln_sales_per_store",              "Log quarterly sales per store",             "economic_support",
+  "ln_floating_pop",                 "Log quarterly floating population",         "social_component",
+  "ln_external_inflow_pop",          "Log quarterly external inflow population",   "social_component",
   "sales_time_entropy",              "Sales time-of-day entropy",                 "temporal_component",
   "floating_time_entropy",           "Floating population time-of-day entropy",    "temporal_component",
   "sales_quarter_stability",         "Sales quarterly stability",                 "temporal_component",
@@ -462,7 +462,7 @@ desc_var_registry <- tibble::tribble(
   "diversity_index",                 "Business diversity index",                  "stability_component",
   "operating_months_rel_seoul",      "Operating duration relative to Seoul",       "stability_component",
   "survival_3y",                     "New-enterprise 3-year survival rate",       "stability_component",
-  "ln_resident_pop",                 "Log annual resident population",            "model_control",
+  "ln_resident_pop",                 "Log quarterly resident population",         "model_control",
   "ln_official_land_price",          "Log official land price",                   "model_control",
   "transit_accessibility",           "Transit accessibility",                     "model_control"
 ) |>
@@ -483,7 +483,7 @@ if (nrow(desc_var_registry) > 0L) {
     dplyr::select(
       variable, label, role, n, missing_n, missing_share,
       mean, sd, min, p25, median, p75, max,
-      sample_min_year, sample_max_year, n_years, n_adm
+      sample_min_yq, sample_max_yq, n_yq, n_adm
     )
 
   write_csv_safe(desc, cfg$paths$descriptive_statistics)
@@ -561,28 +561,32 @@ if (nrow(main_corr_registry) > 0L) {
 
 
 #==============================================================================
-# 3. Summarize Annual Coverage
+# 3. Summarize Quarterly Coverage
 #==============================================================================
 
 cov_tbl <- panel |>
-  dplyr::count(year, name = "n_rows") |>
-  dplyr::arrange(year)
+  dplyr::count(yq, name = "n_rows") |>
+  dplyr::arrange(yq)
 write_csv_safe(cov_tbl, cfg$paths$data_coverage)
 
 
 #==============================================================================
-# 4. Export Annual Time-Series Figure
+# 4. Export Quarterly Time-Series Figure
 #==============================================================================
 
 if ("ln_total_sales" %in% names(panel)) {
   ts <- panel |>
-    dplyr::group_by(year) |>
+    dplyr::mutate(yq = as.character(yq)) |>
+    dplyr::group_by(yq, quarter_index) |>
     dplyr::summarise(mean_sales = mean(ln_total_sales, na.rm = TRUE), .groups = "drop")
+  yq_levels <- ts |>
+    dplyr::arrange(quarter_index, yq) |>
+    dplyr::pull(yq)
 
-  p <- ggplot2::ggplot(ts, ggplot2::aes(x = year, y = mean_sales)) +
+  p <- ggplot2::ggplot(ts, ggplot2::aes(x = factor(yq, levels = yq_levels), y = mean_sales, group = 1)) +
     ggplot2::geom_line(linewidth = 0.7) +
     ggplot2::geom_point(size = 1.8) +
-    ggplot2::scale_x_continuous(breaks = sort(unique(ts$year))) +
+    ggplot2::labs(x = NULL, y = "Mean ln(total sales)") +
     ggplot2::theme_minimal()
   ggplot2::ggsave(cfg$paths$mean_ln_sales_trend, p, width = 9, height = 4)
 }
@@ -593,12 +597,20 @@ if ("ln_total_sales" %in% names(panel)) {
 #==============================================================================
 
 clear_stale_appendix_outputs()
+build_optional_appendix_tables <- isTRUE(value_or(cfg$build_optional_appendix_tables, FALSE))
 
-spatial_family_status_msg <- "spatial family appendix table not run: manual annual appendix source missing"
-gwr_delta_tables_status_msg <- "gwr delta tables not run: manual annual appendix source missing"
-gtwr_tables_status_msg <- "gtwr delta ranking tables not run: manual annual appendix source missing"
-gtwr_age_band_tables_status_msg <- "gtwr age-band delta tables not run: manual annual appendix source missing"
-gtwr_sector_share_tables_status_msg <- "gtwr sector-share delta tables not run: manual annual appendix source missing"
+spatial_family_status_msg <- "spatial family appendix table not run: manual quarterly appendix source missing"
+gwr_delta_tables_status_msg <- "gwr delta tables not run: manual quarterly appendix source missing"
+gtwr_tables_status_msg <- "gtwr delta ranking tables not run: manual quarterly appendix source missing"
+gtwr_age_band_tables_status_msg <- "gtwr age-band delta tables not run: manual quarterly appendix source missing"
+gtwr_sector_share_tables_status_msg <- "gtwr sector-share delta tables not run: manual quarterly appendix source missing"
+if (!build_optional_appendix_tables) {
+  spatial_family_status_msg <- "spatial family appendix table excluded from default quarterly reporting"
+  gwr_delta_tables_status_msg <- "gwr delta tables excluded from default quarterly reporting"
+  gtwr_tables_status_msg <- "gtwr delta ranking tables excluded from default quarterly reporting"
+  gtwr_age_band_tables_status_msg <- "gtwr age-band delta tables excluded from default quarterly reporting"
+  gtwr_sector_share_tables_status_msg <- "gtwr sector-share delta tables excluded from default quarterly reporting"
+}
 gwr_delta_summary_cols <- c(
   "gwr_family", "outcome", "focal_var", "estimate_type", "early_start_year",
   "early_end_year", "late_start_year", "late_end_year", "window_scope",
@@ -646,11 +658,11 @@ read_gwr_delta_local_source <- function(path) {
     dplyr::select(dplyr::all_of(gwr_delta_local_cols))
 }
 
-if (file.exists(cfg$paths$spdm_family_comparison)) {
+if (build_optional_appendix_tables && file.exists(cfg$paths$spdm_family_comparison)) {
   family_tbl <- readr::read_csv(cfg$paths$spdm_family_comparison, show_col_types = FALSE) |>
     ensure_cols(c(
       "outcome", "family", "w_type", "status", "impacts_status",
-      "n_units", "n_periods", "sample_min_year", "sample_max_year",
+      "n_units", "n_periods", "sample_min_yq", "sample_max_yq",
       "selected_controls", "focal_term", "focal_estimate", "focal_se", "focal_p",
       "lag_param_name", "lag_param_estimate", "lag_param_p",
       "error_param_name", "error_param_estimate", "error_param_p",
@@ -667,8 +679,8 @@ if (file.exists(cfg$paths$spdm_family_comparison)) {
       impacts_status,
       n_units,
       n_periods,
-      sample_min_year,
-      sample_max_year,
+      sample_min_yq,
+      sample_max_yq,
       selected_controls,
       focal_term,
       focal_estimate,
@@ -702,7 +714,7 @@ if (file.exists(cfg$paths$spdm_family_comparison)) {
   spatial_family_status_msg <- sprintf("spatial family appendix table created: rows=%d", nrow(spatial_family_tbl))
 }
 
-if (file.exists(cfg$paths$gwr_delta_main_models)) {
+if (build_optional_appendix_tables && file.exists(cfg$paths$gwr_delta_main_models)) {
   gwr_delta_summary_tbl <- dplyr::bind_rows(
     read_gwr_delta_summary_source(cfg$paths$gwr_delta_main_models),
     read_gwr_delta_summary_source(cfg$paths$gwr_delta_floating_models)
@@ -721,7 +733,7 @@ if (file.exists(cfg$paths$gwr_delta_main_models)) {
 gtwr_control_set_report <- cfg$gtwr_control_set_token(cfg$gtwr_control_set)
 gtwr_main_path <- cfg$get_gtwr_main_models_path(gtwr_control_set_report)
 gtwr_local_path <- cfg$get_gtwr_local_coefficients_path(gtwr_control_set_report)
-if (file.exists(gtwr_main_path)) {
+if (build_optional_appendix_tables && file.exists(gtwr_main_path)) {
   gtwr_summary_tbl <- readr::read_csv(gtwr_main_path, show_col_types = FALSE)
   gtwr_local_tbl <- if (file.exists(gtwr_local_path)) {
     readr::read_csv(gtwr_local_path, show_col_types = FALSE)
@@ -741,24 +753,25 @@ if (file.exists(gtwr_main_path)) {
   write_csv_safe(gtwr_delta_tbl, cfg$get_gtwr_delta_summary_table_path(gtwr_control_set_report))
   write_csv_safe(gtwr_delta_rankings_tbl, cfg$get_gtwr_delta_rankings_table_path(gtwr_control_set_report))
 
-  if (all(c("latest_year", "status") %in% names(gtwr_summary_tbl))) {
-    latest_years <- sort(unique(stats::na.omit(as.integer(gtwr_summary_tbl$latest_year))))
+  if (all(c("latest_yq", "status") %in% names(gtwr_summary_tbl))) {
+    latest_source_col <- if ("latest_yq" %in% names(gtwr_summary_tbl)) "latest_yq" else "latest_yq"
+    latest_periods <- sort(unique(stats::na.omit(as.character(gtwr_summary_tbl[[latest_source_col]]))))
     gtwr_tables_status_msg <- sprintf(
-      "gtwr annual appendix tables created: control_set=%s, latest_summary_rows=%d, latest_ranking_rows=%d, delta_summary_rows=%d, delta_ranking_rows=%d, statuses=%s, latest_year=%s",
+      "gtwr quarterly appendix tables created: control_set=%s, latest_summary_rows=%d, latest_ranking_rows=%d, delta_summary_rows=%d, delta_ranking_rows=%d, statuses=%s, latest_period=%s",
       gtwr_control_set_report,
       nrow(gtwr_latest_tbl),
       nrow(gtwr_latest_rankings_tbl),
       nrow(gtwr_delta_tbl),
       nrow(gtwr_delta_rankings_tbl),
       paste(unique(gtwr_summary_tbl$status), collapse = "|"),
-      if (length(latest_years) == 0L) "none" else paste(latest_years, collapse = "|")
+      if (length(latest_periods) == 0L) "none" else paste(latest_periods, collapse = "|")
     )
   }
 }
 
 gtwr_age_band_summary_path <- cfg$get_gtwr_age_band_models_path(gtwr_control_set_report)
 gtwr_age_band_local_path <- cfg$get_gtwr_age_band_local_path(gtwr_control_set_report)
-if (file.exists(gtwr_age_band_summary_path)) {
+if (build_optional_appendix_tables && file.exists(gtwr_age_band_summary_path)) {
   gtwr_age_band_source_tbl <- readr::read_csv(gtwr_age_band_summary_path, show_col_types = FALSE)
   gtwr_age_band_local_tbl <- if (file.exists(gtwr_age_band_local_path)) {
     readr::read_csv(gtwr_age_band_local_path, show_col_types = FALSE)
@@ -783,7 +796,7 @@ if (file.exists(gtwr_age_band_summary_path)) {
 
 gtwr_sector_share_summary_path <- cfg$get_gtwr_sector_share_models_path(gtwr_control_set_report)
 gtwr_sector_share_local_path <- cfg$get_gtwr_sector_share_local_path(gtwr_control_set_report)
-if (file.exists(gtwr_sector_share_summary_path)) {
+if (build_optional_appendix_tables && file.exists(gtwr_sector_share_summary_path)) {
   gtwr_sector_share_source_tbl <- readr::read_csv(gtwr_sector_share_summary_path, show_col_types = FALSE)
   gtwr_sector_share_local_tbl <- if (file.exists(gtwr_sector_share_local_path)) {
     readr::read_csv(gtwr_sector_share_local_path, show_col_types = FALSE)
@@ -812,4 +825,4 @@ append_log(cfg$logs$model_run, paste0("- ", gwr_delta_tables_status_msg))
 append_log(cfg$logs$model_run, paste0("- ", gtwr_tables_status_msg))
 append_log(cfg$logs$model_run, paste0("- ", gtwr_age_band_tables_status_msg))
 append_log(cfg$logs$model_run, paste0("- ", gtwr_sector_share_tables_status_msg))
-append_log(cfg$logs$model_run, "- Annual summary tables/figures generated")
+append_log(cfg$logs$model_run, "- Quarterly summary tables/figures generated")

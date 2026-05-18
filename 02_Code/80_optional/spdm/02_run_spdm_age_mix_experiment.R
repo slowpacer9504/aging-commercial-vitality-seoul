@@ -6,7 +6,7 @@
 #             resident and floating populations.
 # Author    : Codex
 # Created   : 2026-03-30
-# Status    : ANNUAL_APPENDIX / manual sidecar outside canonical workflow
+# Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, registered_resident_population.parquet,
 #             seoul_raw_integrated_wide.parquet, W_queen.rds
@@ -14,7 +14,7 @@
 #             spdm_age_mix_experiment_impacts.csv,
 #             spdm_age_mix_experiment_controls_used.csv,
 #             spdm_age_mix_experiment_diagnostics.csv
-# DependsOn : 02_build_seoul_year_base.R,
+# DependsOn : 02_build_seoul_quarter_base.R,
 #             05_build_registered_resident_population.R,
 #             01_build_spatial_weights.R, 02_run_spdm_main.R
 #==============================================================================
@@ -131,7 +131,7 @@ for (ii in seq_len(nrow(family_registry))) {
   domain_df <- build_domain_age_shares(
     source_value = family_rec$source_type[[1]],
     domain = family_rec$domain[[1]],
-    annual_step = family_rec$annual_step[[1]],
+    quarterly_step = family_rec$quarterly_step[[1]],
     raw_cols = family_rec$raw_cols[[1]],
     asof_col = family_rec$asof_col[[1]]
   )
@@ -286,8 +286,8 @@ run_one_spec <- function(spec_row) {
       n_units = NA_integer_,
       n_periods = NA_integer_,
       n_obs = NA_integer_,
-      sample_min_year = NA_character_,
-      sample_max_year = NA_character_,
+      sample_min_yq = NA_character_,
+      sample_max_yq = NA_character_,
       selected_controls = character(),
       impacts_status = "not_estimated",
       message = skip_message
@@ -364,8 +364,8 @@ run_one_spec <- function(spec_row) {
       n_units = prep$n_units,
       n_periods = prep$n_periods,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       selected_controls = prep$selected_controls,
       impacts_status = "failed",
       message = prep$message
@@ -387,8 +387,8 @@ run_one_spec <- function(spec_row) {
     n_units = prep$n_units,
     n_periods = prep$n_periods,
     n_obs = prep$n_obs,
-    sample_min_year = prep$sample_min_year,
-    sample_max_year = prep$sample_max_year,
+    sample_min_yq = prep$sample_min_yq,
+    sample_max_yq = prep$sample_max_yq,
     model_family = "sdm",
     w_type = "queen",
     message = prep$message
@@ -405,8 +405,8 @@ run_one_spec <- function(spec_row) {
       n_periods = prep$n_periods,
       n_units = prep$n_units,
       n_obs = prep$n_obs,
-      sample_min_year = prep$sample_min_year,
-      sample_max_year = prep$sample_max_year,
+      sample_min_yq = prep$sample_min_yq,
+      sample_max_yq = prep$sample_max_yq,
       model_family = "sdm",
       w_type = "queen",
       sim_R = as.integer(value_or(cfg$spdm_impact_sim_R, 1000L)),
@@ -442,8 +442,8 @@ run_one_spec <- function(spec_row) {
     n_units = prep$n_units,
     n_periods = prep$n_periods,
     n_obs = prep$n_obs,
-    sample_min_year = prep$sample_min_year,
-    sample_max_year = prep$sample_max_year,
+    sample_min_yq = prep$sample_min_yq,
+    sample_max_yq = prep$sample_max_yq,
     selected_controls = prep$selected_controls,
     spatial_param_name = spatial_param$spatial_param_name,
     spatial_param_estimate = spatial_param$spatial_param_estimate,
@@ -493,7 +493,7 @@ diagnostics_tbl <- dplyr::bind_rows(purrr::map(results, "diagnostics")) |>
     spec_id, model_name, model_family_spdm = model_family, age_mix_family, domain, outcome, outcome_group, outcome_order,
     exposure, requested_exposures, exposure_scale, omitted_reference, reference_population,
     same_domain_total_control, same_domain_total_control_dropped,
-    status, n_units, n_periods, n_obs, sample_min_year, sample_max_year,
+    status, n_units, n_periods, n_obs, sample_min_yq, sample_max_yq,
     selected_controls, spatial_param_name, spatial_param_estimate, spatial_param_se, spatial_param_p,
     logLik, AIC, BIC, impacts_status,
     share_sum_mean_abs_dev, share_sum_max_abs_dev, dplyr::starts_with("finite_n__"),
@@ -510,7 +510,7 @@ models_tbl <- dplyr::bind_rows(purrr::map(results, "coefs")) |>
   dplyr::select(
     spec_id, model_name, model_family_spdm = model_family, age_mix_family, domain, outcome, outcome_group, outcome_order,
     exposure, requested_exposures, term, estimate, std.error, statistic, p.value,
-    status, n_units, n_periods, n_obs, sample_min_year, sample_max_year,
+    status, n_units, n_periods, n_obs, sample_min_yq, sample_max_yq,
     exposure_scale, omitted_reference, reference_population,
     same_domain_total_control, same_domain_total_control_dropped,
     share_sum_mean_abs_dev, share_sum_max_abs_dev, message
@@ -526,7 +526,7 @@ impacts_tbl <- dplyr::bind_rows(purrr::map(results, "impacts")) |>
     direct, direct_se, direct_z, direct_p, direct_ci_low, direct_ci_high,
     indirect, indirect_se, indirect_z, indirect_p, indirect_ci_low, indirect_ci_high,
     total, total_se, total_z, total_p, total_ci_low, total_ci_high,
-    status, n_units, n_periods, n_obs, sample_min_year, sample_max_year,
+    status, n_units, n_periods, n_obs, sample_min_yq, sample_max_yq,
     exposure_scale, omitted_reference, reference_population,
     same_domain_total_control, same_domain_total_control_dropped,
     sim_R, sim_method, share_sum_mean_abs_dev, share_sum_max_abs_dev, message

@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : 04_run_gtwr_sector_share.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Run the sector-share annual GTWR optional sidecar with separate
+# Purpose   : Run the sector-share quarterly GTWR optional sidecar with separate
 #             resident-only and floating-only exposure families.
 # Author    : Codex
 # Created   : 2026-04-22
@@ -87,10 +87,10 @@ add_sector_share_payload_metadata <- function(payload, job) {
 }
 
 if (!isTRUE(cfg$run_gtwr_sector_share_sidecar)) {
-  append_log(cfg$logs$model_run, "- GTWR sector-share annual sidecar skipped by run flag")
+  append_log(cfg$logs$model_run, "- GTWR sector-share quarterly sidecar skipped by run flag")
 } else {
   if (!file.exists(cfg$paths$panel_main)) {
-    stop("[ERROR] panel_main missing for GTWR sector-share annual sidecar.", call. = FALSE)
+    stop("[ERROR] panel_main missing for GTWR sector-share quarterly sidecar.", call. = FALSE)
   }
   if (!requireNamespace("GWmodel", quietly = TRUE)) {
     stop("[ERROR] GWmodel package is required for GTWR sector-share sidecar.", call. = FALSE)
@@ -136,7 +136,7 @@ if (!isTRUE(cfg$run_gtwr_sector_share_sidecar)) {
     write_csv_safe(empty_sector_share_panel_tbl(), panel_path)
     write_csv_safe(empty_sector_share_controls_tbl(), controls_path)
     write_csv_safe(empty_sector_share_frozen_tbl(), frozen_path)
-    append_log(cfg$logs$model_run, "- GTWR sector-share annual sidecar skipped: missing sector-share outcomes or annual exposure families")
+    append_log(cfg$logs$model_run, "- GTWR sector-share quarterly sidecar skipped: missing sector-share outcomes or quarterly exposure families")
   } else {
     panel_xy <- prepare_gtwr_points(panel)
     cache_dir <- cfg$get_gtwr_sector_share_spec_cache_dir(control_set)
@@ -275,7 +275,7 @@ if (!isTRUE(cfg$run_gtwr_sector_share_sidecar)) {
     append_log(
       cfg$logs$model_run,
       sprintf(
-        "- GTWR sector-share annual sidecar completed: control_set=%s, specs=%d, statuses=%s",
+        "- GTWR sector-share quarterly sidecar completed: control_set=%s, specs=%d, statuses=%s",
         control_set,
         nrow(summary_tbl),
         paste(unique(summary_tbl$status), collapse = "|")

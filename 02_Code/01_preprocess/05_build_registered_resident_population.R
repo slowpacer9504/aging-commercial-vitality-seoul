@@ -3,18 +3,18 @@
 #==============================================================================
 # Script    : 05_build_registered_resident_population.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Build canonical annual resident-population and resident-aging
+# Purpose   : Build canonical quarterly resident-population and resident-aging
 #             variables from MOIS monthly 5-year registered-population CSVs.
 # Author    : Codex
 # Created   : 2026-05-14
 # Type      : panel_building
-# Inputs    : MOIS registered population CSVs, seoul_year_base.parquet,
+# Inputs    : MOIS registered population CSVs, seoul_quarter_base.parquet,
 #             2020 Seoul administrative-dong boundary
 # Outputs   : registered_resident_population.parquet,
 #             registered_resident_population_monthly.parquet,
 #             registered_resident_population_qc.csv,
 #             registered_resident_population_mapping_qc.csv
-# DependsOn : 02_build_seoul_year_base.R
+# DependsOn : 02_build_seoul_quarter_base.R
 #==============================================================================
 
 source(here::here("02_Code", "00_setup", "config.R"))
@@ -26,8 +26,8 @@ load_project_packages()
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 05_build_registered_resident_population", timestamp()))
 
-if (!file.exists(cfg$paths$year_base)) {
-  stop(sprintf("[ERROR] Missing required input: %s", cfg$paths$year_base), call. = FALSE)
+if (!file.exists(cfg$paths$quarter_base)) {
+  stop(sprintf("[ERROR] Missing required input: %s", cfg$paths$quarter_base), call. = FALSE)
 }
 
 raw_files <- sort(list.files(
@@ -473,8 +473,9 @@ monthly <- monthly_age_pop |>
   ) |>
   dplyr::arrange(.data$adm_cd, .data$year, .data$month)
 
-annual <- monthly |>
-  dplyr::group_by(.data$adm_cd, .data$year) |>
+quarterly <- monthly |>
+  dplyr::mutate(quarter = as.integer(ceiling(.data$month / 3))) |>
+  dplyr::group_by(.data$adm_cd, .data$year, .data$quarter) |>
   dplyr::summarise(
     registered_month_n = sum(is.finite(.data$resident_pop)),
     resident_pop = mean_or_na(.data$resident_pop),
@@ -532,11 +533,12 @@ annual <- monthly |>
     age30_resident_share = ratio_or_na(.data$age30_resident_pop, .data$age_mix_total_resident_pop),
     age40_resident_share = ratio_or_na(.data$age40_resident_pop, .data$age_mix_total_resident_pop),
     age50_resident_share = ratio_or_na(.data$age50_resident_pop, .data$age_mix_total_resident_pop),
+    yq = make_yq(.data$year, .data$quarter),
     age60plus_resident_share = ratio_or_na(.data$age60_resident_pop, .data$age_mix_total_resident_pop),
     resident_population_source = "MOIS_registered_population_5year_monthly"
   ) |>
   dplyr::select(
-    adm_cd, year,
+    adm_cd, year, quarter, yq,
     resident_pop, age60_resident_pop, age60_resident_share,
     age20_resident_pop, age30_resident_pop, age40_resident_pop, age50_resident_pop,
     age60_64_resident_pop, age65_74_resident_pop, age75plus_resident_pop, age65plus_resident_pop,
@@ -548,27 +550,27 @@ annual <- monthly |>
     registered_boundary_proxy_source_adm_cd, registered_boundary_proxy_source_year,
     registered_boundary_proxy_reference_year
   ) |>
-  dplyr::arrange(.data$adm_cd, .data$year)
+  dplyr::arrange(.data$adm_cd, .data$year, .data$quarter)
 
-year_base_keys <- arrow::read_parquet(cfg$paths$year_base, col_select = tidyselect::all_of(c("adm_cd", "year"))) |>
+quarter_base_keys <- arrow::read_parquet(cfg$paths$quarter_base, col_select = tidyselect::all_of(c("adm_cd", "year", "quarter", "yq", "quarter_index"))) |>
   tibble::as_tibble() |>
   standardize_keys() |>
-  dplyr::arrange(.data$adm_cd, .data$year)
-validate_panel_keys(year_base_keys, c("adm_cd", "year"))
+  dplyr::arrange(.data$adm_cd, .data$year, .data$quarter)
+validate_panel_keys(quarter_base_keys, c("adm_cd", "yq"))
 
-missing_annual_keys <- year_base_keys |>
-  dplyr::anti_join(annual, by = c("adm_cd", "year"))
-if (nrow(missing_annual_keys) > 0L) {
+missing_quarter_keys <- quarter_base_keys |>
+  dplyr::anti_join(quarterly, by = c("adm_cd", "year", "quarter", "yq"))
+if (nrow(missing_quarter_keys) > 0L) {
   stop(
-    sprintf("[ERROR] registered resident population missing for panel keys: %d", nrow(missing_annual_keys)),
+    sprintf("[ERROR] registered resident population missing for panel keys: %d", nrow(missing_quarter_keys)),
     call. = FALSE
   )
 }
 
-registered_panel <- year_base_keys |>
-  dplyr::left_join(annual, by = c("adm_cd", "year"))
+registered_panel <- quarter_base_keys |>
+  dplyr::left_join(quarterly, by = c("adm_cd", "year", "quarter", "yq"))
 
-validate_panel_keys(registered_panel, c("adm_cd", "year"))
+validate_panel_keys(registered_panel, c("adm_cd", "yq"))
 
 missing_core <- registered_panel |>
   dplyr::filter(!is.finite(.data$resident_pop) | !is.finite(.data$age60_resident_share))
@@ -584,10 +586,10 @@ if (nrow(missing_core) > 0L) {
 # 4. QC and Save
 #==============================================================================
 
-qc_year <- registered_panel |>
-  dplyr::group_by(.data$year) |>
+qc_yq <- registered_panel |>
+  dplyr::group_by(.data$yq) |>
   dplyr::summarise(
-    scope = "year",
+    scope = "yq",
     row_n = dplyr::n(),
     adm_n = dplyr::n_distinct(.data$adm_cd),
     resident_pop_missing_n = sum(!is.finite(.data$resident_pop)),
@@ -603,7 +605,7 @@ qc_year <- registered_panel |>
 
 qc_overall <- registered_panel |>
   dplyr::summarise(
-    year = NA_integer_,
+    yq = NA_character_,
     scope = "overall",
     row_n = dplyr::n(),
     adm_n = dplyr::n_distinct(.data$adm_cd),
@@ -617,19 +619,19 @@ qc_overall <- registered_panel |>
     age_group_total_abs_diff_max = max(.data$age_group_total_abs_diff_max, na.rm = TRUE)
   )
 
-qc <- dplyr::bind_rows(qc_year, qc_overall) |>
+qc <- dplyr::bind_rows(qc_yq, qc_overall) |>
   dplyr::mutate(
     source_file_n = length(raw_files),
     expected_year_min = cfg$short_start,
     expected_year_max = cfg$short_end
   ) |>
-  dplyr::select(scope, year, dplyr::everything())
+  dplyr::select(scope, yq, dplyr::everything())
 
 bad_month_coverage <- registered_panel |>
-  dplyr::filter(.data$registered_month_n != 12L)
+  dplyr::filter(.data$registered_month_n != 3L)
 if (nrow(bad_month_coverage) > 0L) {
   stop(
-    sprintf("[ERROR] non-12-month registered resident coverage detected: %d panel rows", nrow(bad_month_coverage)),
+    sprintf("[ERROR] non-3-month registered resident coverage detected: %d panel rows", nrow(bad_month_coverage)),
     call. = FALSE
   )
 }
