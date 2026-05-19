@@ -26,6 +26,8 @@
 ## 4) Auxiliary covariate 정합
 
 - `03_build_auxiliary_covariates.R`는 auxiliary public-data sources를 `adm_cd-year`, `adm_cd`, 또는 record-level pre-aggregation 단위로 정리한 뒤 `adm_cd-yq` panel에 맞춰 발행한다.
+- 공시지가는 필지 대표점 기반 행정동-연도 면적가중평균을 만든 뒤 해당 연도 4개 분기에 동일하게 발행한다.
+- 대중교통 source는 `adm_cd-yq`로 발행한다. 버스정류장 count는 단일 연도 snapshot 반복, 월별 snapshot의 quarter-end latest, carry-forward status를 QC에 기록하고, 지하철역 count는 개통일 규칙의 `open_date <= quarter_end`로 계산한다.
 - 의료, 대형점포, senior source는 record-level pre-aggregation layer를 남기되, active panel에는 분기 as-of count 또는 status만 반영한다.
 - walk-environment cache는 `adm_cd` static layer로 관리한다.
 

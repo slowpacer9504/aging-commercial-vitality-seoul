@@ -137,7 +137,7 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 3. geocoding, cache, manual fix 처리
 4. annual/static source를 quarterly panel에 맞춘 as-of covariate로 발행
 
-공시지가는 필지 polygon의 내부 대표점으로 행정동을 배정한 뒤, 유효한 필지 면적을 가중치로 하는 행정동-연도별 면적가중평균으로 집계한다. 이는 행정동 전체 토지면적 기준의 지가 수준을 통제하기 위한 active contract이며, 엄밀한 행정동-필지 교차면적 계산은 수행하지 않는다.
+공시지가는 필지 polygon의 내부 대표점으로 행정동을 배정한 뒤, 유효한 필지 면적을 가중치로 하는 행정동-연도별 면적가중평균으로 집계한다. 분기 패널에는 해당 연도 공시지가를 같은 연도의 4개 분기에 동일하게 발행한다. 이는 행정동 전체 토지면적 기준의 지가 수준을 통제하기 위한 active contract이며, 엄밀한 행정동-필지 교차면적 계산은 수행하지 않는다.
 
 이 단계의 주요 산출물은 아래와 같다.
 
@@ -149,6 +149,8 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
   - static walk-environment cache
 - geocode/QC/unmatched log
 
+대중교통 접근성 원천은 분기 source precision을 별도 추적한다. 버스정류장은 2019, 2020, 2025년 단일 snapshot을 해당 연도 분기 대표값으로 반복하고, 2021년 1월~2024년 4월 월별 snapshot은 각 분기말 이전 최신 snapshot을 사용한다. 2024년 5월 이후 원천 공백은 2024년 4월 1일 snapshot을 carry-forward한다. 지하철역은 station master에 개통일 규칙을 부여해 `open_date <= quarter_end`인 역만 해당 분기 count에 포함한다.
+
 이제 의료·대형유통 등도 더 이상 active control pool에 들어가지 않는다. record-level pre-aggregation은 유지하되, active panel에는 permit-based as-of 진단 변수로만 남긴다.
 
 ### 2.4 `01_build_living_population_inflow.R`: 서울생활인구 외부 유입 인구 구축
@@ -156,6 +158,7 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 이 단계의 목적은 서울생활인구 월별 ZIP 원천을 전체 압축해제하지 않고 읽어 `adm_cd-yq` 기준 외부 유입 인구를 만드는 것이다. 상업 활력의 사회적 차원은 단순 내부 유동인구뿐 아니라 외부 생활권에서 유입되는 인구 규모도 반영해야 하므로, 이 산출물은 optional preprocessing layer로 관리하되 최종 패널에는 있으면 결합한다.
 
 월별 ZIP 처리 비용이 크기 때문에 `run_all.R`의 default 실행과 required test plan에서는 이 단계를 제외한다. 수동으로 `01_build_living_population_inflow.R`를 실행해 산출물이 있으면 `06_build_analysis_panel.R`에서 `adm_cd-yq` 기준으로 결합한다. 이미 `living_population_external_inflow.parquet`가 있고 `LIVING_POP_FORCE_REBUILD=FALSE`이면 이 optional preprocessing script는 기존 산출물을 재사용한다.
+전체 재생성은 월별 ZIP 단위 병렬 처리를 사용할 수 있다. `LIVING_POP_CORES`를 2 이상으로 지정하면 INNER와 METRO 각각의 월별 ZIP 처리를 병렬화하되, 최종 parquet, manifest, QC 파일은 부모 프로세스가 한 번만 기록한다.
 
 집계 정의는 아래와 같다.
 

@@ -83,6 +83,8 @@
    - 분기 안정성은 현재 분기까지의 rolling 4-quarter 분포로 계산한다.
 4. **annual / static auxiliary**
    - 연도 또는 정적 자료는 `adm_cd-year` 또는 `adm_cd`에서 정리한 뒤 `adm_cd-yq` 패널에 as-of 방식으로 결합하고, source precision을 기록한다.
+   - 공시지가는 행정동-연도별 면적가중평균을 만든 뒤 같은 연도의 4개 분기에 동일하게 발행한다.
+   - 대중교통 접근성의 버스정류장 source처럼 단일 snapshot과 월별 snapshot이 섞인 자료는 분기별 발행 snapshot과 carry-forward 여부를 QC에 기록한다.
 
 이 원칙은 분기 상권 변동을 보존하면서 저주기 source의 반복값 문제를 명시적으로 관리하기 위한 최소 계약이다. 시차·선행 파생열은 active shared panel에 기계적으로 추가하지 않고, 기본 분석은 동시점 분기값을 기준으로 수행한다.
 

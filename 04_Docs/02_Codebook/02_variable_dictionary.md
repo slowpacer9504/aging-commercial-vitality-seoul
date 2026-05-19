@@ -79,6 +79,7 @@ GTWR는 별도 control set을 사용한다.
   - `transit_accessibility`
 
 GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직접 투입하지 않고, 두 변수를 표준화 평균한 `transit_accessibility`를 통제변수로 투입한다.
+`bus_stop_count_aux`는 혼합주기 snapshot source다. 2019, 2020, 2025처럼 단일 snapshot만 있는 해는 해당 연도 4개 분기에 반복하고, 2021년 1월~2024년 4월 월별 snapshot 구간은 분기말 이전 최신 snapshot을 사용한다. `subway_station_count_aux`는 station master에 개통일 규칙을 부여한 뒤 `open_date <= quarter_end`인 역을 분기별로 count한다.
 
 ## 5) Appendix Sidecar 변수
 
@@ -140,7 +141,7 @@ GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직
 - 주민등록인구 기반 `age60_resident_share`, `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`는 해당 분기 월별 연령대 인구 합계를 같은 분기 월별 총인구 합계로 나눈 분모가중 분기 비중이다.
 - 주민등록인구 age-mix appendix 변수(`age20_resident_share`~`age60plus_resident_share`)는 20세 이상 연령구성 분모에서 계산한다.
 - 2020년에 `오류제2동`에서 분동된 `항동`은 2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.
-- 공시지가는 필지 polygon의 내부 대표점으로 행정동을 배정한 뒤 필지 면적을 가중치로 하는 행정동-연도별 면적가중평균을 계산하고 해당 연도 분기에 as-of로 결합한다. 예: `ln_official_land_price`.
+- 공시지가는 필지 polygon의 내부 대표점으로 행정동을 배정한 뒤 필지 면적을 가중치로 하는 행정동-연도별 면적가중평균을 계산하고 해당 연도의 4개 분기에 동일하게 결합한다. 예: `ln_official_land_price`.
 - 서울생활인구 외부 유입 인구는 월별 ZIP의 일자-시간대 시점 인구를 행정동-월 기준으로 평균한 뒤, 같은 분기 월평균을 다시 평균한 분기 평균 시점인구다. 월 내부 일수가 부족한 경우 관측일 기반 월평균을 해당 월 대표값으로 쓰고 manifest에 coverage flag를 남긴다.
 - 신생기업 생존율은 서울시 상권분석서비스 JSON의 기준연도 Q4 3개년 block을 행정동-분기 row로 as-of 재구성한다. `survival_3y`는 원천 생존율 값을 그대로 사용하고, 코호트 분모가 0인 row는 임의 보정하지 않고 결측으로 둔다.
 - 점포당 매출액은 분기 총매출을 분기 대표 점포수로 나눈 뒤 `log1p`를 적용한다. 예: `ln_sales_per_store`.

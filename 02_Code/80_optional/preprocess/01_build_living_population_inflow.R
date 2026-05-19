@@ -372,45 +372,145 @@ aggregate_member <- function(zip_path, member_name, dataset, usecols, hours, sup
   )
 }
 
-process_zips <- function(files, dataset, usecols, hours, suppressed_value, encoding_from) {
+empty_living_pop_result <- function() {
+  data.table::data.table(year = integer(), year_month = character(), adm_cd = character(), pop_sum = numeric())
+}
+
+empty_living_pop_manifest <- function() {
+  data.table::data.table(
+    dataset = character(), file_path = character(), member_name = character(),
+    year_month = character(), encoding_used = character(), status = character(),
+    rows_read = integer(), rows_used = integer(), n_slots = integer(),
+    n_days = integer(), month_success_days = integer(), month_expected_days = integer(),
+    month_coverage_flag = character(),
+    error_message = character()
+  )
+}
+
+resolve_living_pop_cores <- function(requested_cores, n_files) {
+  cores <- suppressWarnings(as.integer(requested_cores[[1]]))
+  if (!is.finite(cores) || cores < 1L) cores <- 1L
+  if (!is.finite(n_files) || n_files < 2L) return(1L)
+  cores <- min(cores, as.integer(n_files))
+
+  if (.Platform$OS.type == "windows" && cores > 1L) {
+    warning("LIVING_POP_CORES>1 is not supported with forked parallelism on Windows; using 1 core.", call. = FALSE)
+    cores <- 1L
+  }
+
+  cores
+}
+
+process_zip_file <- function(zip_path, zip_index, zip_total, dataset, usecols, hours, suppressed_value, encoding_from) {
   result_list <- list()
   manifest_list <- list()
+  prefix <- if (identical(dataset, "inner")) "INNER_PEOPLE" else "METRO_PEOPLE"
+  year_month <- extract_year_month(zip_path, prefix)
 
-  for (i in seq_along(files)) {
-    zip_path <- files[[i]]
-    members <- zip_members(zip_path)
-    if (length(members) == 0L) {
-      manifest_list[[length(manifest_list) + 1L]] <- make_empty_member_manifest(
+  members <- zip_members(zip_path)
+  if (length(members) == 0L) {
+    return(list(
+      result = empty_living_pop_result(),
+      manifest = make_empty_member_manifest(
         dataset,
         zip_path,
         NA_character_,
-        extract_year_month(zip_path, if (identical(dataset, "inner")) "INNER_PEOPLE" else "METRO_PEOPLE"),
+        year_month,
         "error",
         "no csv members in zip"
       )
-      next
-    }
+    ))
+  }
 
-    message(sprintf("[%s] zip %d/%d: %s (%d daily CSV)", dataset, i, length(files), basename(zip_path), length(members)))
-    for (member_name in members) {
-      out <- aggregate_member(
+  message(sprintf("[%s] zip %d/%d: %s (%d daily CSV)", dataset, zip_index, zip_total, basename(zip_path), length(members)))
+  for (member_name in members) {
+    out <- aggregate_member(
+      zip_path = zip_path,
+      member_name = member_name,
+      dataset = dataset,
+      usecols = usecols,
+      hours = hours,
+      suppressed_value = suppressed_value,
+      encoding_from = encoding_from
+    )
+    if (!is.null(out$result) && nrow(out$result) > 0L) {
+      result_list[[length(result_list) + 1L]] <- out$result
+    }
+    manifest_list[[length(manifest_list) + 1L]] <- out$manifest
+  }
+
+  result <- if (length(result_list) == 0L) {
+    empty_living_pop_result()
+  } else {
+    data.table::rbindlist(result_list, fill = TRUE)
+  }
+
+  manifest <- if (length(manifest_list) == 0L) {
+    empty_living_pop_manifest()
+  } else {
+    data.table::rbindlist(manifest_list, fill = TRUE)
+  }
+
+  list(result = result, manifest = manifest)
+}
+
+process_zips <- function(files, dataset, usecols, hours, suppressed_value, encoding_from, cores = 1L) {
+  result_list <- list()
+  manifest_list <- list()
+  n_files <- length(files)
+  cores <- resolve_living_pop_cores(cores, n_files)
+
+  if (cores > 1L) {
+    message(sprintf("[%s] processing %d monthly ZIP files with %d cores", dataset, n_files, cores))
+  }
+
+  old_dt_threads <- data.table::getDTthreads()
+  if (cores > 1L) data.table::setDTthreads(1L)
+  on.exit(data.table::setDTthreads(old_dt_threads), add = TRUE)
+
+  worker <- function(i) {
+    zip_path <- files[[i]]
+    prefix <- if (identical(dataset, "inner")) "INNER_PEOPLE" else "METRO_PEOPLE"
+    tryCatch(
+      process_zip_file(
         zip_path = zip_path,
-        member_name = member_name,
+        zip_index = i,
+        zip_total = n_files,
         dataset = dataset,
         usecols = usecols,
         hours = hours,
         suppressed_value = suppressed_value,
         encoding_from = encoding_from
-      )
-      if (!is.null(out$result) && nrow(out$result) > 0L) {
-        result_list[[length(result_list) + 1L]] <- out$result
+      ),
+      error = function(e) {
+        list(
+          result = empty_living_pop_result(),
+          manifest = make_empty_member_manifest(
+            dataset,
+            zip_path,
+            NA_character_,
+            extract_year_month(zip_path, prefix),
+            "error",
+            paste("zip worker error:", e$message)
+          )
+        )
       }
-      manifest_list[[length(manifest_list) + 1L]] <- out$manifest
-    }
+    )
   }
 
+  zip_outputs <- if (cores > 1L) {
+    parallel::mclapply(seq_along(files), worker, mc.cores = cores, mc.preschedule = FALSE)
+  } else {
+    lapply(seq_along(files), worker)
+  }
+
+  result_list <- lapply(zip_outputs, `[[`, "result")
+  result_list <- result_list[vapply(result_list, nrow, integer(1)) > 0L]
+  manifest_list <- lapply(zip_outputs, `[[`, "manifest")
+  manifest_list <- manifest_list[vapply(manifest_list, nrow, integer(1)) > 0L]
+
   result <- if (length(result_list) == 0L) {
-    data.table::data.table(year = integer(), year_month = character(), adm_cd = character(), pop_sum = numeric())
+    empty_living_pop_result()
   } else {
     data.table::rbindlist(result_list, fill = TRUE)[
       ,
@@ -420,14 +520,7 @@ process_zips <- function(files, dataset, usecols, hours, suppressed_value, encod
   }
 
   manifest <- if (length(manifest_list) == 0L) {
-    data.table::data.table(
-      dataset = character(), file_path = character(), member_name = character(),
-      year_month = character(), encoding_used = character(), status = character(),
-      rows_read = integer(), rows_used = integer(), n_slots = integer(),
-      n_days = integer(), month_success_days = integer(), month_expected_days = integer(),
-      month_coverage_flag = character(),
-      error_message = character()
-    )
+    empty_living_pop_manifest()
   } else {
     data.table::rbindlist(manifest_list, fill = TRUE)
   }
@@ -558,7 +651,8 @@ if (!reuse_existing_output) {
     usecols = inner_usecols,
     hours = hours,
     suppressed_value = cfg$living_pop_suppressed_value,
-    encoding_from = cfg$living_pop_encoding
+    encoding_from = cfg$living_pop_encoding,
+    cores = cfg$living_pop_cores
   )
   metro_out <- process_zips(
     files = metro_files,
@@ -566,7 +660,8 @@ if (!reuse_existing_output) {
     usecols = metro_usecols,
     hours = hours,
     suppressed_value = cfg$living_pop_suppressed_value,
-    encoding_from = cfg$living_pop_encoding
+    encoding_from = cfg$living_pop_encoding,
+    cores = cfg$living_pop_cores
   )
 
   inner_quarter <- finalize_dataset(

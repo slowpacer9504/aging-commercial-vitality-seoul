@@ -59,6 +59,26 @@ base_year <- q |>
 base_adm <- base_year |>
   dplyr::distinct(adm_cd)
 
+make_quarter_start <- function(year, quarter) {
+  lubridate::make_date(as.integer(year), (as.integer(quarter) - 1L) * 3L + 1L, 1L)
+}
+
+make_quarter_end <- function(year, quarter) {
+  year <- as.integer(year)
+  quarter <- as.integer(quarter)
+  next_year <- year + as.integer(quarter == 4L)
+  next_month <- ifelse(quarter == 4L, 1L, quarter * 3L + 1L)
+  lubridate::make_date(next_year, next_month, 1L) - lubridate::days(1L)
+}
+
+quarter_calendar <- base_quarter |>
+  dplyr::distinct(year, quarter, yq, quarter_index) |>
+  dplyr::mutate(
+    quarter_start = make_quarter_start(year, quarter),
+    quarter_end = make_quarter_end(year, quarter)
+  ) |>
+  dplyr::arrange(quarter_index)
+
 adm_boundary <- load_commercial_boundary(cfg$dir_boundary, target_crs = cfg$target_crs) |>
   dplyr::select(adm_cd, dplyr::any_of("adstrd_nm"), geometry) |>
   sf::st_make_valid()
@@ -1222,6 +1242,34 @@ build_point_preagg_year_count <- function(df, year_col, count_col) {
     dplyr::select(-has_source_year)
 }
 
+build_point_preagg_quarter_count <- function(df, count_col) {
+  # 분기 source는 관측 또는 as-of 발행된 yq만 0/정수 count를 주고,
+  # source가 애초에 없는 분기는 NA로 둔다.
+  yq_observed <- df |>
+    dplyr::transmute(yq = as.character(yq)) |>
+    dplyr::filter(!is.na(yq)) |>
+    dplyr::distinct(yq) |>
+    dplyr::pull(yq)
+
+  out <- df |>
+    dplyr::transmute(
+      adm_cd = adm_cd,
+      year = as.integer(year),
+      quarter = as.integer(quarter),
+      yq = as.character(yq)
+    ) |>
+    dplyr::filter(!is.na(adm_cd), !is.na(yq)) |>
+    dplyr::count(adm_cd, year, quarter, yq, name = count_col)
+
+  base_quarter |>
+    dplyr::left_join(out, by = c("adm_cd", "year", "quarter", "yq")) |>
+    dplyr::mutate(
+      has_source_yq = yq %in% yq_observed,
+      !!count_col := dplyr::if_else(has_source_yq, dplyr::coalesce(.data[[count_col]], 0L), NA_integer_)
+    ) |>
+    dplyr::select(-has_source_yq)
+}
+
 build_park_area_static <- function() {
   park_dir <- file.path(cfg$dir_boundary, "03_Park")
   shp <- list.files(park_dir, pattern = "[.]shp$", full.names = TRUE)
@@ -1330,13 +1378,14 @@ read_bus_snapshot_file <- function(path) {
 }
 
 build_bus_stop_panel <- function(bus_dir) {
-  # 버스는 연도별 snapshot raw가 여러 개 있을 수 있으므로,
-  # canonical 파일만 읽고 "연도별 최신 snapshot"만 남겨 count한다.
+  # 버스 source는 혼합 주기다. 2019/2020/2025는 단일 snapshot을
+  # 해당 연도의 4개 분기 대표값으로 쓰고, 2021-2023 및 2024.01-04는
+  # 분기말 이전 최신 월별 snapshot을 사용한다.
   bus_files <- resolve_canonical_source_paths("bus_stop")
   if (length(bus_files) == 0) {
     return(list(
       raw = tibble::tibble(),
-      year = base_year |>
+      quarter = base_quarter |>
         dplyr::mutate(bus_stop_count_aux = NA_real_)
     ))
   }
@@ -1346,15 +1395,94 @@ build_bus_stop_panel <- function(bus_dir) {
   if (nrow(bus_raw) == 0) {
     return(list(
       raw = tibble::tibble(),
-      year = base_year |>
+      quarter = base_quarter |>
         dplyr::mutate(bus_stop_count_aux = NA_real_)
     ))
   }
 
-  bus_latest <- bus_raw |>
-    dplyr::group_by(year) |>
-    dplyr::filter(snapshot_date == max(snapshot_date, na.rm = TRUE)) |>
-    dplyr::ungroup() |>
+  bus_snapshot_tbl <- bus_raw |>
+    dplyr::filter(!is.na(snapshot_date)) |>
+    dplyr::distinct(snapshot_date, source_file) |>
+    dplyr::mutate(snapshot_year = as.integer(format(snapshot_date, "%Y"))) |>
+    dplyr::group_by(snapshot_year) |>
+    dplyr::mutate(snapshot_n_in_year = dplyr::n_distinct(snapshot_date)) |>
+    dplyr::ungroup()
+
+  if (nrow(bus_snapshot_tbl) == 0) {
+    return(list(
+      raw = tibble::tibble(),
+      quarter = base_quarter |>
+        dplyr::mutate(bus_stop_count_aux = NA_real_)
+    ))
+  }
+
+  select_bus_snapshot <- function(target_year, target_quarter, quarter_start, quarter_end) {
+    year_snapshots <- bus_snapshot_tbl |>
+      dplyr::filter(snapshot_year == target_year) |>
+      dplyr::arrange(snapshot_date)
+
+    if (nrow(year_snapshots) == 0) {
+      prior <- bus_snapshot_tbl |>
+        dplyr::filter(snapshot_date <= quarter_end) |>
+        dplyr::arrange(snapshot_date)
+      if (nrow(prior) == 0) {
+        return(tibble::tibble(
+          selected_snapshot_date = as.Date(NA_character_),
+          bus_source_precision = "missing_snapshot",
+          selected_source_file = NA_character_
+        ))
+      }
+      selected <- dplyr::slice_tail(prior, n = 1)
+      return(tibble::tibble(
+        selected_snapshot_date = selected$snapshot_date[[1]],
+        bus_source_precision = "carried_forward",
+        selected_source_file = selected$source_file[[1]]
+      ))
+    }
+
+    if (dplyr::n_distinct(year_snapshots$snapshot_date) == 1L) {
+      selected <- dplyr::slice_head(year_snapshots, n = 1)
+      return(tibble::tibble(
+        selected_snapshot_date = selected$snapshot_date[[1]],
+        bus_source_precision = "annual_snapshot",
+        selected_source_file = selected$source_file[[1]]
+      ))
+    }
+
+    selected <- year_snapshots |>
+      dplyr::filter(snapshot_date <= quarter_end) |>
+      dplyr::arrange(snapshot_date) |>
+      dplyr::slice_tail(n = 1)
+    if (nrow(selected) == 0) {
+      selected <- dplyr::slice_head(year_snapshots, n = 1)
+    }
+
+    precision <- dplyr::if_else(
+      selected$snapshot_date[[1]] < quarter_start,
+      "carried_forward",
+      "monthly_snapshot"
+    )
+    tibble::tibble(
+      selected_snapshot_date = selected$snapshot_date[[1]],
+      bus_source_precision = precision,
+      selected_source_file = selected$source_file[[1]]
+    )
+  }
+
+  bus_quarter_plan <- quarter_calendar |>
+    dplyr::mutate(
+      selected = purrr::pmap(
+        list(year, quarter, quarter_start, quarter_end),
+        select_bus_snapshot
+      )
+    ) |>
+    tidyr::unnest(selected) |>
+    dplyr::select(
+      year, quarter, yq, quarter_index, quarter_start, quarter_end,
+      selected_snapshot_date, bus_source_precision, selected_source_file
+    )
+
+  bus_snapshot_records <- bus_raw |>
     dplyr::mutate(
       stop_uid = dplyr::coalesce(
         node_id,
@@ -1362,76 +1490,113 @@ build_bus_stop_panel <- function(bus_dir) {
         sprintf("%.7f_%.7f", x, y)
       )
     ) |>
-    dplyr::distinct(year, stop_uid, .keep_all = TRUE)
+    dplyr::distinct(snapshot_date, stop_uid, .keep_all = TRUE)
 
-  if (nrow(bus_latest) == 0) {
+  if (nrow(bus_snapshot_records) == 0) {
     return(list(
       raw = tibble::tibble(),
-      year = base_year |>
+      quarter = base_quarter |>
         dplyr::mutate(bus_stop_count_aux = NA_real_)
     ))
   }
 
-  snapshot_log <- bus_latest |>
-    dplyr::distinct(year, snapshot_date, source_file) |>
-    dplyr::group_by(year, snapshot_date) |>
-    dplyr::summarise(source_file = paste(sort(unique(source_file)), collapse = "|"), .groups = "drop") |>
-    dplyr::arrange(year) |>
+  snapshot_log <- bus_quarter_plan |>
+    dplyr::arrange(quarter_index) |>
     dplyr::mutate(
-      txt = sprintf("%d=%s (%s)", year, format(snapshot_date, "%Y-%m-%d"), source_file)
+      txt = sprintf(
+        "%s=%s [%s]",
+        yq,
+        format(selected_snapshot_date, "%Y-%m-%d"),
+        bus_source_precision
+      )
     ) |>
     dplyr::pull(txt) |>
     paste(collapse = ", ")
-  append_log(cfg$logs$data_qc, sprintf("- Bus annual snapshots (latest per year): %s", snapshot_log))
+  append_log(cfg$logs$data_qc, sprintf("- Bus quarterly snapshots: %s", snapshot_log))
 
-  bus_raw_mapped <- bus_latest |>
+  bus_snapshot_mapped <- bus_snapshot_records |>
     dplyr::mutate(bus_stop_record_id = dplyr::row_number()) |>
     map_point_records_to_adm(
       x_col = "x",
       y_col = "y",
-      source_crs = guess_point_crs(bus_latest$x, bus_latest$y),
+      source_crs = guess_point_crs(bus_snapshot_records$x, bus_snapshot_records$y),
       id_col = "bus_stop_record_id"
     )
 
-  bus_year <- build_point_preagg_year_count(bus_raw_mapped, "year", "bus_stop_count_aux")
+  bus_quarter_raw <- bus_quarter_plan |>
+    dplyr::filter(!is.na(selected_snapshot_date)) |>
+    dplyr::select(
+      year, quarter, yq, quarter_index,
+      snapshot_date = selected_snapshot_date,
+      bus_source_precision,
+      selected_source_file
+    ) |>
+    dplyr::left_join(
+      bus_snapshot_mapped |>
+        dplyr::select(-year),
+      by = "snapshot_date",
+      relationship = "many-to-many"
+    ) |>
+    dplyr::arrange(quarter_index, stop_uid) |>
+    dplyr::distinct(yq, stop_uid, .keep_all = TRUE)
+
+  bus_quarter <- build_point_preagg_quarter_count(bus_quarter_raw, "bus_stop_count_aux")
 
   list(
-    raw = bus_raw_mapped,
-    year = bus_year
+    raw = bus_quarter_raw,
+    quarter = bus_quarter
   )
 }
 
-assign_subway_open_year <- function(df) {
+assign_subway_open_rule <- function(df) {
   line_col <- pick_column_name(df, c("호선", "line"))
   name_col <- pick_column_name(df, c("역사명", "역명", "station_name"))
+  default_open_date <- min(quarter_calendar$quarter_start, na.rm = TRUE)
 
   if (is.na(line_col) || is.na(name_col)) {
-    return(rep(min(years_target), nrow(df)))
+    return(tibble::tibble(
+      open_date = rep(default_open_date, nrow(df)),
+      subway_source_precision = rep("pre_2019_existing", nrow(df))
+    ))
   }
 
   line <- trimws(as.character(df[[line_col]]))
   name <- trimws(as.character(df[[name_col]]))
 
-  dplyr::case_when(
-    line == "수도권 광역급행철도" ~ 2024L,
-    line == "5호선" & name == "강일" ~ 2021L,
-    line == "신림선" ~ 2022L,
-    line == "신분당선(연장2)" ~ 2022L,
-    line == "진접선" ~ 2022L,
-    line == "서해선" ~ 2023L,
-    line == "별내선" ~ 2024L,
-    TRUE ~ as.integer(min(years_target))
+  open_date <- dplyr::case_when(
+    line == "김포골드라인" ~ as.Date("2019-09-28"),
+    line == "5호선" & name %in% c("미사", "하남풍산") ~ as.Date("2020-08-08"),
+    line == "5호선" & (name %in% c("강일", "하남검단산") | stringr::str_detect(name, "^하남시청")) ~ as.Date("2021-03-27"),
+    line == "신분당선(연장2)" & name %in% c("신논현", "논현", "신사") ~ as.Date("2022-05-28"),
+    line == "신림선" ~ as.Date("2022-05-28"),
+    line == "진접선" ~ as.Date("2022-01-01"),
+    line == "서해선" ~ as.Date("2023-08-26"),
+    line == "8호선" & name == "암사역사공원" ~ as.Date("2024-08-10"),
+    line == "별내선" ~ as.Date("2024-08-10"),
+    line == "수도권 광역급행철도" ~ as.Date("2024-12-28"),
+    TRUE ~ default_open_date
+  )
+
+  subway_source_precision <- dplyr::case_when(
+    line == "진접선" ~ "year_only_rule",
+    open_date == default_open_date ~ "pre_2019_existing",
+    TRUE ~ "open_date_rule"
+  )
+
+  tibble::tibble(
+    open_date = open_date,
+    subway_source_precision = subway_source_precision
   )
 }
 
 build_subway_station_panel <- function(subway_dir) {
   # 지하철은 현재 station master를 읽은 뒤,
-  # 노선별 개통연도 규칙을 적용해 과거 year-source panel로 확장한다.
+  # 노선별/역별 개통일 규칙을 적용해 quarterly source panel로 확장한다.
   subway_file <- resolve_canonical_source_paths("subway_station")
   if (length(subway_file) == 0) {
     return(list(
       raw = tibble::tibble(),
-      year = base_year |>
+      quarter = base_quarter |>
         dplyr::mutate(subway_station_count_aux = NA_real_)
     ))
   }
@@ -1447,46 +1612,59 @@ build_subway_station_panel <- function(subway_dir) {
     append_log(cfg$logs$data_qc, sprintf("- Subway file skipped (coords missing): %s", basename(subway_file[[1]])))
     return(list(
       raw = tibble::tibble(),
-      year = base_year |>
+      quarter = base_quarter |>
         dplyr::mutate(subway_station_count_aux = NA_real_)
     ))
   }
 
-  subway_panel_raw <- subway_raw |>
+  subway_open_rule <- assign_subway_open_rule(subway_raw)
+  subway_station_base <- subway_raw |>
     dplyr::mutate(
       line_name = if (!is.na(line_col)) trimws(as.character(.data[[line_col]])) else NA_character_,
       station_name = if (!is.na(name_col)) trimws(as.character(.data[[name_col]])) else NA_character_,
       lon = safe_num(.data[[lon_col]]),
       lat = safe_num(.data[[lat_col]]),
-      open_year = assign_subway_open_year(subway_raw),
+      open_date = subway_open_rule$open_date,
+      subway_source_precision = subway_open_rule$subway_source_precision,
       source_file = basename(subway_file[[1]])
     ) |>
     dplyr::filter(
       is.finite(lon),
       is.finite(lat),
-      is.finite(open_year),
-      open_year <= max(years_target)
+      !is.na(open_date),
+      open_date <= max(quarter_calendar$quarter_end, na.rm = TRUE)
+    )
+
+  subway_panel_raw <- tidyr::crossing(
+    subway_station_base,
+    quarter_calendar
+  ) |>
+    dplyr::filter(open_date <= quarter_end) |>
+    dplyr::mutate(
+      open_year = as.integer(format(open_date, "%Y")),
+      open_quarter = lubridate::quarter(open_date),
+      open_yq = sprintf("%dQ%d", open_year, open_quarter)
     ) |>
-    dplyr::mutate(year = purrr::map(open_year, ~ years_target[years_target >= .x])) |>
-    tidyr::unnest(year) |>
-    dplyr::distinct(year, line_name, station_name, lon, lat, .keep_all = TRUE)
+    dplyr::distinct(yq, line_name, station_name, lon, lat, .keep_all = TRUE)
 
   if (nrow(subway_panel_raw) == 0) {
     return(list(
       raw = tibble::tibble(),
-      year = base_year |>
+      quarter = base_quarter |>
         dplyr::mutate(subway_station_count_aux = 0L)
     ))
   }
 
-  rule_log <- subway_panel_raw |>
-    dplyr::distinct(line_name, station_name, open_year) |>
-    dplyr::count(open_year, name = "station_n") |>
-    dplyr::arrange(open_year) |>
-    dplyr::mutate(txt = sprintf("%d=%d", open_year, station_n)) |>
+  rule_log <- subway_station_base |>
+    dplyr::distinct(line_name, station_name, open_date, subway_source_precision) |>
+    dplyr::count(open_date, subway_source_precision, name = "station_n") |>
+    dplyr::arrange(open_date, subway_source_precision) |>
+    dplyr::mutate(
+      txt = sprintf("%s/%s=%d", format(open_date, "%Y-%m-%d"), subway_source_precision, station_n)
+    ) |>
     dplyr::pull(txt) |>
     paste(collapse = ", ")
-  append_log(cfg$logs$data_qc, sprintf("- Subway opening-year allocation: %s", rule_log))
+  append_log(cfg$logs$data_qc, sprintf("- Subway opening-date allocation: %s", rule_log))
 
   subway_raw_mapped <- subway_panel_raw |>
     dplyr::mutate(subway_station_record_id = dplyr::row_number()) |>
@@ -1497,24 +1675,24 @@ build_subway_station_panel <- function(subway_dir) {
       id_col = "subway_station_record_id"
     )
 
-  subway_year <- build_point_preagg_year_count(subway_raw_mapped, "year", "subway_station_count_aux")
+  subway_quarter <- build_point_preagg_quarter_count(subway_raw_mapped, "subway_station_count_aux")
 
   list(
     raw = subway_raw_mapped,
-    year = subway_year
+    quarter = subway_quarter
   )
 }
 
 build_transit_panel <- function() {
-  # transit은 bus와 subway를 분리 계산한 뒤 연단위로 다시 묶는다.
-  # raw/preagg는 별도로 남기고, 최종 aux에서는 year panel만 사용한다.
+  # transit은 bus와 subway를 분리 계산한 뒤 분기 단위로 다시 묶는다.
+  # raw/preagg는 별도로 남기고, 최종 aux에서는 adm_cd-yq panel을 사용한다.
   bus_dir <- find_raw_subdir("07")
   subway_dir <- find_raw_subdir("09")
 
   bus_out <- if (is.na(bus_dir)) {
     list(
       raw = tibble::tibble(),
-      year = base_year |>
+      quarter = base_quarter |>
         dplyr::mutate(bus_stop_count_aux = NA_real_)
     )
   } else {
@@ -1524,22 +1702,22 @@ build_transit_panel <- function() {
   subway_out <- if (is.na(subway_dir)) {
     list(
       raw = tibble::tibble(),
-      year = base_year |>
+      quarter = base_quarter |>
         dplyr::mutate(subway_station_count_aux = NA_real_)
     )
   } else {
     build_subway_station_panel(subway_dir)
   }
 
-  transit_out <- bus_out$year |>
-    dplyr::left_join(subway_out$year, by = c("adm_cd", "year"))
+  transit_out <- bus_out$quarter |>
+    dplyr::left_join(subway_out$quarter, by = c("adm_cd", "year", "quarter", "yq", "quarter_index"))
 
   list(
     bus_raw = bus_out$raw,
-    bus_year = bus_out$year,
+    bus_quarter = bus_out$quarter,
     subway_raw = subway_out$raw,
-    subway_year = subway_out$year,
-    transit_year = transit_out
+    subway_quarter = subway_out$quarter,
+    transit_quarter = transit_out
   )
 }
 
@@ -4719,16 +4897,56 @@ append_log(cfg$logs$data_qc, "- Building park area static")
 park_static <- build_park_area_static()
 park_year <- expand_static_to_year(park_static, years_target)
 
-append_log(cfg$logs$data_qc, "- Building transit year-source panel (latest bus snapshot per year + subway opening rules)")
+append_log(cfg$logs$data_qc, "- Building transit quarter-source panel (mixed-frequency bus snapshots + subway opening-date rules)")
 transit_out <- build_transit_panel()
 bus_raw <- transit_out$bus_raw
-bus_year <- transit_out$bus_year
+bus_quarter <- transit_out$bus_quarter
 subway_raw <- transit_out$subway_raw
-subway_year <- transit_out$subway_year
-transit_year <- transit_out$transit_year
+subway_quarter <- transit_out$subway_quarter
+transit_quarter <- transit_out$transit_quarter
 
-transit_qc <- transit_year |>
-  dplyr::group_by(year) |>
+bus_snapshot_meta <- if (nrow(bus_raw) == 0) {
+  tibble::tibble(
+    year = integer(),
+    quarter = integer(),
+    yq = character(),
+    quarter_index = integer(),
+    bus_snapshot_date = character(),
+    bus_source_precision = character(),
+    bus_source_file = character()
+  )
+} else {
+  bus_raw |>
+    dplyr::distinct(year, quarter, yq, quarter_index, snapshot_date, bus_source_precision, selected_source_file) |>
+    dplyr::group_by(year, quarter, yq, quarter_index) |>
+    dplyr::summarise(
+      bus_snapshot_date = paste(sort(unique(format(snapshot_date, "%Y-%m-%d"))), collapse = "|"),
+      bus_source_precision = paste(sort(unique(bus_source_precision)), collapse = "|"),
+      bus_source_file = paste(sort(unique(selected_source_file)), collapse = "|"),
+      .groups = "drop"
+    )
+}
+
+subway_precision_meta <- if (nrow(subway_raw) == 0) {
+  tibble::tibble(
+    year = integer(),
+    quarter = integer(),
+    yq = character(),
+    quarter_index = integer(),
+    subway_source_precision = character()
+  )
+} else {
+  subway_raw |>
+    dplyr::distinct(year, quarter, yq, quarter_index, subway_source_precision) |>
+    dplyr::group_by(year, quarter, yq, quarter_index) |>
+    dplyr::summarise(
+      subway_source_precision = paste(sort(unique(subway_source_precision)), collapse = "|"),
+      .groups = "drop"
+    )
+}
+
+transit_qc <- transit_quarter |>
+  dplyr::group_by(year, quarter, yq, quarter_index) |>
   dplyr::summarise(
     adm_n = dplyr::n(),
     bus_finite_n = sum(is.finite(bus_stop_count_aux)),
@@ -4737,15 +4955,17 @@ transit_qc <- transit_year |>
     subway_total = sum(subway_station_count_aux, na.rm = TRUE),
     .groups = "drop"
   ) |>
-  dplyr::arrange(year)
+  dplyr::left_join(bus_snapshot_meta, by = c("year", "quarter", "yq", "quarter_index")) |>
+  dplyr::left_join(subway_precision_meta, by = c("year", "quarter", "yq", "quarter_index")) |>
+  dplyr::arrange(quarter_index)
 write_csv_safe(transit_qc, cfg$logs$transit_aux_qc)
 append_log(
   cfg$logs$data_qc,
   sprintf(
     "- Transit aux summary: %s (bus totals=%s; subway totals=%s)",
     basename(cfg$logs$transit_aux_qc),
-    paste(sprintf("%d=%d", transit_qc$year, transit_qc$bus_total), collapse = ", "),
-    paste(sprintf("%d=%d", transit_qc$year, transit_qc$subway_total), collapse = ", ")
+    paste(sprintf("%s=%d", transit_qc$yq, transit_qc$bus_total), collapse = ", "),
+    paste(sprintf("%s=%d", transit_qc$yq, transit_qc$subway_total), collapse = ", ")
   )
 )
 
@@ -4788,7 +5008,7 @@ remove_obsolete_aux_intermediate_files()
 # 3. Assemble Auxiliary Covariate Panel
 #==============================================================================
 
-# assemble 단계에서는 방금 저장한 preagg를 다시 읽어 연단위 aux 변수로 집계한다.
+# assemble 단계에서는 방금 저장한 preagg를 다시 읽어 aux 변수로 집계한다.
 # 이렇게 해야 intermediate가 실제 생산-소비 관계를 가지게 되고,
 # source raw를 다시 열지 않고도 집계 parity를 검증할 수 있다.
 medical_source_preagg <- read_aux_source_preagg(cfg$paths$medical_source_preagg, "medical")
@@ -4868,26 +5088,29 @@ apartment_source_year <- if (nrow(apartment_source_preagg) == 0) {
     dplyr::arrange(adm_cd, year)
 }
 
-bus_stop_source_year <- if (nrow(bus_stop_source_preagg) == 0) {
-  base_year |>
+bus_stop_source_quarter <- if (nrow(bus_stop_source_preagg) == 0) {
+  base_quarter |>
     dplyr::mutate(bus_stop_count_aux = NA_real_)
 } else {
-  build_point_preagg_year_count(bus_stop_source_preagg, "year", "bus_stop_count_aux")
+  build_point_preagg_quarter_count(bus_stop_source_preagg, "bus_stop_count_aux")
 }
 
-subway_station_source_year <- if (nrow(subway_station_source_preagg) == 0) {
-  base_year |>
+subway_station_source_quarter <- if (nrow(subway_station_source_preagg) == 0) {
+  base_quarter |>
     dplyr::mutate(subway_station_count_aux = NA_real_)
 } else {
-  build_point_preagg_year_count(subway_station_source_preagg, "year", "subway_station_count_aux")
+  build_point_preagg_quarter_count(subway_station_source_preagg, "subway_station_count_aux")
 }
 
-transit_source_year <- bus_stop_source_year |>
-  dplyr::left_join(subway_station_source_year, by = c("adm_cd", "year"))
+transit_source_quarter <- bus_stop_source_quarter |>
+  dplyr::left_join(
+    subway_station_source_quarter,
+    by = c("adm_cd", "year", "quarter", "yq", "quarter_index")
+  )
 
 # `aux`는 아직 저장 전 객체이고, 여기서 모든 source의 as-of 결과를
-# adm_cd-yq 격자에 맞춰 하나로 합친다. 연도 정밀도 source는 같은 year의
-# 분기 row에 붙이고 source precision 한계는 QC와 설계 문서에 남긴다.
+# adm_cd-yq 격자에 맞춰 하나로 합친다. 혼합주기 source는 source precision
+# 한계를 QC와 설계 문서에 남긴다.
 aux <- base_quarter |>
   dplyr::left_join(
     land_price_adm |>
@@ -4896,7 +5119,7 @@ aux <- base_quarter |>
   ) |>
   dplyr::left_join(park_year, by = c("adm_cd", "year")) |>
   dplyr::left_join(senior_source_year, by = c("adm_cd", "year")) |>
-  dplyr::left_join(transit_source_year, by = c("adm_cd", "year")) |>
+  dplyr::left_join(transit_source_quarter, by = c("adm_cd", "year", "quarter", "yq", "quarter_index")) |>
   dplyr::left_join(medical_source_year, by = c("adm_cd", "year")) |>
   dplyr::left_join(mall_source_year, by = c("adm_cd", "year")) |>
   dplyr::left_join(apartment_source_year, by = c("adm_cd", "year")) |>

@@ -144,6 +144,8 @@ cfg$living_pop_force_rebuild <- tolower(trimws(Sys.getenv("LIVING_POP_FORCE_REBU
 cfg$living_pop_suppressed_value <- suppressWarnings(as.numeric(Sys.getenv("LIVING_POP_SUPPRESSED_VALUE", unset = "0")))
 if (!is.finite(cfg$living_pop_suppressed_value)) cfg$living_pop_suppressed_value <- 0
 cfg$living_pop_encoding <- trimws(Sys.getenv("LIVING_POP_ENCODING", unset = "UTF-8"))
+cfg$living_pop_cores <- suppressWarnings(as.integer(Sys.getenv("LIVING_POP_CORES", unset = "1")))
+if (!is.finite(cfg$living_pop_cores) || cfg$living_pop_cores < 1L) cfg$living_pop_cores <- 1L
 cfg$golmok_survival_endpoint <- "https://golmok.seoul.go.kr/region/selectSurvivalRate.json"
 cfg$golmok_survival_base_years <- c(2019L, 2022L, 2025L)
 cfg$golmok_survival_quarter <- 4L

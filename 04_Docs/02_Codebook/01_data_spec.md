@@ -73,7 +73,7 @@
 - 패널 결합 구조 점검
   - `panel_join_coverage_qc.csv` (`WARN`)
   - `panel_structural_count_flags.csv` (음수 구조 카운트면 `FAIL`)
-- 공시지가 관측/보간 점검
+- 공시지가 관측/대체 점검
   - `land_price_imputation_qc.csv` (`WARN`)
 - 서울생활인구 외부 유입 인구 점검
   - `living_population_inflow_manifest.csv` (`WARN`, member-level 처리 로그와 month-level coverage flag)
