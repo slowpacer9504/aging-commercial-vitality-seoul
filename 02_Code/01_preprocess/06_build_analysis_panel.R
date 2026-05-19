@@ -267,7 +267,9 @@ senior_detail_cols <- c(
 walk_env_cols <- c("intersection_density", "avg_slope_degree", "betweenness_centrality")
 
 expected_numeric_cols <- c(
-  "official_land_price", "apartment_complex_count",
+  "official_land_price", "land_price_lpi_factor", "land_price_adjusted",
+  "land_price_lpi_source_bjd_n", "land_price_lpi_weight_coverage",
+  "apartment_complex_count",
   "apartment_complex_count_kapt", "apartment_building_count", "apartment_household_count",
   "subway_station_count", "bus_stop_count", "hospital_count", "mall_count",
   "bus_stop_count_aux", "subway_station_count_aux",
@@ -361,6 +363,11 @@ panel_main_pre_vitality <- panel_main_pre_vitality |>
     ln_official_land_price = dplyr::if_else(
       is.finite(official_land_price) & official_land_price > 0,
       log(official_land_price),
+      NA_real_
+    ),
+    ln_land_price_adjusted = dplyr::if_else(
+      is.finite(land_price_adjusted) & land_price_adjusted > 0,
+      log(land_price_adjusted),
       NA_real_
     ),
     store_density = dplyr::if_else(
@@ -499,7 +506,10 @@ registered_resident_core_vars <- intersect(
 )
 aux_core_vars <- intersect(
   c(
-    "official_land_price", "bus_stop_count_aux", "subway_station_count_aux", "transit_accessibility",
+    "official_land_price", "ln_official_land_price",
+    "land_price_lpi_factor", "land_price_adjusted", "ln_land_price_adjusted",
+    "land_price_lpi_source_bjd_n", "land_price_lpi_weight_coverage",
+    "bus_stop_count_aux", "subway_station_count_aux", "transit_accessibility",
     "apartment_complex_count_kapt", "apartment_building_count", "apartment_household_count",
     "ln_apartment_household_count",
     "hospital_count_aux_core", "mall_count_aux_core",

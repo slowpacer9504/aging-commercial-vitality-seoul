@@ -276,6 +276,8 @@ core_files <- c(
   "seoul_quarter_base.parquet",
   "adm_region_lookup.parquet",
   "aux_covariates.parquet",
+  "land_price_lpi_bjd_adm_crosswalk.parquet",
+  "land_price_lpi_factor_adm_quarter.parquet",
   "registered_resident_population.parquet",
   "golmok_survival_rate.parquet",
   "walk_betweenness_local800_len_v1.parquet",

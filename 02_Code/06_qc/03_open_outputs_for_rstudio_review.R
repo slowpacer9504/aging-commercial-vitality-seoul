@@ -200,6 +200,8 @@ core_output_inventory <- output_inventory |>
     "seoul_raw_review.parquet",
     "seoul_quarter_base.parquet",
     "aux_covariates.parquet",
+    "land_price_lpi_bjd_adm_crosswalk.parquet",
+    "land_price_lpi_factor_adm_quarter.parquet",
     "golmok_survival_rate.parquet",
     "walk_betweenness_local800_len_v1.parquet",
     "medical_source_preagg.parquet",

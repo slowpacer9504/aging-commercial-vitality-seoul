@@ -157,7 +157,7 @@ active shared panel에는 `year`, `quarter`, `yq`, `quarter_index`를 남긴다.
 - `RUN_GTWR_MAIN_SIDECAR=TRUE`일 때만 실행한다.
 - quarterly resident-only local heterogeneity analysis에 한정한다.
 - `GTWR_CONTROL_SET=lean`을 기본으로 사용하고, extended는 명시적으로 선택할 때만 사용한다.
-- lean control은 `ln_resident_pop`, `ln_official_land_price` 두 개로 고정한다.
+- lean control은 `ln_resident_pop`, `ln_land_price_adjusted` 두 개로 고정한다.
 - extended control은 lean control에 `transit_accessibility`를 추가한다.
 - `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만들고, 두 원천 count는 모델 통제변수로 직접 투입하지 않는다.
 - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 남긴다.

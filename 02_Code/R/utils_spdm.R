@@ -225,7 +225,7 @@ spdm_wx_name <- function(var) {
 
 spdm_main_control_candidate_cols <- function() {
   default_controls <- c(
-    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
+    "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
   )
   controls <- spdm_cfg_value("spdm_main_control_cols", default_controls)
   controls <- unique(as.character(value_or(controls, default_controls)))

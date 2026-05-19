@@ -97,6 +97,10 @@ cfg$dir_registered_resident_population <- resolve_numbered_raw_dir(
   "13",
   "13_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)"
 )
+cfg$dir_land_price_lpi <- resolve_numbered_raw_dir(
+  "14",
+  "14_한국부동산원_전국지가변동률조사"
+)
 cfg$dir_golmok_survival_json <- file.path(cfg$dir_intermediate, "golmok_survival_json")
 
 
@@ -169,7 +173,7 @@ cfg$resident_age_support_vars <- c(
 cfg$twfe_main_exposure_vars <- c("age60_resident_share")
 cfg$twfe_channel_vars <- c("age60_floating_share")
 cfg$twfe_main_control_cols <- c(
-  "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
+  "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
 )
 cfg$floating_exposure_overlap_outcomes <- c("vitality_sub_social", "ln_floating_pop")
 cfg$primary_outcomes <- c(
@@ -255,7 +259,7 @@ cfg$gtwr_sector_share_outcomes <- c(
 cfg$spdm_main_exposure_vars <- c("age60_resident_share")
 cfg$spdm_channel_vars <- c("age60_floating_share")
 cfg$spdm_main_control_cols <- c(
-  "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
+  "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
 )
 cfg$gtwr_main_exposure_vars <- c("age60_resident_share")
 cfg$gtwr_floating_exposure_vars <- c("age60_floating_share")
@@ -269,10 +273,10 @@ cfg$gtwr_age_band_labels <- c("age20", "age30", "age40", "age50")
 # Set GTWR_CONTROL_SET=extended to add the standardized
 # transit-accessibility composite to the lean pool.
 cfg$gtwr_lean_control_cols <- c(
-  "ln_resident_pop", "ln_official_land_price"
+  "ln_resident_pop", "ln_land_price_adjusted"
 )
 cfg$gtwr_extended_control_cols <- c(
-  "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
+  "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
 )
 cfg$gtwr_control_set <- tolower(trimws(Sys.getenv("GTWR_CONTROL_SET", unset = "lean")))
 if (!cfg$gtwr_control_set %in% c("lean", "extended")) cfg$gtwr_control_set <- "lean"
@@ -335,7 +339,7 @@ twfe_control_cols <- c(
   "ln_resident_pop",
   "resident_pop",
   "resident_pop_density", "total_household_commercial_density",
-  "ln_spend_total", "facility_count", "ln_official_land_price",
+  "ln_spend_total", "facility_count", "ln_land_price_adjusted", "ln_official_land_price",
   "transit_accessibility",
   "avg_slope_degree", "intersection_density", "sidewalk_length_km"
 )
@@ -545,6 +549,8 @@ cfg$paths <- list(
   adm_region_lookup = file.path(cfg$dir_analysis, "adm_region_lookup.parquet"),
   adm_region_lookup_csv = file.path(cfg$dir_tables, "adm_region_lookup.csv"),
   aux_covariates = file.path(cfg$dir_analysis, "aux_covariates.parquet"),
+  land_price_lpi_crosswalk = file.path(cfg$dir_intermediate, "land_price_lpi_bjd_adm_crosswalk.parquet"),
+  land_price_lpi_factor = file.path(cfg$dir_intermediate, "land_price_lpi_factor_adm_quarter.parquet"),
   living_population_external_inflow = file.path(cfg$dir_analysis, "living_population_external_inflow.parquet"),
   golmok_survival_rate = file.path(cfg$dir_analysis, "golmok_survival_rate.parquet"),
   golmok_survival_all_levels = file.path(cfg$dir_intermediate, "golmok_survival_all_levels.parquet"),
@@ -952,6 +958,8 @@ cfg$active_output_contract <- list(
     cfg$paths$quarter_base,
     cfg$paths$adm_region_lookup,
     cfg$paths$aux_covariates,
+    cfg$paths$land_price_lpi_crosswalk,
+    cfg$paths$land_price_lpi_factor,
     cfg$paths$living_population_external_inflow,
     cfg$paths$golmok_survival_rate,
     cfg$paths$registered_resident_population,

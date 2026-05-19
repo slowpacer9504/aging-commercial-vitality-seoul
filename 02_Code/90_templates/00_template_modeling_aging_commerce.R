@@ -198,13 +198,13 @@ exposures_main <- c(
 
 controls_structural <- c(
   "ln_resident_pop",
-  "ln_official_land_price",
+  "ln_land_price_adjusted",
   "transit_accessibility"
 )
 
 controls_gtwr_lean <- c(
   "ln_resident_pop",
-  "ln_official_land_price"
+  "ln_land_price_adjusted"
 )
 
 controls_gtwr_extended <- c(

@@ -26,7 +26,8 @@
 ## 4) Auxiliary covariate 정합
 
 - `03_build_auxiliary_covariates.R`는 auxiliary public-data sources를 `adm_cd-year`, `adm_cd`, 또는 record-level pre-aggregation 단위로 정리한 뒤 `adm_cd-yq` panel에 맞춰 발행한다.
-- 공시지가는 필지 대표점 기반 행정동-연도 면적가중평균을 만든 뒤 해당 연도 4개 분기에 동일하게 발행한다.
+- 공시지가는 필지 대표점 기반 행정동-연도 면적가중평균을 만든 뒤 원 연간값으로 보존한다.
+- 한국부동산원 월별 지역별 지가지수는 법정동명으로 서울 법정동 경계와 1:1 매칭한 뒤, 법정동-행정동 공간교차 면적가중 crosswalk로 행정동 분기 보정계수 `land_price_lpi_factor`를 만든다. 최종 active 토지가격 통제변수는 연간 공시지가에 이 보정계수를 곱한 `land_price_adjusted`와 그 로그 `ln_land_price_adjusted`다.
 - 대중교통 source는 `adm_cd-yq`로 발행한다. 버스정류장 count는 단일 연도 snapshot 반복, 월별 snapshot의 quarter-end latest, carry-forward status를 QC에 기록하고, 지하철역 count는 개통일 규칙의 `open_date <= quarter_end`로 계산한다.
 - 의료, 대형점포, senior source는 record-level pre-aggregation layer를 남기되, active panel에는 분기 as-of count 또는 status만 반영한다.
 - walk-environment cache는 `adm_cd` static layer로 관리한다.

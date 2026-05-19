@@ -39,6 +39,10 @@
   - `adm_cd` 기준 행정동명, 자치구명, 5대 권역생활권 정적 lookup
 - `aux_covariates.parquet`
   - `adm_cd-yq` 기준 auxiliary public-data integration layer
+- `land_price_lpi_bjd_adm_crosswalk.parquet`
+  - 법정동 지가지수를 2020 기준 행정동으로 변환하는 법정동-행정동 면적가중 crosswalk
+- `land_price_lpi_factor_adm_quarter.parquet`
+  - `adm_cd-yq` 기준 한국부동산원 지가지수 보정계수 layer
 - `living_population_external_inflow.parquet`
   - `adm_cd-yq` 기준 서울생활인구 외부 유입 인구 layer
 - `golmok_survival_rate.parquet`
@@ -75,6 +79,10 @@
   - `panel_structural_count_flags.csv` (음수 구조 카운트면 `FAIL`)
 - 공시지가 관측/대체 점검
   - `land_price_imputation_qc.csv` (`WARN`)
+- 지가지수 보정 공시지가 점검
+  - `land_price_lpi_raw_match_qc.csv` (`FAIL`, 월별 지가지수 법정동명-법정동 경계 1:1 매칭)
+  - `land_price_lpi_crosswalk_qc.csv` (`FAIL`, 425개 행정동 coverage와 정규화 weight 합계)
+  - `land_price_lpi_adjustment_qc.csv` (`WARN`, 분기별 보정계수와 보정 공시지가 coverage)
 - 서울생활인구 외부 유입 인구 점검
   - `living_population_inflow_manifest.csv` (`WARN`, member-level 처리 로그와 month-level coverage flag)
   - `living_population_inflow_qc.csv` (`WARN`, 연도별 coverage와 값 범위)

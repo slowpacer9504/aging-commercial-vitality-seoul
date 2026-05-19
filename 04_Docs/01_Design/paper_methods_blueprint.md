@@ -76,10 +76,10 @@
   - `vitality_index_pca`
 - shared control candidate pool
   - `ln_resident_pop`
-  - `ln_official_land_price`
+  - `ln_land_price_adjusted`
   - `transit_accessibility`
 - GTWR local sidecar control pool
-  - lean: `ln_resident_pop`, `ln_official_land_price`
+  - lean: `ln_resident_pop`, `ln_land_price_adjusted`
   - extended: lean + `transit_accessibility`
 
 ### 2.3 Main Text와 Appendix의 경계

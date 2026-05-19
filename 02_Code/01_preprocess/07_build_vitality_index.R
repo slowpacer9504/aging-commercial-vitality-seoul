@@ -691,7 +691,7 @@ panel_main_view_specs_quarterly <- list(
     "vitality_sub_stability", "vitality_index_base",
     "age60_resident_share", "age60_floating_share", "age60_sales_share",
     cfg$resident_age_support_vars,
-    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
+    "ln_resident_pop", "ln_land_price_adjusted", "ln_official_land_price", "transit_accessibility"
   )),
   spdm = unique(c(
     "adm_cd", "year", "quarter", "yq", "quarter_index",
@@ -699,7 +699,7 @@ panel_main_view_specs_quarterly <- list(
     "vitality_sub_stability", "vitality_index_base",
     "age60_resident_share",
     cfg$resident_age_support_vars,
-    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
+    "ln_resident_pop", "ln_land_price_adjusted", "ln_official_land_price", "transit_accessibility"
   )),
   gtwr = unique(c(
     "adm_cd", "year", "quarter", "yq", "quarter_index",
@@ -707,7 +707,7 @@ panel_main_view_specs_quarterly <- list(
     "vitality_sub_stability", "vitality_index_base",
     "age60_resident_share",
     cfg$resident_age_support_vars,
-    "ln_resident_pop", "ln_official_land_price", "transit_accessibility"
+    "ln_resident_pop", "ln_land_price_adjusted", "ln_official_land_price", "transit_accessibility"
   ))
 )
 

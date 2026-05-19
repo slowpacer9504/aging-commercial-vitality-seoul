@@ -234,13 +234,15 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 - `ln_total_sales`, `ln_sales_count`, `ln_total_store_count`, `ln_sales_per_store`
 - `sales_quarter_stability`, `floating_quarter_stability`
 - `ln_resident_pop`, `ln_floating_pop`, `ln_external_inflow_pop`, `ln_spend_total`
-- `ln_official_land_price`
+- `ln_official_land_price`, `ln_land_price_adjusted`
 - `transit_accessibility`
 - `store_density`, `resident_pop_density`, `floating_pop_density`
 - `sales_per_store`, `sales_per_capita`
 - `survival_3y`
 - `stability_score` (`-closure_rate`, diagnostic support)
 - `age60_sales_lq`
+
+`ln_land_price_adjusted`는 기존 행정동-연도 공시지가 수준에 한국부동산원 월별 지역별 지가지수의 전년도 12월 대비 분기 평균 보정계수를 적용한 값이다. 법정동 단위 지가지수는 서울 법정동 경계와 2020 행정동 경계의 공간교차 면적가중 crosswalk로 행정동 단위에 정합한다. `ln_official_land_price`는 원 연간 공시지가 로그로 보존하고, active model control은 `ln_land_price_adjusted`를 사용한다.
 
 그 다음 shared quarterly contract를 확정한다.
 
@@ -379,7 +381,7 @@ GTWR main은 quarterly resident-only local sidecar다.
 - 해석 수준: local heterogeneity description
 - 실행 방식: outcome-exposure spec 단위로 계산하며, `GTWR_PARALLEL_SPECS`만큼 병렬 worker를 사용한다.
 - 재개 방식: spec별 RDS cache를 `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/`에 저장하고, 중단 후 재실행하면 유효한 완료 spec은 재사용한다.
-- control set: 기본값은 `GTWR_CONTROL_SET=lean`이다. `lean`은 주민등록인구 기반 `ln_resident_pop`, `ln_official_land_price`만 사용한다. `extended`는 여기에 `transit_accessibility`를 추가한다.
+- control set: 기본값은 `GTWR_CONTROL_SET=lean`이다. `lean`은 주민등록인구 기반 `ln_resident_pop`, `ln_land_price_adjusted`만 사용한다. `extended`는 여기에 `transit_accessibility`를 추가한다.
 - bandwidth 방식: 기본값은 `GTWR_BANDWIDTH_STRATEGY=fixed`, `GTWR_ST_BW=480`이다. `adaptive=TRUE` 기준으로 각 추정점 주변 시공간 이웃 480개를 사용해 outcome 간 비교 가능성과 extended control set의 추정 가능성을 함께 유지한다. `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`이면 `GTWR_BANDWIDTH_SENSITIVITY_GRID`의 기본값 `240,360,480,600,720`을 같은 outcome-control-spec에 반복 적용하고, baseline 480 대비 beta correlation, 절대변화, sign flip, local condition-number 변화를 `gtwr_bandwidth_sensitivity_<control_set>.csv`에 저장한다. `full_panel_bw_gtwr`와 `anchor_quarter_bw_gtwr`는 명시적으로 선택한 별도 진단 실행에서만 사용한다.
 - lamda 민감도: `RUN_GTWR_LAMDA_SENSITIVITY=TRUE`일 때만 실행한다. `GTWR_LAMDA_SENSITIVITY_GRID`의 각 값을 같은 outcome-control-spec에 적용해 GTWR를 재추정하고, baseline latest-quarter beta 대비 상관, 절대변화, sign flip, local condition-number 변화를 `gtwr_lamda_sensitivity_<control_set>.csv`에 저장한다.
 - local CN 진단: `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 따르되, GTWR에서 사용한 `st.dist`/`gw.weight` 기반 시공간 가중치를 적용한다.

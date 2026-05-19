@@ -752,6 +752,319 @@ build_land_price_series <- function(boundary_dir) {
   list(series = series, observed = observed)
 }
 
+empty_land_price_lpi_quarter <- function() {
+  tibble::tibble(
+    adm_cd = character(),
+    year = integer(),
+    quarter = integer(),
+    yq = character(),
+    land_price_lpi_factor = numeric(),
+    land_price_lpi_source_bjd_n = integer(),
+    land_price_lpi_weight_coverage = numeric()
+  )
+}
+
+find_land_price_lpi_csv <- function() {
+  lpi_dir <- value_or(cfg$dir_land_price_lpi, file.path(cfg$dir_raw, "14_한국부동산원_전국지가변동률조사"))
+  if (!dir.exists(lpi_dir)) return(NA_character_)
+
+  csv_paths <- list.files(lpi_dir, pattern = "[.]csv$", recursive = TRUE, full.names = TRUE)
+  csv_paths <- csv_paths[grepl("지가.*지수|지역별", basename(csv_paths))]
+  if (length(csv_paths) == 0L) {
+    csv_paths <- list.files(lpi_dir, pattern = "[.]csv$", recursive = TRUE, full.names = TRUE)
+  }
+  if (length(csv_paths) == 0L) return(NA_character_)
+
+  csv_paths[[1L]]
+}
+
+find_legal_dong_boundary_shp <- function(boundary_dir) {
+  shp_paths <- list.files(boundary_dir, pattern = "[.]shp$", recursive = TRUE, full.names = TRUE)
+  hits <- shp_paths[grepl("LSMD_ADM_SECT_UMD", basename(shp_paths))]
+  if (length(hits) == 0L) return(NA_character_)
+  hits[[1L]]
+}
+
+find_seoul_sgg_boundary_shp <- function(boundary_dir) {
+  shp_paths <- list.files(boundary_dir, pattern = "[.]shp$", recursive = TRUE, full.names = TRUE)
+  hits <- shp_paths[grepl("LARD_ADM_SECT_SGG", basename(shp_paths))]
+  if (length(hits) == 0L) return(NA_character_)
+  hits[[1L]]
+}
+
+read_land_price_lpi_monthly <- function() {
+  csv_path <- find_land_price_lpi_csv()
+  if (is.na(csv_path) || !file.exists(csv_path)) {
+    append_log(cfg$logs$data_qc, "- Land price LPI source missing: adjusted land price will be NA")
+    return(tibble::tibble())
+  }
+
+  raw <- utils::read.csv(
+    csv_path,
+    fileEncoding = "CP949",
+    check.names = FALSE,
+    stringsAsFactors = FALSE
+  )
+  if (ncol(raw) < 5L) {
+    stop(sprintf("[ERROR] Land price LPI CSV has unexpected schema: %s", basename(csv_path)), call. = FALSE)
+  }
+
+  names(raw)[2:4] <- c("si_name", "gu_name", "dong_name")
+  raw <- raw |>
+    dplyr::filter(.data$No != "No")
+
+  month_cols <- grep("^[0-9]{4}년 [0-9]{1,2}월$", names(raw), value = TRUE)
+  if (!all(c("2018년 12월", "2025년 12월") %in% month_cols)) {
+    stop(
+      sprintf(
+        "[ERROR] Land price LPI CSV must contain 2018년 12월 and 2025년 12월: %s",
+        basename(csv_path)
+      ),
+      call. = FALSE
+    )
+  }
+
+  dong_rows <- raw |>
+    dplyr::filter(.data$gu_name != .data$dong_name) |>
+    dplyr::select(gu_name, dong_name, dplyr::all_of(month_cols))
+
+  monthly <- dong_rows |>
+    tidyr::pivot_longer(
+      dplyr::all_of(month_cols),
+      names_to = "ym_label",
+      values_to = "lpi_index"
+    ) |>
+    dplyr::mutate(
+      year = as.integer(stringr::str_match(.data$ym_label, "^([0-9]{4})년")[, 2]),
+      month = as.integer(stringr::str_match(.data$ym_label, "년 ([0-9]{1,2})월$")[, 2]),
+      lpi_index = safe_num(.data$lpi_index)
+    ) |>
+    dplyr::filter(!is.na(.data$year), !is.na(.data$month))
+
+  append_log(
+    cfg$logs$data_qc,
+    sprintf(
+      "- Land price LPI raw read: %s (dong rows=%d, month cols=%d)",
+      basename(csv_path),
+      dplyr::n_distinct(paste(dong_rows$gu_name, dong_rows$dong_name, sep = "|")),
+      length(month_cols)
+    )
+  )
+
+  monthly
+}
+
+read_seoul_legal_dong_boundary <- function(boundary_dir) {
+  legal_shp <- find_legal_dong_boundary_shp(boundary_dir)
+  sgg_shp <- find_seoul_sgg_boundary_shp(boundary_dir)
+  if (is.na(legal_shp) || !file.exists(legal_shp)) {
+    append_log(cfg$logs$data_qc, "- Seoul legal-dong boundary missing: adjusted land price will be NA")
+    return(NULL)
+  }
+  if (is.na(sgg_shp) || !file.exists(sgg_shp)) {
+    stop("[ERROR] Seoul SGG boundary is required to match legal-dong LPI rows", call. = FALSE)
+  }
+
+  legal <- sf::st_read(legal_shp, quiet = TRUE, options = "ENCODING=CP949") |>
+    sf::st_transform(cfg$target_crs) |>
+    sf::st_make_valid() |>
+    dplyr::transmute(
+      sgg_cd = as.character(.data$COL_ADM_SE),
+      bjd_cd = as.character(.data$EMD_CD),
+      dong_name = as.character(.data$EMD_NM),
+      geometry
+    )
+
+  sgg <- sf::st_read(sgg_shp, quiet = TRUE, options = "ENCODING=CP949") |>
+    sf::st_drop_geometry() |>
+    dplyr::transmute(
+      sgg_cd = as.character(.data$ADM_SECT_C),
+      gu_name = as.character(.data$SGG_NM)
+    )
+
+  legal |>
+    dplyr::left_join(sgg, by = "sgg_cd") |>
+    dplyr::select(bjd_cd, sgg_cd, gu_name, dong_name, geometry)
+}
+
+build_land_price_lpi_factor <- function(boundary_dir) {
+  lpi_monthly <- read_land_price_lpi_monthly()
+  legal <- read_seoul_legal_dong_boundary(boundary_dir)
+  if (nrow(lpi_monthly) == 0L || is.null(legal) || nrow(legal) == 0L) {
+    return(empty_land_price_lpi_quarter())
+  }
+
+  legal_key <- legal |>
+    sf::st_drop_geometry() |>
+    dplyr::select(bjd_cd, sgg_cd, gu_name, dong_name)
+
+  lpi_key <- lpi_monthly |>
+    dplyr::distinct(gu_name, dong_name)
+
+  lpi_match <- lpi_key |>
+    dplyr::left_join(legal_key, by = c("gu_name", "dong_name"))
+
+  unmatched_lpi <- lpi_match |>
+    dplyr::filter(is.na(.data$bjd_cd))
+  unmatched_legal <- legal_key |>
+    dplyr::anti_join(lpi_key, by = c("gu_name", "dong_name"))
+
+  raw_match_qc <- tibble::tibble(
+    check_id = c("lpi_legal_dong_match", "legal_dong_lpi_match"),
+    status = c(
+      if (nrow(unmatched_lpi) == 0L) "PASS" else "FAIL",
+      if (nrow(unmatched_legal) == 0L) "PASS" else "FAIL"
+    ),
+    detail = c(
+      sprintf("lpi_rows=%d unmatched_lpi=%d", nrow(lpi_key), nrow(unmatched_lpi)),
+      sprintf("legal_rows=%d unmatched_legal=%d", nrow(legal_key), nrow(unmatched_legal))
+    )
+  )
+  write_csv_safe(raw_match_qc, file.path(cfg$dir_logs, "land_price_lpi_raw_match_qc.csv"))
+  if (nrow(unmatched_lpi) > 0L || nrow(unmatched_legal) > 0L) {
+    stop("[ERROR] Land price LPI legal-dong names do not fully match the legal-dong boundary", call. = FALSE)
+  }
+
+  lpi_bjd_monthly <- lpi_monthly |>
+    dplyr::left_join(legal_key, by = c("gu_name", "dong_name")) |>
+    dplyr::select(bjd_cd, sgg_cd, gu_name, dong_name, year, month, lpi_index)
+
+  prev_dec <- lpi_bjd_monthly |>
+    dplyr::filter(.data$month == 12L) |>
+    dplyr::transmute(
+      bjd_cd,
+      base_year = .data$year + 1L,
+      prev_dec_lpi_index = .data$lpi_index
+    )
+
+  quarter_months <- tibble::tibble(
+    quarter = rep(seq.int(1L, 4L), each = 3L),
+    month = seq.int(1L, 12L)
+  )
+
+  bjd_quarter <- lpi_bjd_monthly |>
+    dplyr::filter(.data$year %in% years_target) |>
+    dplyr::left_join(quarter_months, by = "month") |>
+    dplyr::left_join(prev_dec, by = c("bjd_cd", "year" = "base_year")) |>
+    dplyr::mutate(
+      valid_month = is.finite(.data$lpi_index) &
+        is.finite(.data$prev_dec_lpi_index) &
+        .data$lpi_index > 0 &
+        .data$prev_dec_lpi_index > 0,
+      month_factor = dplyr::if_else(.data$valid_month, .data$lpi_index / .data$prev_dec_lpi_index, NA_real_)
+    ) |>
+    dplyr::group_by(bjd_cd, sgg_cd, gu_name, dong_name, year, quarter) |>
+    dplyr::summarise(
+      land_price_lpi_factor_bjd = if (sum(.data$valid_month) == 3L) mean(.data$month_factor, na.rm = TRUE) else NA_real_,
+      land_price_lpi_month_n = sum(.data$valid_month),
+      .groups = "drop"
+    )
+
+  adm_ref <- adm_sf |>
+    dplyr::select(adm_cd, geometry) |>
+    sf::st_make_valid()
+  adm_ref$adm_area_m2 <- as.numeric(sf::st_area(adm_ref))
+
+  crosswalk_sf <- suppressWarnings(
+    sf::st_intersection(
+      adm_ref |> dplyr::select(adm_cd, adm_area_m2),
+      legal |> dplyr::select(bjd_cd, sgg_cd, gu_name, dong_name)
+    )
+  )
+
+  crosswalk <- crosswalk_sf |>
+    dplyr::mutate(intersect_area_m2 = as.numeric(sf::st_area(geometry))) |>
+    sf::st_drop_geometry() |>
+    dplyr::filter(is.finite(.data$intersect_area_m2), .data$intersect_area_m2 > 0) |>
+    dplyr::group_by(adm_cd) |>
+    dplyr::mutate(
+      land_price_lpi_raw_weight = .data$intersect_area_m2 / dplyr::first(.data$adm_area_m2),
+      land_price_lpi_raw_weight_sum = sum(.data$land_price_lpi_raw_weight, na.rm = TRUE),
+      land_price_lpi_weight = .data$land_price_lpi_raw_weight / .data$land_price_lpi_raw_weight_sum
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::select(
+      adm_cd, bjd_cd, sgg_cd, gu_name, dong_name,
+      adm_area_m2, intersect_area_m2,
+      land_price_lpi_raw_weight, land_price_lpi_raw_weight_sum, land_price_lpi_weight
+    )
+
+  write_parquet_safe(crosswalk, cfg$paths$land_price_lpi_crosswalk)
+
+  crosswalk_qc <- crosswalk |>
+    dplyr::group_by(adm_cd) |>
+    dplyr::summarise(
+      bjd_n = dplyr::n_distinct(.data$bjd_cd),
+      raw_weight_sum = dplyr::first(.data$land_price_lpi_raw_weight_sum),
+      normalized_weight_sum = sum(.data$land_price_lpi_weight, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::summarise(
+      adm_n = dplyr::n(),
+      min_bjd_n = min(.data$bjd_n),
+      max_bjd_n = max(.data$bjd_n),
+      min_raw_weight_sum = min(.data$raw_weight_sum, na.rm = TRUE),
+      max_raw_weight_sum = max(.data$raw_weight_sum, na.rm = TRUE),
+      min_normalized_weight_sum = min(.data$normalized_weight_sum, na.rm = TRUE),
+      max_normalized_weight_sum = max(.data$normalized_weight_sum, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      status = dplyr::if_else(
+        .data$adm_n == dplyr::n_distinct(base_adm$adm_cd) &
+          abs(.data$min_normalized_weight_sum - 1) < 0.000001 &
+          abs(.data$max_normalized_weight_sum - 1) < 0.000001,
+        "PASS",
+        "FAIL"
+      )
+    )
+  write_csv_safe(crosswalk_qc, file.path(cfg$dir_logs, "land_price_lpi_crosswalk_qc.csv"))
+
+  factor_adm <- suppressWarnings(
+    crosswalk |>
+      dplyr::left_join(bjd_quarter, by = c("bjd_cd", "sgg_cd", "gu_name", "dong_name"))
+  ) |>
+    dplyr::group_by(adm_cd, year, quarter) |>
+    dplyr::summarise(
+      land_price_lpi_source_bjd_n = dplyr::n_distinct(.data$bjd_cd[is.finite(.data$land_price_lpi_factor_bjd)]),
+      land_price_lpi_weight_coverage = sum(
+        .data$land_price_lpi_weight[is.finite(.data$land_price_lpi_factor_bjd)],
+        na.rm = TRUE
+      ),
+      land_price_lpi_factor = dplyr::if_else(
+        land_price_lpi_weight_coverage >= 0.999,
+        exp(sum(.data$land_price_lpi_weight * log(.data$land_price_lpi_factor_bjd), na.rm = TRUE)),
+        NA_real_
+      ),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      yq = sprintf("%dQ%d", .data$year, .data$quarter),
+      land_price_lpi_source_bjd_n = as.integer(.data$land_price_lpi_source_bjd_n)
+    ) |>
+    dplyr::select(
+      adm_cd, year, quarter, yq,
+      land_price_lpi_factor,
+      land_price_lpi_source_bjd_n,
+      land_price_lpi_weight_coverage
+    ) |>
+    dplyr::arrange(adm_cd, year, quarter)
+
+  write_parquet_safe(factor_adm, cfg$paths$land_price_lpi_factor)
+  append_log(
+    cfg$logs$data_qc,
+    sprintf(
+      "- Land price LPI factor built: rows=%d finite=%d crosswalk=%s factor=%s",
+      nrow(factor_adm),
+      sum(is.finite(factor_adm$land_price_lpi_factor)),
+      basename(cfg$paths$land_price_lpi_crosswalk),
+      basename(cfg$paths$land_price_lpi_factor)
+    )
+  )
+
+  factor_adm
+}
+
 assign_point_ids_to_adm <- function(points_sf, id_col) {
   within <- suppressWarnings(
     sf::st_join(
@@ -4893,6 +5206,61 @@ append_log(
   )
 )
 
+append_log(cfg$logs$data_qc, "- Building official land price LPI adjustment factors")
+land_price_lpi_factor <- build_land_price_lpi_factor(cfg$dir_boundary)
+
+land_price_quarter <- base_quarter |>
+  dplyr::left_join(
+    land_price_adm |>
+      dplyr::select(adm_cd, year, official_land_price),
+    by = c("adm_cd", "year")
+  ) |>
+  dplyr::left_join(
+    land_price_lpi_factor,
+    by = c("adm_cd", "year", "quarter", "yq")
+  ) |>
+  dplyr::mutate(
+    land_price_adjusted = dplyr::if_else(
+      is.finite(.data$official_land_price) &
+        .data$official_land_price > 0 &
+        is.finite(.data$land_price_lpi_factor) &
+        .data$land_price_lpi_factor > 0,
+      .data$official_land_price * .data$land_price_lpi_factor,
+      NA_real_
+    )
+  )
+
+land_price_lpi_adjustment_qc <- land_price_quarter |>
+  dplyr::group_by(year, quarter, yq) |>
+  dplyr::summarise(
+    adm_n = dplyr::n(),
+    factor_finite_n = sum(is.finite(.data$land_price_lpi_factor)),
+    adjusted_finite_n = sum(is.finite(.data$land_price_adjusted)),
+    factor_min = suppressWarnings(min(.data$land_price_lpi_factor, na.rm = TRUE)),
+    factor_max = suppressWarnings(max(.data$land_price_lpi_factor, na.rm = TRUE)),
+    weight_coverage_min = suppressWarnings(min(.data$land_price_lpi_weight_coverage, na.rm = TRUE)),
+    weight_coverage_max = suppressWarnings(max(.data$land_price_lpi_weight_coverage, na.rm = TRUE)),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    dplyr::across(
+      c(factor_min, factor_max, weight_coverage_min, weight_coverage_max),
+      ~ dplyr::if_else(is.finite(.x), .x, NA_real_)
+    )
+  )
+
+land_price_lpi_adjustment_qc_path <- file.path(cfg$dir_logs, "land_price_lpi_adjustment_qc.csv")
+write_csv_safe(land_price_lpi_adjustment_qc, land_price_lpi_adjustment_qc_path)
+append_log(
+  cfg$logs$data_qc,
+  sprintf(
+    "- Land price LPI adjustment QC written: %s (adjusted finite=%d/%d)",
+    basename(land_price_lpi_adjustment_qc_path),
+    sum(is.finite(land_price_quarter$land_price_adjusted)),
+    nrow(land_price_quarter)
+  )
+)
+
 append_log(cfg$logs$data_qc, "- Building park area static")
 park_static <- build_park_area_static()
 park_year <- expand_static_to_year(park_static, years_target)
@@ -5113,9 +5481,16 @@ transit_source_quarter <- bus_stop_source_quarter |>
 # 한계를 QC와 설계 문서에 남긴다.
 aux <- base_quarter |>
   dplyr::left_join(
-    land_price_adm |>
-      dplyr::select(adm_cd, year, official_land_price),
-    by = c("adm_cd", "year")
+    land_price_quarter |>
+      dplyr::select(
+        adm_cd, year, quarter, yq, quarter_index,
+        official_land_price,
+        land_price_lpi_factor,
+        land_price_adjusted,
+        land_price_lpi_source_bjd_n,
+        land_price_lpi_weight_coverage
+      ),
+    by = c("adm_cd", "year", "quarter", "yq", "quarter_index")
   ) |>
   dplyr::left_join(park_year, by = c("adm_cd", "year")) |>
   dplyr::left_join(senior_source_year, by = c("adm_cd", "year")) |>
@@ -5128,7 +5503,9 @@ aux <- base_quarter |>
   dplyr::mutate(
     dplyr::across(
       c(
-        official_land_price, park_area, senior_facility_count,
+        official_land_price, land_price_lpi_factor, land_price_adjusted,
+        land_price_lpi_source_bjd_n, land_price_lpi_weight_coverage,
+        park_area, senior_facility_count,
         bus_stop_count_aux, subway_station_count_aux, hospital_count_aux, mall_count_aux,
         apartment_complex_count_kapt, apartment_building_count, apartment_household_count,
         road_length_km, sidewalk_length_km, intersection_density, avg_slope_degree, betweenness_centrality,
@@ -5151,7 +5528,9 @@ write_parquet_safe(aux, cfg$paths$aux_covariates)
 append_log(cfg$logs$data_qc, sprintf("- Aux covariates rows: %d", nrow(aux)))
 
 for (v in c(
-  "official_land_price", "park_area", "senior_facility_count",
+  "official_land_price", "land_price_lpi_factor", "land_price_adjusted",
+  "land_price_lpi_source_bjd_n", "land_price_lpi_weight_coverage",
+  "park_area", "senior_facility_count",
   "bus_stop_count_aux", "subway_station_count_aux", "hospital_count_aux", "mall_count_aux",
   "apartment_complex_count_kapt", "apartment_building_count", "apartment_household_count",
   "road_length_km", "sidewalk_length_km", "intersection_density", "avg_slope_degree", "betweenness_centrality",

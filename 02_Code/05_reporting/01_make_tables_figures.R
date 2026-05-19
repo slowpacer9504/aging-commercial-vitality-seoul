@@ -463,7 +463,8 @@ desc_var_registry <- tibble::tribble(
   "operating_months_rel_seoul",      "Operating duration relative to Seoul",       "stability_component",
   "survival_3y",                     "New-enterprise 3-year survival rate",       "stability_component",
   "ln_resident_pop",                 "Log quarterly resident population",         "model_control",
-  "ln_official_land_price",          "Log official land price",                   "model_control",
+  "ln_land_price_adjusted",          "Log land price, LPI-adjusted",              "model_control",
+  "ln_official_land_price",          "Log official land price",                   "diagnostic_support",
   "transit_accessibility",           "Transit accessibility",                     "model_control"
 ) |>
   dplyr::mutate(display_order = dplyr::row_number()) |>

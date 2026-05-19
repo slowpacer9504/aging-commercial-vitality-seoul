@@ -146,8 +146,10 @@ GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타�
 메인 TWFE/SPDM의 기본 control candidate pool은 아래 세 개다. `ln_floating_pop`은 사회적 활력 구성요소와 종합 활력지수에 포함되므로 메인 통제변수에서는 사용하지 않는다. `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 남기지만 active TWFE/SPDM/GTWR 통제변수로 투입하지 않는다.
 
 - `ln_resident_pop`
-- `ln_official_land_price`
+- `ln_land_price_adjusted`
 - `transit_accessibility`
+
+`ln_land_price_adjusted`는 행정동-연도별 면적가중 공시지가에 한국부동산원 월별 지역별 지가지수의 분기 평균 보정계수를 곱해 만든 지가지수 보정 토지가격 변수다. 법정동 지가지수는 법정동-행정동 공간교차 면적가중치로 행정동 단위에 정합한다. 원 연간 공시지가 로그인 `ln_official_land_price`는 패널에 보존하되 active 통제변수로 쓰지 않는다.
 
 메인 TWFE/SPDM은 finite observation 수와 추정 가능성에 따라 usable subset을 기록한다.
 
@@ -155,7 +157,7 @@ GTWR main sidecar는 local design matrix의 다중공선성 민감도를 고려�
 
 - `lean` 기본값
   - `ln_resident_pop`
-  - `ln_official_land_price`
+  - `ln_land_price_adjusted`
 - `extended` 선택값
   - `lean` 두 변수
   - `transit_accessibility`
