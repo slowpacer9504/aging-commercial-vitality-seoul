@@ -4,7 +4,7 @@
 
 - active canonical model surface는 `02_run_esda.R -> 01_run_twfe_main.R -> 02_run_spdm_main.R -> 03_run_spdm_channel_path.R -> 01_run_spdm_w_robustness.R -> 02_run_robustness.R -> 01_make_tables_figures.R`이다.
 - 모든 active canonical model과 reporting은 `2019Q4~2025Q4` 분석 표본을 사용한다. `2019Q1~2019Q3`는 panel 구축 및 rolling/lag warm-up 구간으로만 유지한다.
-- `01_run_gtwr_main.R`는 quarterly contract로 유지되는 opt-in local sidecar이며, default run과 required test plan에서는 제외한다.
+- `01_run_gtwr_main.R`는 quarterly contract로 유지되는 opt-in local sidecar이며, GTWR bandwidth/lamda diagnostic scripts와 함께 default run과 required test plan에서는 제외한다.
 - TWFE channel, interaction, age-mix, sector-share, selection, family-comparison, local appendix 계열은 supplementary/manual 또는 appendix sidecar로 취급한다. SPDM channel path(`03_run_spdm_channel_path.R`)는 예외적으로 canonical surface에 포함한다.
 
 ## 1) ESDA
@@ -241,12 +241,7 @@
   - `gtwr_latest_rankings_table_<control_set>.csv`
   - `gtwr_delta_summary_table_<control_set>.csv`
   - `gtwr_delta_rankings_table_<control_set>.csv`
-  - `gtwr_lamda_sensitivity_<control_set>.csv`
-  - `gtwr_bandwidth_sensitivity_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/*.rds`
-  - `03_Output/04_Logs/gtwr_bandwidth_cache/<control_set>/main/*.rds` when automatic bandwidth search is explicitly enabled
-  - `03_Output/04_Logs/gtwr_lamda_sensitivity_cache/<control_set>/main/*.rds`
-  - `03_Output/04_Logs/gtwr_bandwidth_sensitivity_cache/<control_set>/main/*.rds`
 - 구현 원칙:
   - quarterly sample 기준으로 실행한다.
   - `GTWR_CONTROL_SET=lean`을 기본 통제 사양으로 사용한다.
@@ -255,16 +250,15 @@
   - GTWR extended에서 버스정류장 수와 지하철역 수는 별도 통제변수로 투입하지 않고 `lag4_transit_accessibility` composite로 투입한다.
   - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 기록한다.
   - local condition-number는 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 `st.dist`/`gw.weight` 기반 시공간 가중치에 맞춰 적용한다.
-  - 기본 bandwidth는 `GTWR_BANDWIDTH_STRATEGY=fixed`, `GTWR_ST_BW=480`으로 통일한다.
+  - 기본 bandwidth는 fixed `GTWR_ST_BW=480`으로 통일한다.
   - `adaptive=TRUE` 기준에서 480은 각 추정점 주변 시공간 이웃 관측치 480개를 의미한다.
-  - `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`일 때 `GTWR_BANDWIDTH_SENSITIVITY_GRID`의 기본 fixed bandwidth grid `240,360,480,600,720`을 spec별로 재추정하고, baseline `GTWR_ST_BW=480` latest-quarter beta 대비 상관, 절대차이, sign flip, local condition-number 민감도를 보조표로 저장한다.
-  - `bw.gtwr()` full-panel/anchor-quarter 탐색은 명시적으로 선택한 민감도 또는 진단 실행에서만 사용한다.
+  - `01_run_gtwr_main.R`는 `GTWR_BANDWIDTH_STRATEGY`가 fixed가 아니어도 `bw.gtwr()`를 실행하지 않는다.
+  - `bw.gtwr()` full-panel/anchor-quarter 탐색, fixed bandwidth grid 민감도, lamda grid 민감도는 각각 `07_select_gtwr_bandwidth.R`, `08_run_gtwr_bandwidth_sensitivity.R`, `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
   - main summary와 local coefficient table은 latest-quarter local beta를 `estimate_type=latest`로 저장한다.
   - latest-quarter coefficient coverage를 `latest_missing_n`, `latest_coverage_share`로 기록한다.
   - earliest-to-latest 변화량은 `gtwr_delta_*` 보조 reporting table로만 파생한다.
   - outcome-exposure spec별 cache를 먼저 저장하고, final raw GTWR bundle과 control trace는 전체 cache를 집계해 생성한다.
   - `GTWR_PARALLEL_SPECS`로 병렬 worker 수를 제한하며, `GTWR_RESUME_SPECS=TRUE`일 때 완료 spec cache를 재사용한다.
-  - `RUN_GTWR_LAMDA_SENSITIVITY=TRUE`일 때 `GTWR_LAMDA_SENSITIVITY_GRID`의 lamda별 GTWR를 재추정하고, baseline latest-quarter local beta 대비 상관, 절대차이, sign flip, local condition-number 민감도를 보조표로 저장한다.
   - reporting용 downstream delta table은 horizon-aligned raw output이 있을 때만 파생된다.
 
 ## 7A) GTWR Floating-Only Appendix
@@ -278,7 +272,6 @@
   - `gtwr_floating_controls_used_<control_set>.csv`
   - `gtwr_floating_frozen_spec_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_spec_cache/<control_set>/floating/*.rds`
-  - `03_Output/04_Logs/gtwr_bandwidth_cache/<control_set>/floating/*.rds` when automatic bandwidth search is explicitly enabled
 - 구현 원칙:
   - main outcomes x `age60_floating_share` spec을 `GWmodel::gtwr()`로 실제 추정한다.
   - control pool은 main GTWR와 같은 `GTWR_CONTROL_SET` 계약을 따른다.
@@ -295,7 +288,6 @@
   - `gtwr_age_band_controls_used_<control_set>.csv`
   - `gtwr_age_band_frozen_spec_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_spec_cache/<control_set>/age_band/*.rds`
-  - `03_Output/04_Logs/gtwr_bandwidth_cache/<control_set>/age_band/*.rds` when automatic bandwidth search is explicitly enabled
 - 구현 원칙:
   - resident/floating domain별 age20~age50 exposure family와 main outcomes를 `GWmodel::gtwr()`로 실제 추정한다.
   - output에는 `domain`, `age_band`, `same_domain_total_control`을 함께 저장한다.
@@ -313,7 +305,6 @@
   - `gtwr_sector_share_controls_used_<control_set>.csv`
   - `gtwr_sector_share_frozen_spec_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_spec_cache/<control_set>/sector_share/*.rds`
-  - `03_Output/04_Logs/gtwr_bandwidth_cache/<control_set>/sector_share/*.rds` when automatic bandwidth search is explicitly enabled
 - 구현 원칙:
   - sector-share outcomes에서 resident-only/floating-only exposure family를 `GWmodel::gtwr()`로 실제 추정한다.
   - output에는 `exposure_family`, `same_domain_total_control`을 함께 저장한다.
@@ -331,6 +322,39 @@
 - 구현 원칙:
   - delta window는 `2019-2021` 대 `2023-2025`의 `3Y vs 3Y`로 고정한다.
   - raw output schema는 `early_*_year`, `late_*_year`, `window_n_year`를 쓴다.
+
+## 7E) GTWR Bandwidth Selection Diagnostic
+
+- manual quarterly diagnostic
+- 실행 조건: `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr` 또는 `anchor_quarter_bw_gtwr`
+- 출력:
+  - `gtwr_bandwidth_selection_<control_set>.csv`
+  - `03_Output/04_Logs/gtwr_bandwidth_cache/<control_set>/main/*.rds`
+- 구현 원칙:
+  - resident-only main GTWR spec의 `bw.gtwr()` 탐색 결과만 저장한다.
+  - 선택 결과는 main GTWR에 자동 적용하지 않고, 필요한 경우 `GTWR_ST_BW`로 명시 적용한다.
+
+## 7F) GTWR Bandwidth Sensitivity Diagnostic
+
+- manual quarterly diagnostic
+- 실행 조건: `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`
+- 출력:
+  - `gtwr_bandwidth_sensitivity_<control_set>.csv`
+  - `03_Output/04_Logs/gtwr_bandwidth_sensitivity_cache/<control_set>/main/*.rds`
+- 구현 원칙:
+  - baseline `gtwr_main_models_<control_set>.csv`와 `gtwr_local_coefficients_<control_set>.csv`를 먼저 요구한다.
+  - fixed bandwidth grid를 spec별로 재추정하고, baseline latest-quarter beta 대비 상관, 절대차이, sign flip, local condition-number 민감도를 저장한다.
+
+## 7G) GTWR Lamda Sensitivity Diagnostic
+
+- manual quarterly diagnostic
+- 실행 조건: `RUN_GTWR_LAMDA_SENSITIVITY=TRUE`
+- 출력:
+  - `gtwr_lamda_sensitivity_<control_set>.csv`
+  - `03_Output/04_Logs/gtwr_lamda_sensitivity_cache/<control_set>/main/*.rds`
+- 구현 원칙:
+  - baseline `gtwr_main_models_<control_set>.csv`와 `gtwr_local_coefficients_<control_set>.csv`를 먼저 요구한다.
+  - fixed main bandwidth에서 lamda grid를 spec별로 재추정하고, baseline latest-quarter beta 대비 상관, 절대차이, sign flip, local condition-number 민감도를 저장한다.
 
 ## 7X) GTWR Experiment Appendix
 

@@ -516,8 +516,8 @@ cfg$aux_source_contracts <- list(
 # GTWR is an opt-in quarterly local sidecar. The default main specification fixes
 # the adaptive spatiotemporal bandwidth at 480 neighbors to keep the local sample
 # roughly comparable to the pre-quarterly 120-neighbor setting;
-# bw.gtwr() search remains available only when explicitly requested through
-# GTWR_BANDWIDTH_STRATEGY.
+# bw.gtwr() search is available only through the dedicated bandwidth-selection
+# diagnostic script when explicitly requested through GTWR_BANDWIDTH_STRATEGY.
 cfg$run_gtwr_main_sidecar <- tolower(trimws(Sys.getenv("RUN_GTWR_MAIN_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
 cfg$run_gtwr <- cfg$run_gtwr_main_sidecar
 cfg$gtwr_control_min_obs <- 500L
@@ -793,6 +793,9 @@ cfg$get_gtwr_sector_share_spec_cache_dir <- function(control_set = cfg$gtwr_cont
 }
 cfg$get_gtwr_sector_share_bw_cache_dir <- function(control_set = cfg$gtwr_control_set) {
   cfg$get_gtwr_sidecar_bw_cache_dir("sector_share", control_set)
+}
+cfg$get_gtwr_bandwidth_selection_path <- function(control_set = cfg$gtwr_control_set) {
+  file.path(cfg$dir_tables, sprintf("gtwr_bandwidth_selection_%s.csv", cfg$gtwr_main_output_tag(control_set)))
 }
 cfg$get_gtwr_lamda_sensitivity_path <- function(control_set = cfg$gtwr_control_set) {
   file.path(cfg$dir_tables, sprintf("gtwr_lamda_sensitivity_%s.csv", cfg$gtwr_main_output_tag(control_set)))

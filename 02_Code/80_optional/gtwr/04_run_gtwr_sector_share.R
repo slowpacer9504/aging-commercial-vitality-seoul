@@ -100,6 +100,7 @@ if (!isTRUE(cfg$run_gtwr_sector_share_sidecar)) {
   }
 
   control_set <- normalize_control_set_main(cfg$gtwr_control_set)
+  cfg$gtwr_bandwidth_strategy <- "fixed"
   panel <- read_panel_main_view("gtwr", extra_cols = cfg$gtwr_sector_share_outcomes) |>
     dplyr::mutate(adm_cd = as.character(adm_cd))
 
@@ -140,14 +141,9 @@ if (!isTRUE(cfg$run_gtwr_sector_share_sidecar)) {
   } else {
     panel_xy <- prepare_gtwr_points(panel)
     cache_dir <- cfg$get_gtwr_sector_share_spec_cache_dir(control_set)
-    bw_cache_dir <- cfg$get_gtwr_sector_share_bw_cache_dir(control_set)
     ensure_dirs(cache_dir)
-    ensure_dirs(bw_cache_dir)
     if (isTRUE(cfg$gtwr_refresh_spec_cache)) {
       unlink(list.files(cache_dir, pattern = "[.]rds$", full.names = TRUE), force = TRUE)
-    }
-    if (isTRUE(cfg$gtwr_refresh_bw_cache)) {
-      unlink(list.files(bw_cache_dir, pattern = "[.]rds$", full.names = TRUE), force = TRUE)
     }
 
     spec_grid <- tidyr::crossing(
@@ -197,7 +193,6 @@ if (!isTRUE(cfg$run_gtwr_sector_share_sidecar)) {
           selected_controls = selected_controls,
           control_set = control_set,
           cache_context = cache_context,
-          bw_cache_dir = bw_cache_dir,
           signature = signature,
           cache_path = cache_path,
           cached = !is.null(cached_payload),

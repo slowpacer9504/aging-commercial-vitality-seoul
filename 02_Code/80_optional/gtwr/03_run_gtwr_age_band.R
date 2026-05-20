@@ -108,6 +108,7 @@ if (!isTRUE(cfg$run_gtwr_age_band_sidecar)) {
   }
 
   control_set <- normalize_control_set_main(cfg$gtwr_control_set)
+  cfg$gtwr_bandwidth_strategy <- "fixed"
   panel_base <- read_panel_main_view("gtwr") |>
     dplyr::mutate(adm_cd = as.character(adm_cd))
 
@@ -153,14 +154,9 @@ if (!isTRUE(cfg$run_gtwr_age_band_sidecar)) {
     append_log(cfg$logs$model_run, "- GTWR age-band quarterly sidecar skipped: missing quarterly outcomes or valid age-band registry")
   } else {
     cache_dir <- cfg$get_gtwr_age_band_spec_cache_dir(control_set)
-    bw_cache_dir <- cfg$get_gtwr_age_band_bw_cache_dir(control_set)
     ensure_dirs(cache_dir)
-    ensure_dirs(bw_cache_dir)
     if (isTRUE(cfg$gtwr_refresh_spec_cache)) {
       unlink(list.files(cache_dir, pattern = "[.]rds$", full.names = TRUE), force = TRUE)
-    }
-    if (isTRUE(cfg$gtwr_refresh_bw_cache)) {
-      unlink(list.files(bw_cache_dir, pattern = "[.]rds$", full.names = TRUE), force = TRUE)
     }
 
     family_panels <- lapply(seq_len(nrow(family_registry)), function(ii) {
@@ -230,7 +226,6 @@ if (!isTRUE(cfg$run_gtwr_age_band_sidecar)) {
             selected_controls = selected_controls,
             control_set = control_set,
             cache_context = cache_context,
-            bw_cache_dir = bw_cache_dir,
             signature = signature,
             cache_path = cache_path,
             cached = !is.null(cached_payload),
