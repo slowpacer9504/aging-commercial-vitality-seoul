@@ -86,9 +86,7 @@ add_sector_share_payload_metadata <- function(payload, job) {
   payload
 }
 
-if (!isTRUE(cfg$run_gtwr_sector_share_sidecar)) {
-  append_log(cfg$logs$model_run, "- GTWR sector-share quarterly sidecar skipped by run flag")
-} else {
+{
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for GTWR sector-share quarterly sidecar.", call. = FALSE)
   }

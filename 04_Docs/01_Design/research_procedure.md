@@ -28,6 +28,7 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 5. `GTWR resident-only optional local sidecar`
 
 이 순서는 코드 실행 순서이자 해석 순서다. 먼저 공간 패턴의 존재를 확인하고, 비공간 기준선으로 방향성을 잡고, 공간 확장모형으로 직접효과와 파급효과를 해석한 뒤, 필요할 때만 국지적 이질성을 별도 sidecar로 읽는다.
+`80_optional/**`의 preprocessing, TWFE, SPDM, GTWR sidecar는 `run_all.R` 밖의 manual surface이며, 해당 파일을 직접 실행하면 별도 `RUN_*` 실행 플래그 없이 실제 작업을 수행한다.
 
 ### 1.2 비협상 수행 원칙
 
@@ -387,14 +388,14 @@ SPDM은 active design의 main global model이다.
 
 GTWR main은 quarterly resident-only local sidecar다.
 
-- 실행 조건: `RUN_GTWR_MAIN_SIDECAR=TRUE`
+- 실행 조건: `80_optional/gtwr/01_run_gtwr_main.R` 직접 실행
 - 입력: `panel_main.parquet`, 2020 기준 서울시 행정동 경계
 - 해석 수준: local heterogeneity description
 - 실행 방식: outcome-exposure spec 단위로 계산하며, `GTWR_PARALLEL_SPECS`만큼 병렬 worker를 사용한다.
 - 재개 방식: spec별 RDS cache를 `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/`에 저장하고, 중단 후 재실행하면 유효한 완료 spec은 재사용한다.
 - control set: 기본값은 `GTWR_CONTROL_SET=lean`이다. `lean`은 주민등록인구 기반 `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`만 사용한다. `extended`는 여기에 `lag4_transit_accessibility`를 추가한다.
-- bandwidth 방식: main GTWR는 fixed adaptive `GTWR_ST_BW=480`을 사용한다. `adaptive=TRUE` 기준으로 각 추정점 주변 시공간 이웃 480개를 사용해 outcome 간 비교 가능성과 extended control set의 추정 가능성을 함께 유지한다. `full_panel_bw_gtwr`와 `anchor_quarter_bw_gtwr` 탐색은 `07_select_gtwr_bandwidth.R`에서만 수행하고, 선택 결과는 `gtwr_bandwidth_selection_<control_set>.csv`와 bandwidth cache에 저장한다. `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`이면 `08_run_gtwr_bandwidth_sensitivity.R`가 `GTWR_BANDWIDTH_SENSITIVITY_GRID`의 기본값 `240,360,480,600,720`을 같은 outcome-control-spec에 반복 적용하고, baseline 480 대비 beta correlation, 절대변화, sign flip, local condition-number 변화를 `gtwr_bandwidth_sensitivity_<control_set>.csv`에 저장한다.
-- lamda 민감도: `RUN_GTWR_LAMDA_SENSITIVITY=TRUE`일 때 `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다. `GTWR_LAMDA_SENSITIVITY_GRID`의 각 값을 같은 outcome-control-spec에 적용해 GTWR를 재추정하고, baseline latest-quarter beta 대비 상관, 절대변화, sign flip, local condition-number 변화를 `gtwr_lamda_sensitivity_<control_set>.csv`에 저장한다.
+- bandwidth 방식: main GTWR는 fixed adaptive `GTWR_ST_BW=480`을 사용한다. `adaptive=TRUE` 기준으로 각 추정점 주변 시공간 이웃 480개를 사용해 outcome 간 비교 가능성과 extended control set의 추정 가능성을 함께 유지한다. `full_panel_bw_gtwr`와 `anchor_quarter_bw_gtwr` 탐색은 `07_select_gtwr_bandwidth.R`에서만 수행하고, 선택 결과는 `gtwr_bandwidth_selection_<control_set>.csv`와 bandwidth cache에 저장한다. `08_run_gtwr_bandwidth_sensitivity.R`는 `GTWR_BANDWIDTH_SENSITIVITY_GRID`의 기본값 `240,360,480,600,720`을 같은 outcome-control-spec에 반복 적용하고, baseline 480 대비 beta correlation, 절대변화, sign flip, local condition-number 변화를 `gtwr_bandwidth_sensitivity_<control_set>.csv`에 저장한다.
+- lamda 민감도: `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다. `GTWR_LAMDA_SENSITIVITY_GRID`의 각 값을 같은 outcome-control-spec에 적용해 GTWR를 재추정하고, baseline latest-quarter beta 대비 상관, 절대변화, sign flip, local condition-number 변화를 `gtwr_lamda_sensitivity_<control_set>.csv`에 저장한다.
 - local CN 진단: `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 따르되, GTWR에서 사용한 `st.dist`/`gw.weight` 기반 시공간 가중치를 적용한다.
 
 GTWR의 핵심 운영 원칙은 아래와 같다.
@@ -405,17 +406,17 @@ GTWR의 핵심 운영 원칙은 아래와 같다.
 4. main raw/output surface는 latest quarter local beta를 기준으로 만든다.
 5. earliest-to-latest delta는 `gtwr_delta_*` 보조 reporting table에서만 파생한다.
 6. final CSV bundle은 매 실행마다 전체 spec cache를 다시 집계해 갱신한다.
-7. lamda와 bandwidth 민감도는 계산비용이 크므로 opt-in 보조 진단으로만 해석한다.
+7. lamda와 bandwidth 민감도는 계산비용이 크므로 manual 보조 진단으로만 해석한다.
 8. global causal claim을 대체하지 않는다.
 
-추가 GTWR appendix sidecar는 main GTWR와 같은 quarterly panel, `GWmodel::gtwr()` 실행 경로, `GTWR_CONTROL_SET` 계약, fixed bandwidth 기본값을 공유한다. 단, 각각 별도 실행 플래그와 별도 spec/bandwidth cache namespace를 사용한다.
+추가 GTWR appendix sidecar는 main GTWR와 같은 quarterly panel, `GWmodel::gtwr()` 실행 경로, `GTWR_CONTROL_SET` 계약, fixed bandwidth 기본값을 공유한다. 각각의 `80_optional/gtwr` 스크립트를 직접 실행할 때 실행되며, 별도 spec/bandwidth cache namespace를 사용한다.
 
-- `02_run_gtwr_floating_only.R`: `RUN_GTWR_FLOATING_SIDECAR=TRUE`일 때 main outcomes x `age60_floating_share`를 추정한다.
-- `03_run_gtwr_age_band.R`: `RUN_GTWR_AGE_BAND_SIDECAR=TRUE`일 때 configured resident/floating domain x age20~age50 exposure x main outcomes를 추정한다. 주민 domain은 행정안전부 주민등록인구 기반 age share와 same-domain total control `ln_resident_pop`을 사용하고, floating domain은 종속변수 구성요소와 겹치는 `ln_floating_pop`을 추가하지 않는다.
-- `04_run_gtwr_sector_share.R`: `RUN_GTWR_SECTOR_SHARE_SIDECAR=TRUE`일 때 sector-share outcomes에서 resident-only와 floating-only exposure family를 추정한다.
+- `02_run_gtwr_floating_only.R`: 직접 실행하면 main outcomes x `age60_floating_share`를 추정한다.
+- `03_run_gtwr_age_band.R`: 직접 실행하면 configured resident/floating domain x age20~age50 exposure x main outcomes를 추정한다. 주민 domain은 행정안전부 주민등록인구 기반 age share와 same-domain total control `ln_resident_pop`을 사용하고, floating domain은 종속변수 구성요소와 겹치는 `ln_floating_pop`을 추가하지 않는다.
+- `04_run_gtwr_sector_share.R`: 직접 실행하면 sector-share outcomes에서 resident-only와 floating-only exposure family를 추정한다.
 - `07_select_gtwr_bandwidth.R`: `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr` 또는 `anchor_quarter_bw_gtwr`일 때 resident-only main spec의 `bw.gtwr()` 탐색 결과를 저장한다.
-- `08_run_gtwr_bandwidth_sensitivity.R`: `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`일 때 resident-only main baseline output을 기준으로 fixed bandwidth grid 민감도를 실행한다.
-- `09_run_gtwr_lamda_sensitivity.R`: `RUN_GTWR_LAMDA_SENSITIVITY=TRUE`일 때 resident-only main baseline output을 기준으로 lamda grid 민감도를 실행한다.
+- `08_run_gtwr_bandwidth_sensitivity.R`: 직접 실행하면 resident-only main baseline output을 기준으로 fixed bandwidth grid 민감도를 실행한다.
+- `09_run_gtwr_lamda_sensitivity.R`: 직접 실행하면 resident-only main baseline output을 기준으로 lamda grid 민감도를 실행한다.
 - `01_make_tables_figures.R`는 sidecar raw local coefficient가 있을 때 latest-minus-earliest delta summary/rankings를 파생한다.
 
 ### 2.16 `02_run_robustness.R`와 reporting

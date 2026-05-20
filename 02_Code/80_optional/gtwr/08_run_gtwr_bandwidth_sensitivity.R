@@ -23,9 +23,7 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_bandwidth_sensitivity", timestamp()))
 
-if (!isTRUE(cfg$run_gtwr_bandwidth_sensitivity)) {
-  append_log(cfg$logs$model_run, "- GTWR bandwidth sensitivity skipped (RUN_GTWR_BANDWIDTH_SENSITIVITY=FALSE)")
-} else {
+{
   cfg$gtwr_bandwidth_strategy <- "fixed"
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for GTWR bandwidth sensitivity.", call. = FALSE)

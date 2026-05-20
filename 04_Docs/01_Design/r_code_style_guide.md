@@ -33,7 +33,7 @@
 - `04_robustness`: SPDM W robustness and supplementary robustness
 - `05_reporting`: tables, figures, presentation, and GTWR artifact builders
 - `06_qc`: active QC plus manual audit helpers
-- `80_optional`: opt-in preprocessing, TWFE, SPDM, and GTWR sidecars
+- `80_optional`: manual direct-run preprocessing, TWFE, SPDM, and GTWR sidecars
 - `R`: shared utilities, including GTWR helper logic used by optional sidecars
 - `90_templates`: shared implementation pattern
 
@@ -61,6 +61,7 @@ active canonical surface는 아래 순서를 따른다.
 
 optional/manual surface는 `80_optional/**`와 `05_reporting/02_*`, `05_reporting/03_*`,
 `06_qc/02_*`, `06_qc/03_*`처럼 폴더와 파일명에서 active canonical surface와 분리한다.
+`80_optional/**` 스크립트는 `run_all.R`에서 제외되며, 파일을 직접 실행하면 별도 `RUN_*` 실행 플래그 없이 실제 작업을 수행한다.
 
 ## 4. 파일 헤더 규칙
 
@@ -154,7 +155,7 @@ active shared panel에는 `year`, `quarter`, `yq`, `quarter_index`를 남긴다.
 
 ### GTWR
 
-- `RUN_GTWR_MAIN_SIDECAR=TRUE`일 때만 실행한다.
+- `80_optional/gtwr` 아래 GTWR 스크립트도 같은 manual direct-run 계약을 따른다.
 - quarterly resident-only local heterogeneity analysis에 한정한다.
 - `GTWR_CONTROL_SET=lean`을 기본으로 사용하고, extended는 명시적으로 선택할 때만 사용한다.
 - lean control은 `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted` 두 개로 고정한다.

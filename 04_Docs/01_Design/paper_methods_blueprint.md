@@ -38,7 +38,7 @@
 6. **민감도 및 부가 분석**
    - W robustness, outcome-definition/sample-window robustness, appendix family를 수행한다.
 7. **국지 이질성 확인**
-   - GTWR opt-in sidecar로 지역별 계수 패턴을 보조적으로 시각화한다.
+   - GTWR manual sidecar로 지역별 계수 패턴을 보조적으로 시각화한다.
 
 ### 2.2 핵심 데이터와 변수 구조
 

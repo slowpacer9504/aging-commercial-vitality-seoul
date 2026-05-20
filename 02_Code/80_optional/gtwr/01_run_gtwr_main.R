@@ -33,9 +33,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_gtwr_main", timestamp()
 # 1. Resident-Only Quarterly GTWR Contract
 #==============================================================================
 
-if (!isTRUE(cfg$run_gtwr)) {
-  append_log(cfg$logs$model_run, "- GTWR main skipped (run_gtwr = FALSE)")
-} else {
+{
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for GTWR.", call. = FALSE)
   }

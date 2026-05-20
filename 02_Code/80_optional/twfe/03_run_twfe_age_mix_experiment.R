@@ -36,9 +36,7 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_twfe_age_mix_experiment", timestamp()))
 
-if (!isTRUE(cfg$run_twfe_age_mix_sidecar)) {
-  append_log(cfg$logs$model_run, "- TWFE age-mix experiment skipped (run_twfe_age_mix_sidecar = FALSE)")
-} else {
+{
 
 if (!file.exists(cfg$paths$panel_main) ||
     !file.exists(cfg$paths$registered_resident_population) ||

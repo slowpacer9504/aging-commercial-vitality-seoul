@@ -182,7 +182,6 @@ cfg$spdm_min_periods <- suppressWarnings(as.integer(Sys.getenv("SPDM_MIN_PERIODS
 if (!is.finite(cfg$spdm_min_periods) || cfg$spdm_min_periods < 4L) cfg$spdm_min_periods <- 20L
 cfg$living_pop_hours <- trimws(Sys.getenv("LIVING_POP_HOURS", unset = "0-23"))
 cfg$living_pop_sample_months <- trimws(Sys.getenv("LIVING_POP_SAMPLE_MONTHS", unset = ""))
-cfg$run_living_pop_inflow <- tolower(trimws(Sys.getenv("RUN_LIVING_POP_INFLOW", unset = "false"))) %in% c("1", "true", "yes")
 cfg$living_pop_force_rebuild <- tolower(trimws(Sys.getenv("LIVING_POP_FORCE_REBUILD", unset = "false"))) %in% c("1", "true", "yes")
 cfg$living_pop_suppressed_value <- suppressWarnings(as.numeric(Sys.getenv("LIVING_POP_SUPPRESSED_VALUE", unset = "0")))
 if (!is.finite(cfg$living_pop_suppressed_value)) cfg$living_pop_suppressed_value <- 0
@@ -336,14 +335,6 @@ cfg$gtwr_main_control_cols <- switch(
   lean = cfg$gtwr_lean_control_cols,
   extended = cfg$gtwr_extended_control_cols
 )
-cfg$run_twfe_age_mix_sidecar <- tolower(trimws(Sys.getenv("RUN_TWFE_AGE_MIX_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
-cfg$run_spdm_age_mix_sidecar <- tolower(trimws(Sys.getenv("RUN_SPDM_AGE_MIX_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
-cfg$run_spdm_sector_share_sidecar <- tolower(trimws(Sys.getenv("RUN_SPDM_SECTOR_SHARE_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
-cfg$run_gtwr_floating_sidecar <- tolower(trimws(Sys.getenv("RUN_GTWR_FLOATING_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
-cfg$run_gtwr_age_band_sidecar <- tolower(trimws(Sys.getenv("RUN_GTWR_AGE_BAND_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
-cfg$run_gtwr_sector_share_sidecar <- tolower(trimws(Sys.getenv("RUN_GTWR_SECTOR_SHARE_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
-cfg$run_gwr_delta <- tolower(trimws(Sys.getenv("RUN_GWR_DELTA", unset = "false"))) %in% c("1", "true", "yes")
-cfg$run_gwr_delta_floating_sidecar <- tolower(trimws(Sys.getenv("RUN_GWR_DELTA_FLOATING_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
 cfg$build_optional_appendix_tables <- tolower(trimws(Sys.getenv("BUILD_OPTIONAL_APPENDIX_TABLES", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gwr_delta_window_years <- 3L
 cfg$gwr_delta_windows_n <- cfg$gwr_delta_window_years
@@ -513,13 +504,11 @@ cfg$aux_source_contracts <- list(
 # 4. Optional High-Cost Modes
 #==============================================================================
 
-# GTWR is an opt-in quarterly local sidecar. The default main specification fixes
+# GTWR is a manual quarterly local sidecar. The default main specification fixes
 # the adaptive spatiotemporal bandwidth at 480 neighbors to keep the local sample
 # roughly comparable to the pre-quarterly 120-neighbor setting;
 # bw.gtwr() search is available only through the dedicated bandwidth-selection
 # diagnostic script when explicitly requested through GTWR_BANDWIDTH_STRATEGY.
-cfg$run_gtwr_main_sidecar <- tolower(trimws(Sys.getenv("RUN_GTWR_MAIN_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
-cfg$run_gtwr <- cfg$run_gtwr_main_sidecar
 cfg$gtwr_control_min_obs <- 500L
 cfg$gtwr_control_min_units <- 30L
 cfg$gtwr_control_min_sample_retention <- 0.95
@@ -552,15 +541,12 @@ cfg$gtwr_local_cn_warn_threshold <- suppressWarnings(as.numeric(Sys.getenv("GTWR
 if (!is.finite(cfg$gtwr_local_cn_warn_threshold) || cfg$gtwr_local_cn_warn_threshold <= 0) {
   cfg$gtwr_local_cn_warn_threshold <- 100
 }
-cfg$run_gtwr_lamda_sensitivity <- tolower(trimws(Sys.getenv("RUN_GTWR_LAMDA_SENSITIVITY", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_lamda_sensitivity_grid <- trimws(Sys.getenv("GTWR_LAMDA_SENSITIVITY_GRID", unset = "0.025,0.05,0.1,0.2"))
 cfg$gtwr_refresh_lamda_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_LAMDA_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
-cfg$run_gtwr_bandwidth_sensitivity <- tolower(trimws(Sys.getenv("RUN_GTWR_BANDWIDTH_SENSITIVITY", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_bandwidth_sensitivity_grid <- trimws(Sys.getenv("GTWR_BANDWIDTH_SENSITIVITY_GRID", unset = "240,360,480,600,720"))
 cfg$gtwr_refresh_bandwidth_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BANDWIDTH_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_write_legacy_alias <- FALSE
 cfg$gwr_delta_write_legacy_alias <- FALSE
-cfg$run_gtwr_experiment_sidecar <- tolower(trimws(Sys.getenv("RUN_GTWR_EXPERIMENT_SIDECAR", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_experiment_bw_approaches <- trimws(Sys.getenv("GTWR_EXPERIMENT_BW_APPROACHES", unset = "CV"))
 cfg$gtwr_experiment_lamda_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_LAMDA_GRID", unset = "0.05"))
 cfg$gtwr_experiment_ksi_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_KSI_GRID", unset = "0"))

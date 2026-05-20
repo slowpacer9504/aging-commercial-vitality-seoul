@@ -564,13 +564,6 @@ if (!isTRUE(optional_required_test_enabled)) {
     TRUE,
     sprintf("excluded_from_required_quarterly_test_plan: %s", describe_presence(gtwr_raw_paths))
   )
-} else if (!isTRUE(cfg$run_gtwr_main_sidecar)) {
-  rows[[length(rows) + 1L]] <- add_row(
-    "G01",
-    "gtwr_optional",
-    TRUE,
-    sprintf("RUN_GTWR_MAIN_SIDECAR=FALSE; optional raw outputs ignored (%s)", describe_presence(gtwr_raw_paths))
-  )
 } else {
   rows[[length(rows) + 1L]] <- add_row(
     "G01",

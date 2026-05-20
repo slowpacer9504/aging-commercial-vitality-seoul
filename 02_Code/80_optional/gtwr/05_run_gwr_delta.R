@@ -146,9 +146,7 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
   })
 }
 
-if (!isTRUE(cfg$run_gwr_delta)) {
-  append_log(cfg$logs$model_run, "- GWR delta quarterly appendix skipped (run_gwr_delta = FALSE)")
-} else {
+{
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for quarterly GWR delta appendix.", call. = FALSE)
   }
@@ -170,7 +168,7 @@ if (!isTRUE(cfg$run_gwr_delta)) {
   } else {
     empty_gwr_delta_main_tbl()
   }
-  floating_tbl <- if (isTRUE(cfg$run_gwr_delta_floating_sidecar) && length(outcomes) > 0L && length(floating_focals) > 0L) {
+  floating_tbl <- if (length(outcomes) > 0L && length(floating_focals) > 0L) {
     build_deferred_rows(panel, outcomes, floating_focals, gwr_family = "floating", control_candidates = control_candidates)
   } else {
     empty_gwr_delta_main_tbl()

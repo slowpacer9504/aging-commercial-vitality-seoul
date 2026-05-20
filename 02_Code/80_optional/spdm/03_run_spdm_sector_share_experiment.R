@@ -35,9 +35,7 @@ path_controls <- value_or(cfg$paths$spdm_sector_share_experiment_controls_used, 
 path_diagnostics <- value_or(cfg$paths$spdm_sector_share_experiment_diagnostics, file.path(cfg$dir_tables, "spdm_sector_share_experiment_diagnostics.csv"))
 path_relations <- value_or(cfg$paths$spdm_sector_share_experiment_exposure_relations, file.path(cfg$dir_tables, "spdm_sector_share_experiment_exposure_relations.csv"))
 
-if (!isTRUE(cfg$run_spdm_sector_share_sidecar)) {
-  append_log(cfg$logs$model_run, "- SPDM sector-share sidecar skipped (run_spdm_sector_share_sidecar = FALSE)")
-} else {
+{
   if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {
     stop("[ERROR] Missing panel or W", call. = FALSE)
   }

@@ -4,8 +4,8 @@
 
 - active canonical model surface는 `02_run_esda.R -> 01_run_twfe_main.R -> 02_run_spdm_main.R -> 03_run_spdm_channel_path.R -> 01_run_spdm_w_robustness.R -> 02_run_robustness.R -> 01_make_tables_figures.R`이다.
 - 모든 active canonical model과 reporting은 `2019Q4~2025Q4` 분석 표본을 사용한다. `2019Q1~2019Q3`는 panel 구축 및 rolling/lag warm-up 구간으로만 유지한다.
-- `01_run_gtwr_main.R`는 quarterly contract로 유지되는 opt-in local sidecar이며, GTWR bandwidth/lamda diagnostic scripts와 함께 default run과 required test plan에서는 제외한다.
-- TWFE channel, interaction, age-mix, sector-share, selection, family-comparison, local appendix 계열은 supplementary/manual 또는 appendix sidecar로 취급한다. SPDM channel path(`03_run_spdm_channel_path.R`)는 예외적으로 canonical surface에 포함한다.
+- `80_optional/**`의 TWFE, SPDM, GTWR, optional preprocessing scripts는 default run과 required test plan에서 제외되는 manual direct-run surface다. 파일을 직접 실행하면 별도 `RUN_*` 실행 플래그 없이 실제 작업을 수행한다.
+- TWFE channel, interaction, age-mix, sector-share, selection, family-comparison, GTWR local appendix 계열은 supplementary/manual 또는 appendix sidecar로 취급한다. SPDM channel path(`03_run_spdm_channel_path.R`)는 예외적으로 canonical surface에 포함한다.
 
 ## 1) ESDA
 
@@ -79,6 +79,7 @@
 ## 3C) TWFE Age-Mix Experiment
 
 - appendix TWFE age-mix family
+- 실행 조건: `80_optional/twfe/03_run_twfe_age_mix_experiment.R` 직접 실행
 - 입력: `panel_main.parquet`, `registered_resident_population.parquet`, `seoul_raw_integrated_wide.parquet`
 - 출력:
   - `twfe_age_mix_experiment_models.csv`
@@ -142,6 +143,7 @@
 ## 5C) SPDM Age-Mix Experiment
 
 - appendix SPDM age-mix family
+- 실행 조건: `80_optional/spdm/02_run_spdm_age_mix_experiment.R` 직접 실행
 - 출력:
   - `spdm_age_mix_experiment_models.csv`
   - `spdm_age_mix_experiment_impacts.csv`
@@ -155,6 +157,7 @@
 ## 5D) SPDM Sector-Share Experiment
 
 - appendix SPDM sector-share family
+- 실행 조건: `80_optional/spdm/03_run_spdm_sector_share_experiment.R` 직접 실행
 - 출력:
   - `spdm_sector_share_experiment_models.csv`
   - `spdm_sector_share_experiment_impacts.csv`
@@ -230,7 +233,7 @@
 
 - 목표: resident-only local heterogeneity 설명
 - 입력: `panel_main.parquet`, `2020 기준 서울시 행정동 경계`
-- 실행 조건: `RUN_GTWR_MAIN_SIDECAR=TRUE`
+- 실행 조건: `80_optional/gtwr/01_run_gtwr_main.R` 직접 실행
 - 출력:
   - `gtwr_main_models_<control_set>.csv`
   - `gtwr_local_beta_panel_<control_set>.csv`
@@ -263,8 +266,8 @@
 
 ## 7A) GTWR Floating-Only Appendix
 
-- opt-in quarterly GTWR appendix sidecar
-- 실행 조건: `RUN_GTWR_FLOATING_SIDECAR=TRUE`
+- manual quarterly GTWR appendix sidecar
+- 실행 조건: `80_optional/gtwr/02_run_gtwr_floating_only.R` 직접 실행
 - 출력:
   - `gtwr_floating_models_<control_set>.csv`
   - `gtwr_floating_local_beta_panel_<control_set>.csv`
@@ -275,12 +278,12 @@
 - 구현 원칙:
   - main outcomes x `age60_floating_share` spec을 `GWmodel::gtwr()`로 실제 추정한다.
   - control pool은 main GTWR와 같은 `GTWR_CONTROL_SET` 계약을 따른다.
-  - 실행 플래그가 꺼져 있으면 raw output 부재를 failure로 보지 않는다.
+  - default `run_all.R`과 required test plan에서는 제외되므로 raw output 부재를 failure로 보지 않는다.
 
 ## 7B) GTWR Age-Band Appendix
 
-- opt-in quarterly GTWR appendix sidecar
-- 실행 조건: `RUN_GTWR_AGE_BAND_SIDECAR=TRUE`
+- manual quarterly GTWR appendix sidecar
+- 실행 조건: `80_optional/gtwr/03_run_gtwr_age_band.R` 직접 실행
 - 출력:
   - `gtwr_age_band_models_<control_set>.csv`
   - `gtwr_age_band_local_beta_panel_<control_set>.csv`
@@ -296,8 +299,8 @@
 
 ## 7C) GTWR Sector-Share Appendix
 
-- opt-in quarterly GTWR appendix sidecar
-- 실행 조건: `RUN_GTWR_SECTOR_SHARE_SIDECAR=TRUE`
+- manual quarterly GTWR appendix sidecar
+- 실행 조건: `80_optional/gtwr/04_run_gtwr_sector_share.R` 직접 실행
 - 출력:
   - `gtwr_sector_share_models_<control_set>.csv`
   - `gtwr_sector_share_local_beta_panel_<control_set>.csv`
@@ -337,7 +340,7 @@
 ## 7F) GTWR Bandwidth Sensitivity Diagnostic
 
 - manual quarterly diagnostic
-- 실행 조건: `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`
+- 실행 조건: `80_optional/gtwr/08_run_gtwr_bandwidth_sensitivity.R` 직접 실행
 - 출력:
   - `gtwr_bandwidth_sensitivity_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_bandwidth_sensitivity_cache/<control_set>/main/*.rds`
@@ -348,7 +351,7 @@
 ## 7G) GTWR Lamda Sensitivity Diagnostic
 
 - manual quarterly diagnostic
-- 실행 조건: `RUN_GTWR_LAMDA_SENSITIVITY=TRUE`
+- 실행 조건: `80_optional/gtwr/09_run_gtwr_lamda_sensitivity.R` 직접 실행
 - 출력:
   - `gtwr_lamda_sensitivity_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_lamda_sensitivity_cache/<control_set>/main/*.rds`

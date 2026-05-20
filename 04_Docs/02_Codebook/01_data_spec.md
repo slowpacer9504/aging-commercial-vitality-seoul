@@ -110,7 +110,7 @@
 
 - interaction / age-mix / family-comparison appendix scripts
 - `01_run_gtwr_main.R`, 추가 GTWR sidecars, GTWR bandwidth/lamda diagnostic scripts
-  - opt-in local analysis only
+  - manual direct-run local analysis only
 
 위 자산은 canonical default run, active QC, active success 판정의 필수 계약이 아니다.
 

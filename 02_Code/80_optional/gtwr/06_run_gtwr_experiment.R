@@ -288,9 +288,7 @@ build_message <- function(meta, experiment_id) {
   }
 }
 
-if (!isTRUE(cfg$run_gtwr_experiment_sidecar)) {
-  append_log(cfg$logs$model_run, "- GTWR experiment quarterly sidecar skipped by run flag")
-} else {
+{
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for GTWR experiment quarterly sidecar.", call. = FALSE)
   }

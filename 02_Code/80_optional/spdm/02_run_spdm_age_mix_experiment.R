@@ -34,9 +34,7 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_spdm_age_mix_experiment", timestamp()))
 
-if (!isTRUE(cfg$run_spdm_age_mix_sidecar)) {
-  append_log(cfg$logs$model_run, "- SPDM age-mix experiment skipped (run_spdm_age_mix_sidecar = FALSE)")
-} else {
+{
 
 if (!file.exists(cfg$paths$panel_main) ||
     !file.exists(cfg$paths$registered_resident_population) ||

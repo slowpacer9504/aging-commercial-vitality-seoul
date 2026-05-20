@@ -1,7 +1,7 @@
 #==============================================================================
 # Script    : 02_run_gtwr_floating_only.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Run the floating-only quarterly GTWR optional sidecar when enabled.
+# Purpose   : Run the floating-only quarterly GTWR optional sidecar.
 # Author    : Codex
 # Created   : 2026-04-22
 # Status    : OPTIONAL_SIDECAR
@@ -24,9 +24,7 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", timestamp()))
 
-if (!isTRUE(cfg$run_gtwr_floating_sidecar)) {
-  append_log(cfg$logs$model_run, "- GTWR floating-only quarterly sidecar skipped by run flag")
-} else {
+{
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for GTWR floating-only sidecar.", call. = FALSE)
   }

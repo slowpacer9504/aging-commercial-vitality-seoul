@@ -2,7 +2,7 @@
 # Script    : 03_run_gtwr_age_band.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run age-band quarterly GTWR sidecars for resident and floating
-#             age-share exposures when enabled.
+#             age-share exposures.
 # Author    : Codex
 # Created   : 2026-04-22
 # Status    : OPTIONAL_SIDECAR
@@ -92,9 +92,7 @@ add_age_band_payload_metadata <- function(payload, job) {
   payload
 }
 
-if (!isTRUE(cfg$run_gtwr_age_band_sidecar)) {
-  append_log(cfg$logs$model_run, "- GTWR age-band quarterly sidecar skipped by run flag")
-} else {
+{
   if (!file.exists(cfg$paths$panel_main) ||
       !file.exists(cfg$paths$registered_resident_population) ||
       !file.exists(cfg$paths$seoul_raw_integrated_wide)) {
