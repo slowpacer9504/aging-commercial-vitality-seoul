@@ -11,10 +11,10 @@
 아래 원칙은 코드에서 흔들리면 안 된다.
 
 1. 공간 단위는 `2020` 기준 서울시 행정동(`adm_cd`)이다.
-2. active canonical panel은 `2019Q1~2025Q4` 분기 패널이다.
+2. active canonical panel 구축 범위는 `2019Q1~2025Q4`이고, active 분석 표본은 `2019Q4~2025Q4`다.
 3. active shared panel의 시간 키는 `year`, `quarter`, `yq`, `quarter_index`이며 유일키는 `adm_cd-yq`다.
-4. main exposure는 `age60_resident_share`다.
-5. canonical timing contract는 동시점 `t`다.
+4. main exposure는 `lag4_age60_resident_share`다.
+5. canonical timing contract는 4분기 시차 노출·통제와 2분기 시차 channel mediator다.
 6. 기본 W는 `Queen`이고, `Rook`, `kNN6`, `kNN8`은 robustness다.
 7. active method stack은 `ESDA -> TWFE -> SPDM -> GTWR(optional)`이다.
 8. TWFE는 baseline / spatial diagnostic layer다.
@@ -100,7 +100,7 @@ optional/manual script라면 header나 early comment에 그 상태를 분명히 
 - 공간시차: `w_`
 - 종합지수: `vitality_index_*`
 
-활력지수 계산에서 `_z`는 전체 `2019Q1~2025Q4 adm_cd-yq` 패널 표본의 평균과 표준편차를 기준으로 하는 pooled z-score를 기본값으로 한다. 분기별 cross-section 표준화가 필요한 보조 분석은 active variable name과 별도 suffix로 분리해야 한다.
+활력지수 계산에서 `_z`는 active 분석 표본인 `2019Q4~2025Q4 adm_cd-yq`의 평균과 표준편차를 기준으로 하는 pooled z-score를 기본값으로 한다. 분기별 cross-section 표준화가 필요한 보조 분석은 active variable name과 별도 suffix로 분리해야 한다.
 
 active shared panel에는 `year`, `quarter`, `yq`, `quarter_index`를 남긴다. legacy shift/lead suffix와 raw `quarter_code_raw`는 preprocessing 내부 local object에서만 사용하고, quarterly publication 전에 제거한다.
 

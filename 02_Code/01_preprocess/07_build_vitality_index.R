@@ -204,6 +204,19 @@ comp <- panel_main_pre |>
     ln_external_inflow_pop = log1p(pmax(external_inflow_pop, 0))
   )
 
+analysis_yq <- get_analysis_yq_sequence()
+analysis_reference <- as.character(comp$yq) %in% analysis_yq
+if (sum(analysis_reference, na.rm = TRUE) < 100L) {
+  stop(
+    sprintf(
+      "[ERROR] vitality analysis reference window has too few rows: %s rows=%d",
+      value_or(cfg$analysis_period_label, paste(analysis_yq, collapse = ",")),
+      sum(analysis_reference, na.rm = TRUE)
+    ),
+    call. = FALSE
+  )
+}
+
 vars <- component_spec$component
 standard_subindex_spec <- list(
   vitality_sub_social = c("ln_floating_pop", "ln_external_inflow_pop"),
@@ -233,9 +246,9 @@ subindex_dimensions <- c("economic", "social", "temporal", "stability")
 vitality_qc <- component_spec |>
   dplyr::rowwise() |>
   dplyr::mutate(
-    finite_n = sum(is.finite(comp[[component]])),
-    unique_n = dplyr::n_distinct(comp[[component]][is.finite(comp[[component]])]),
-    sd_value = suppressWarnings(stats::sd(comp[[component]][is.finite(comp[[component]])], na.rm = TRUE)),
+    finite_n = sum(is.finite(comp[[component]]) & analysis_reference),
+    unique_n = dplyr::n_distinct(comp[[component]][is.finite(comp[[component]]) & analysis_reference]),
+    sd_value = suppressWarnings(stats::sd(comp[[component]][is.finite(comp[[component]]) & analysis_reference], na.rm = TRUE)),
     invalid_transformed_n = count_invalid_transformed(comp, source_variable, component),
     selected = TRUE
   ) |>
@@ -284,13 +297,13 @@ zvars <- paste0(vars, "_z")
 for (i in seq_along(vars)) {
   v <- vars[[i]]
   z <- zvars[[i]]
-  v_finite <- is.finite(comp[[v]])
+  v_finite <- is.finite(comp[[v]]) & analysis_reference
   v_mean <- mean(comp[[v]][v_finite], na.rm = TRUE)
   v_sd <- stats::sd(comp[[v]][v_finite], na.rm = TRUE)
   comp[[z]] <- NA_real_
-  # z-score는 전체 표본 평균/표준편차를 기준으로 계산한다.
-  # 동별 시계열 표준화가 아니라 전체 분포 표준화이므로, 구성요소 간 스케일만 맞추고
-  # 시간변동 자체는 유지된다.
+  # z-score는 active analysis period의 pooled 평균/표준편차를 기준으로 계산한다.
+  # 동별 시계열 표준화가 아니라 분석 표본 전체 분포 표준화이므로,
+  # 구성요소 간 스케일만 맞추고 시간변동 자체는 유지된다.
   comp[[z]][v_finite] <- (comp[[v]][v_finite] - v_mean) / v_sd
 }
 
@@ -415,7 +428,7 @@ stability_axis_zvars <- paste0(stability_axis_vars, "_z")
 for (i in seq_along(stability_axis_vars)) {
   v <- stability_axis_vars[[i]]
   z <- stability_axis_zvars[[i]]
-  v_finite <- is.finite(comp[[v]])
+  v_finite <- is.finite(comp[[v]]) & analysis_reference
   v_mean <- mean(comp[[v]][v_finite], na.rm = TRUE)
   v_sd <- stats::sd(comp[[v]][v_finite], na.rm = TRUE)
   comp[[z]] <- NA_real_
@@ -510,7 +523,7 @@ sub_zvars <- paste0(sub_names, "_z")
 for (i in seq_along(sub_names)) {
   v <- sub_names[[i]]
   z <- sub_zvars[[i]]
-  v_finite <- is.finite(comp[[v]])
+  v_finite <- is.finite(comp[[v]]) & analysis_reference
   v_mean <- mean(comp[[v]][v_finite], na.rm = TRUE)
   v_sd <- stats::sd(comp[[v]][v_finite], na.rm = TRUE)
   comp[[z]] <- NA_real_
@@ -698,6 +711,8 @@ write_csv_safe(
     dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>
     dplyr::left_join(entropy_weight_tbl, by = "component") |>
     dplyr::mutate(
+      analysis_period = value_or(cfg$analysis_period_label, NA_character_),
+      analysis_reference_row_n = sum(analysis_reference, na.rm = TRUE),
       complete_case_n = complete_n,
       base_finite_n = sum(is.finite(comp$vitality_index_base)),
       entropy_finite_n = sum(is.finite(comp$vitality_index_entropy)),

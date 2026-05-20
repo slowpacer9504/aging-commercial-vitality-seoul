@@ -3,6 +3,7 @@
 ## 0) Canonical vs Supplementary Surface
 
 - active canonical model surface는 `02_run_esda.R -> 01_run_twfe_main.R -> 02_run_spdm_main.R -> 03_run_spdm_channel_path.R -> 01_run_spdm_w_robustness.R -> 02_run_robustness.R -> 01_make_tables_figures.R`이다.
+- 모든 active canonical model과 reporting은 `2019Q4~2025Q4` 분석 표본을 사용한다. `2019Q1~2019Q3`는 panel 구축 및 rolling/lag warm-up 구간으로만 유지한다.
 - `01_run_gtwr_main.R`는 quarterly contract로 유지되는 opt-in local sidecar이며, default run과 required test plan에서는 제외한다.
 - TWFE channel, interaction, age-mix, sector-share, selection, family-comparison, local appendix 계열은 supplementary/manual 또는 appendix sidecar로 취급한다. SPDM channel path(`03_run_spdm_channel_path.R`)는 예외적으로 canonical surface에 포함한다.
 
@@ -128,7 +129,7 @@
   - `spdm_channel_diagnostics.csv`
 - 구현 원칙:
   - `X = lag4_age60_resident_share`, `M = lag2_age60_floating_share`로 고정한다.
-  - `lag2_age60_floating_share`는 2018 floating source가 없으므로 2019Q1~2019Q2가 warm-up 결측이고, channel path complete-case sample은 사실상 2019Q3 이후부터 형성된다.
+  - `lag2_age60_floating_share`는 2018 floating source가 없으므로 2019Q1~2019Q2가 warm-up 결측이고, active channel path complete-case sample은 `2019Q4` 이후 분석 표본에서 형성된다.
   - total-effect equation은 `Y ~ X + controls + W X + W controls`와 spatial lagged outcome을 quarterly Queen SDM으로 추정한다.
   - mediator equation은 `M ~ X + controls + W X + W controls`와 spatial lagged mediator를 quarterly Queen SDM으로 추정한다.
   - outcome equation은 `Y ~ X + M + controls + W X + W M + W controls`와 spatial lagged outcome을 quarterly Queen SDM으로 추정한다.
@@ -194,7 +195,7 @@
 - 구현 원칙:
   - main SPDM에서 성공한 `outcome x exposure` 행만 대상으로 한다.
   - `spdm_main_diagnostics.csv`와 `spdm_controls_used.csv`의 selected control contract가 불일치하면 해당 spec은 실패로 기록하고 재추정하지 않는다.
-  - 모든 family는 main SPDM의 balanced quarterly sample과 `2019Q1~2025Q4` horizon을 그대로 재구성해 추정한다.
+  - 모든 family는 main SPDM의 balanced quarterly sample과 `2019Q4~2025Q4` active analysis horizon을 그대로 재구성해 추정한다.
   - impact가 이론적으로 해석 가능한 `SAR`, `SDM`, `SARAR/SAC`은 가능한 경우 direct/indirect/total을 기록한다.
   - `SLX`와 `SDEM`은 endogenous `W y` feedback multiplier가 없는 `W X` 효과이므로 `SDM`의 feedback-inclusive matrix impact와 구분해 해석한다.
   - `GNS`는 spatial error를 포함하지만 평균효과는 `SDM`과 같은 `S = (I - rho W)^(-1)`, `S(beta I + theta W)` matrix impact로 기록한다.
@@ -223,7 +224,7 @@
 - 구현 원칙:
   - canonical shared panel은 동시점 source 변수와 등록된 model lag 변수만 유지한다.
   - 미등록 lag/lead family는 만들지 않는다.
-  - sample-window는 `full`과 `pre2025` quarterly window를 비교한다.
+  - sample-window는 `full`(`2019Q4~2025Q4`)과 `pre2025` quarterly window를 비교한다.
 
 ## 7) GTWR Main Optional Sidecar
 
@@ -351,7 +352,7 @@
 - `01_make_tables_figures.R`
   - always-on descriptive/reporting outputs plus optional appendix tables
   - `descriptive_statistics.csv`는 변수별 확장 기술통계표로 작성한다. aging exposure, vitality outcome, robustness composite, vitality component, main control을 대상으로 유효 관측치, 결측, 평균, 표준편차, 최솟값, p25, 중앙값, p75, 최댓값, 유효 분기 범위, 행정동 수를 보고한다.
-  - `main_variable_correlation_matrix.csv`와 `main_variable_correlation_pairs.csv`는 SPDM/GTWR 등 본분석 변수의 Pearson 상관을 `panel_main` 전체 `adm_cd-yq` 관측치 기준으로 계산한다. 포함 범위는 main exposure, channel mediator, supporting aging exposure, primary/supplementary outcome, TWFE/SPDM/GTWR control pool이다.
+  - `main_variable_correlation_matrix.csv`와 `main_variable_correlation_pairs.csv`는 SPDM/GTWR 등 본분석 변수의 Pearson 상관을 `2019Q4~2025Q4` active analysis 관측치 기준으로 계산한다. 포함 범위는 main exposure, channel mediator, supporting aging exposure, primary/supplementary outcome, TWFE/SPDM/GTWR control pool이다.
   - GTWR reporting은 latest summary/rankings를 main surface로 쓰고 delta summary/rankings는 appendix diagnostic으로만 쓴다.
 - `02_Code/05_reporting/02_build_presentation_artifacts.R`
   - presentation-only sidecar that derives slide-ready artifacts from canonical outputs

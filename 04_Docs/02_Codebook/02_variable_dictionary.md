@@ -116,7 +116,7 @@ GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직
 - 구조적 다양성 축은 `diversity_index`의 pooled z-score다.
 - 점포 존속성 축은 `operating_months_rel_seoul`과 신생기업 3년 생존율(`survival_3y`)을 각각 pooled z-score로 표준화한 뒤 평균한다.
 - `closure_rate`와 `stability_score = -closure_rate`는 폐업압력 진단용 지원 변수로 유지하되, active 안정성 하위지수에는 투입하지 않는다.
-- 활력지수의 component z-score와 하위지수 z-score는 분기별 cross-section이 아니라 전체 `2019Q1~2025Q4 adm_cd-yq` 패널 표본 기준의 pooled z-score로 계산한다.
+- 활력지수의 component z-score와 하위지수 z-score는 분기별 cross-section이 아니라 active 분석기간인 `2019Q4~2025Q4 adm_cd-yq` 표본 기준의 pooled z-score로 계산한다.
 - `ln_floating_pop`은 `vitality_sub_social` 및 종합 활력지수의 구성요소이므로 메인 control pool에 포함하지 않는다.
 - active shared panel은 동시점 source 변수와 등록된 model lag 변수만 유지한다.
 
@@ -151,4 +151,4 @@ GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직
 - Q4 업데이트형 source는 현재 코드 기준 `q4_snapshot`, `q4_snapshot_ratio`, `q4_snapshot_then_log`, `q4_snapshot_difference`로 표기한다.
 - Q4 업데이트형 source에서 Q4 관측값이 없으면 같은 연도 최신분기 값으로 대체하지 않고 결측으로 둔다.
 - 활력 하위지수와 종합지수는 원천을 직접 다시 집계하지 않고 분기 발행이 끝난 component에서 파생한다.
-- 활력 하위지수와 종합지수의 표준화는 pooled panel standardization을 따른다. 즉 전체 `2019Q1~2025Q4 adm_cd-yq` 표본의 평균과 표준편차를 사용하며 분기별 표준화는 active contract가 아니다.
+- 활력 하위지수와 종합지수의 표준화는 pooled panel standardization을 따른다. 즉 active 분석기간인 `2019Q4~2025Q4 adm_cd-yq` 표본의 평균과 표준편차를 사용하며 분기별 표준화는 active contract가 아니다.

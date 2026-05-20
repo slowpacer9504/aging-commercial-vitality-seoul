@@ -49,11 +49,12 @@
 
 ### 4.2 시간 단위와 범위
 
-- canonical workflow의 시간 범위는 **2019Q1 ~ 2025Q4** 이다.
+- canonical panel 구축 범위는 **2019Q1 ~ 2025Q4** 이고, active 분석기간은 **2019Q4 ~ 2025Q4** 이다.
 - active 분석 단위는 `adm_cd x yq` 분기 패널이다.
 - active 시간 키는 `year`, `quarter`, `yq`, `quarter_index`다.
 - canonical model timing contract는 **시차 적용 분기 계약** 이다. 독립변수와 통제변수는 `t-4`, SPDM channel path의 매개변수는 `t-2` 값을 사용한다.
 - 2018년 주민등록인구, 버스정류소, 공시지가 source는 2019년 active panel의 4분기 시차 계산을 위한 lag-support 범위로만 사용한다.
+- 2019Q1~2019Q3는 rolling 4-quarter 활력지표와 시차 변수 검증을 위한 warm-up 구간이며, 본문 ESDA/TWFE/SPDM/GTWR와 reporting 표본에는 포함하지 않는다.
 
 분기 자료는 active shared panel의 시간축이다. 연도·정적 자료는 같은 값이 반복될 수 있음을 명시하되, 반복값 자체를 숨기지 않고 source precision/QC로 추적한다.
 
@@ -141,7 +142,7 @@ GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타�
 사회적 활력 하위지수는 상권 내부 유동인구 규모와 서울생활인구 기반 외부 유입 인구 규모를 함께 반영한다.
 시간적 활력 하위지수는 하루 안의 시간대 분포와 1년 안의 분기 안정성을 함께 반영한다.
 안정성 하위지수는 구조적 다양성 축과 점포 존속성 축을 동일가중으로 결합한다. 구조적 다양성 축은 업종 다양성 지수의 pooled z-score이고, 점포 존속성 축은 서울 대비 상대 영업월수와 서울시 상권분석서비스 신생기업 3년 생존율(`survival_3y`)을 각각 pooled z-score로 표준화한 뒤 평균한다. `closure_rate`와 `stability_score = -closure_rate`는 폐업압력 진단용 지원 변수로 유지하지만, active 안정성 하위지수 구성요소에서는 제외한다.
-활력지수의 개별 구성요소와 하위지수는 분기별 cross-section 기준이 아니라 전체 `2019Q1~2025Q4 adm_cd-yq` 패널 표본의 평균과 표준편차를 기준으로 pooled z-score 표준화한다. 이 기준은 구성요소 간 스케일을 맞추되 분기 간 수준 변화 자체는 지수 안에 유지하기 위한 active contract다.
+활력지수의 개별 구성요소와 하위지수는 분기별 cross-section 기준이 아니라 active 분석기간인 `2019Q4~2025Q4 adm_cd-yq` 표본의 평균과 표준편차를 기준으로 pooled z-score 표준화한다. 이 기준은 구성요소 간 스케일을 맞추되 분기 간 수준 변화 자체는 지수 안에 유지하기 위한 active contract다.
 
 ### 6.3 통제변수
 

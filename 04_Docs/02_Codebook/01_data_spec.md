@@ -73,7 +73,8 @@
 ## 4) Active QC 규칙
 
 - 키 중복: `adm_cd x yq` 0건
-- 시간범위: `2019Q1~2025Q4`
+- panel 구축 시간범위: `2019Q1~2025Q4`
+- active 분석기간: `2019Q4~2025Q4`
 - 좌표계: `EPSG:5179`
 - active shared panel에서 `year`, `quarter`, `yq`, `quarter_index` 유지
 - 분기 발행 규칙 점검

@@ -133,16 +133,25 @@ mean_or_na <- function(x) {
   mean(x_num, na.rm = TRUE)
 }
 
-pooled_z <- function(x) {
+pooled_z <- function(x, reference = NULL) {
   x_num <- suppressWarnings(as.numeric(x))
+  if (is.null(reference)) {
+    reference <- rep(TRUE, length(x_num))
+  }
+  reference <- as.logical(reference)
+  if (length(reference) != length(x_num)) {
+    stop("[ERROR] pooled_z reference length must match input length", call. = FALSE)
+  }
+  reference[is.na(reference)] <- FALSE
   finite <- is.finite(x_num)
+  reference_finite <- finite & reference
   out <- rep(NA_real_, length(x_num))
-  if (sum(finite) < 2L) return(out)
+  if (sum(reference_finite) < 2L) return(out)
 
-  x_sd <- stats::sd(x_num[finite], na.rm = TRUE)
+  x_sd <- stats::sd(x_num[reference_finite], na.rm = TRUE)
   if (!is.finite(x_sd) || x_sd <= 1e-8) return(out)
 
-  out[finite] <- (x_num[finite] - mean(x_num[finite], na.rm = TRUE)) / x_sd
+  out[finite] <- (x_num[finite] - mean(x_num[reference_finite], na.rm = TRUE)) / x_sd
   out
 }
 
@@ -333,6 +342,8 @@ for (nm in c("facility_available", "apartment_available")) {
   if (!nm %in% names(panel_main_pre_vitality)) panel_main_pre_vitality[[nm]] <- NA_integer_
 }
 
+analysis_reference <- as.character(panel_main_pre_vitality$yq) %in% get_analysis_yq_sequence()
+
 panel_main_pre_vitality <- panel_main_pre_vitality |>
   dplyr::mutate(
     medical_public_health_count_aux = dplyr::coalesce(
@@ -368,8 +379,8 @@ panel_main_pre_vitality <- panel_main_pre_vitality |>
     bus_stop_count_aux = dplyr::if_else(is.finite(bus_stop_count_aux), pmax(bus_stop_count_aux, 0), NA_real_),
     subway_station_count_aux = dplyr::if_else(is.finite(subway_station_count_aux), pmax(subway_station_count_aux, 0), NA_real_),
     transit_accessibility = {
-      bus_z <- pooled_z(bus_stop_count_aux)
-      subway_z <- pooled_z(subway_station_count_aux)
+      bus_z <- pooled_z(bus_stop_count_aux, reference = analysis_reference)
+      subway_z <- pooled_z(subway_station_count_aux, reference = analysis_reference)
       dplyr::if_else(is.finite(bus_z) & is.finite(subway_z), (bus_z + subway_z) / 2, NA_real_)
     },
     ln_age60_resident_pop = safe_log1p(age60_resident_pop),
@@ -512,8 +523,9 @@ lag4_values <- panel_main_pre_vitality |>
       NA_real_
     ),
     lag4_transit_accessibility = {
-      bus_z <- pooled_z(lag4_bus_stop_count_aux)
-      subway_z <- pooled_z(lag4_subway_station_count_aux)
+      lag4_analysis_reference <- as.character(.data$yq) %in% get_analysis_yq_sequence()
+      bus_z <- pooled_z(lag4_bus_stop_count_aux, reference = lag4_analysis_reference)
+      subway_z <- pooled_z(lag4_subway_station_count_aux, reference = lag4_analysis_reference)
       dplyr::if_else(is.finite(bus_z) & is.finite(subway_z), (bus_z + subway_z) / 2, NA_real_)
     }
   ) |>

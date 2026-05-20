@@ -214,7 +214,7 @@ get_main_spatial_families <- function() {
 }
 
 spdm_required_periods <- function() {
-  q_seq <- value_or(cfg$quarter_sequence$yq, character())
+  q_seq <- value_or(cfg$analysis_quarter_sequence$yq, value_or(cfg$quarter_sequence$yq, character()))
   q_seq <- unique(as.character(q_seq))
   q_seq[!is.na(q_seq) & nzchar(q_seq)]
 }
@@ -404,7 +404,9 @@ assess_spdm_balanced_dims <- function(data, w_ids, required_periods = spdm_requi
 
   required_periods <- unique(as.character(required_periods))
   required_periods <- required_periods[!is.na(required_periods) & nzchar(required_periods)]
-  period_order <- if (exists("cfg", inherits = TRUE) && !is.null(cfg$quarter_sequence$yq)) {
+  period_order <- if (exists("cfg", inherits = TRUE) && !is.null(cfg$analysis_quarter_sequence$yq)) {
+    unique(as.character(cfg$analysis_quarter_sequence$yq))
+  } else if (exists("cfg", inherits = TRUE) && !is.null(cfg$quarter_sequence$yq)) {
     unique(as.character(cfg$quarter_sequence$yq))
   } else {
     character()

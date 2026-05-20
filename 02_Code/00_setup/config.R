@@ -136,6 +136,25 @@ cfg$quarter_sequence <- cfg$quarter_sequence[
 ]
 cfg$quarter_sequence$yq <- sprintf("%dQ%d", cfg$quarter_sequence$year, cfg$quarter_sequence$quarter)
 cfg$quarter_sequence$quarter_index <- seq_len(nrow(cfg$quarter_sequence))
+cfg$panel_start_yq <- as.character(cfg$quarter_sequence$yq[[1L]])
+cfg$panel_end_yq <- as.character(cfg$quarter_sequence$yq[[nrow(cfg$quarter_sequence)]])
+cfg$analysis_start_yq <- "2019Q4"
+cfg$analysis_end_yq <- cfg$panel_end_yq
+cfg$analysis_start_idx <- match(cfg$analysis_start_yq, cfg$quarter_sequence$yq)
+cfg$analysis_end_idx <- match(cfg$analysis_end_yq, cfg$quarter_sequence$yq)
+if (!is.finite(cfg$analysis_start_idx) || !is.finite(cfg$analysis_end_idx)) {
+  stop("[ERROR] analysis start/end quarter must exist in cfg$quarter_sequence", call. = FALSE)
+}
+cfg$analysis_quarter_sequence <- cfg$quarter_sequence[
+  cfg$quarter_sequence$quarter_index >= cfg$quarter_sequence$quarter_index[cfg$analysis_start_idx] &
+    cfg$quarter_sequence$quarter_index <= cfg$quarter_sequence$quarter_index[cfg$analysis_end_idx],
+  ,
+  drop = FALSE
+]
+if (nrow(cfg$analysis_quarter_sequence) == 0L) {
+  stop("[ERROR] analysis quarter sequence is empty; check cfg$analysis_start_yq and cfg$analysis_end_yq", call. = FALSE)
+}
+cfg$analysis_period_label <- sprintf("%s~%s", cfg$analysis_start_yq, cfg$analysis_end_yq)
 cfg$main_covariate_lag_quarters <- 4L
 cfg$channel_mediator_lag_quarters <- 2L
 cfg$lag_support_start <- cfg$short_start - ceiling(cfg$main_covariate_lag_quarters / 4L)
@@ -518,8 +537,8 @@ if (!cfg$gtwr_kernel %in% c("bisquare", "gaussian", "exponential", "tricube", "b
 cfg$gtwr_adaptive <- tolower(trimws(Sys.getenv("GTWR_ADAPTIVE", unset = "true"))) %in% c("1", "true", "yes")
 cfg$gtwr_bandwidth_strategy <- tolower(trimws(Sys.getenv("GTWR_BANDWIDTH_STRATEGY", unset = "fixed")))
 if (!cfg$gtwr_bandwidth_strategy %in% c("full_panel_bw_gtwr", "anchor_quarter_bw_gtwr", "fixed")) cfg$gtwr_bandwidth_strategy <- "fixed"
-cfg$gtwr_bw_anchor_yq <- trimws(Sys.getenv("GTWR_BW_ANCHOR_YQ", unset = as.character(cfg$quarter_sequence$yq[[1L]])))
-if (!cfg$gtwr_bw_anchor_yq %in% cfg$quarter_sequence$yq) cfg$gtwr_bw_anchor_yq <- as.character(cfg$quarter_sequence$yq[[1L]])
+cfg$gtwr_bw_anchor_yq <- trimws(Sys.getenv("GTWR_BW_ANCHOR_YQ", unset = as.character(cfg$analysis_quarter_sequence$yq[[1L]])))
+if (!cfg$gtwr_bw_anchor_yq %in% cfg$analysis_quarter_sequence$yq) cfg$gtwr_bw_anchor_yq <- as.character(cfg$analysis_quarter_sequence$yq[[1L]])
 cfg$gtwr_bw_approach <- trimws(Sys.getenv("GTWR_BW_APPROACH", unset = "CV"))
 if (!cfg$gtwr_bw_approach %in% c("CV", "cv", "AIC", "aic", "AICc")) cfg$gtwr_bw_approach <- "CV"
 cfg$gtwr_refresh_bw_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BW_CACHE", unset = "false"))) %in% c("1", "true", "yes")

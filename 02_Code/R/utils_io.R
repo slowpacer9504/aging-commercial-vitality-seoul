@@ -152,10 +152,28 @@ get_panel_main_view_cols <- function(view_name) {
   unique(cols)
 }
 
-read_panel_main_view <- function(view_name, extra_cols = NULL, path = cfg$paths$panel_main) {
+get_analysis_yq_sequence <- function() {
+  q_seq <- value_or(cfg$analysis_quarter_sequence$yq, character())
+  q_seq <- unique(as.character(q_seq))
+  q_seq[!is.na(q_seq) & nzchar(q_seq)]
+}
+
+filter_analysis_window <- function(data, enabled = TRUE) {
+  if (!isTRUE(enabled) || !"yq" %in% names(data)) return(data)
+
+  analysis_yq <- get_analysis_yq_sequence()
+  if (length(analysis_yq) == 0L) return(data)
+
+  data |>
+    dplyr::filter(as.character(.data$yq) %in% analysis_yq)
+}
+
+read_panel_main_view <- function(view_name, extra_cols = NULL, path = cfg$paths$panel_main, analysis_window = TRUE) {
   # Arrow column projection으로 필요한 열만 읽는 lightweight reader다.
   # method별 slim panel 파일을 따로 만들지 않기 때문에,
   # 이 함수가 사실상 "panel_main의 method-specific view"를 구현한다.
   cols <- unique(c(get_panel_main_view_cols(view_name), extra_cols))
-  arrow::read_parquet(path, col_select = tidyselect::all_of(cols)) |> tibble::as_tibble()
+  arrow::read_parquet(path, col_select = tidyselect::all_of(cols)) |>
+    tibble::as_tibble() |>
+    filter_analysis_window(enabled = analysis_window)
 }

@@ -49,8 +49,8 @@ safe_read_csv <- function(path) {
   tryCatch(readr::read_csv(path, show_col_types = FALSE), error = function(e) e)
 }
 
-safe_read_view <- function(view_name) {
-  tryCatch(read_panel_main_view(view_name), error = function(e) e)
+safe_read_view <- function(view_name, analysis_window = TRUE) {
+  tryCatch(read_panel_main_view(view_name, analysis_window = analysis_window), error = function(e) e)
 }
 
 describe_optional_absence <- function(path) {
@@ -133,7 +133,7 @@ rows[[length(rows) + 1L]] <- add_row(
   describe_presence(shared_paths)
 )
 
-panel_twfe <- safe_read_view("twfe")
+panel_twfe <- safe_read_view("twfe", analysis_window = FALSE)
 if (inherits(panel_twfe, "error")) {
   rows[[length(rows) + 1L]] <- add_row("A02", "panel_main", FALSE, panel_twfe$message)
 } else {

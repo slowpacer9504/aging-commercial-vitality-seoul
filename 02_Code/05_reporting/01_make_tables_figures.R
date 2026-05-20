@@ -25,7 +25,9 @@ source(here::here("02_Code", "R", "utils_spatial.R"))
 load_project_packages()
 
 if (!file.exists(cfg$paths$panel_main)) stop("[ERROR] panel_main missing", call. = FALSE)
-panel <- arrow::read_parquet(cfg$paths$panel_main) |> tibble::as_tibble()
+panel <- arrow::read_parquet(cfg$paths$panel_main) |>
+  tibble::as_tibble() |>
+  filter_analysis_window()
 
 unlink_if_exists <- function(path) {
   if (is.character(path) && length(path) == 1L && file.exists(path)) {

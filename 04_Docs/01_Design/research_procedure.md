@@ -32,7 +32,7 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 ### 1.2 비협상 수행 원칙
 
 1. 공간 단위는 **2020년 기준 서울시 행정동(`adm_cd`)** 으로 통일한다.
-2. active canonical workflow의 시간 범위는 **2019년 ~ 2025년** 이다.
+2. canonical panel 구축 범위는 **2019Q1~2025Q4** 이고, active 분석기간은 **2019Q4~2025Q4** 이다.
 3. 공통 active key는 `adm_cd`, `yq`다.
 4. active shared panel은 `year`, `quarter`, `yq`, `quarter_index`를 모두 유지한다.
 5. 좌표계는 `EPSG:5179`다.
@@ -81,6 +81,7 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 ### 2.1 공통 데이터 기준
 
 이 프로젝트의 실질적 분석 단위는 `adm_cd x yq` 분기 패널이다. 전처리의 핵심은 분기 source의 단기 변동을 보존하고, 연도·정적 source를 quarter-end as-of 규칙으로 붙여 source precision을 명시하는 것이다.
+2019Q1~2019Q3는 rolling 4-quarter 지표와 시차 변수 검증을 위한 warm-up 구간으로 보존하지만, active 분석 표본과 reporting 표본은 `2019Q4~2025Q4`로 제한한다.
 
 공통 수행 원칙은 아래와 같다.
 
@@ -293,7 +294,7 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 - `vitality_index_entropy`
 - `vitality_index_pca`
 
-표준화 기준은 전체 `2019Q1~2025Q4 adm_cd-yq` 패널 표본이다. `07_build_vitality_index.R`는 개별 component를 pooled z-score로 표준화해 하위지수를 만들고, 하위지수도 다시 pooled z-score로 맞춘 뒤 composite를 계산한다. 분기별 cross-section 표준화는 active workflow에서 사용하지 않는다.
+표준화 기준은 active 분석기간인 `2019Q4~2025Q4 adm_cd-yq` 표본이다. `07_build_vitality_index.R`는 개별 component를 pooled z-score로 표준화해 하위지수를 만들고, 하위지수도 다시 pooled z-score로 맞춘 뒤 composite를 계산한다. 분기별 cross-section 표준화는 active workflow에서 사용하지 않는다.
 
 ### 2.8 `01_build_spatial_weights.R`: 공간가중행렬 구축
 
@@ -423,7 +424,8 @@ GTWR의 핵심 운영 원칙은 아래와 같다.
 ### 3.1 데이터 계약 QC
 
 - key duplication: `adm_cd x yq` 0건
-- horizon: `2019Q1~2025Q4`
+- panel horizon: `2019Q1~2025Q4`
+- active analysis horizon: `2019Q4~2025Q4`
 - shared panel에서 `year`, `quarter`, `yq`, `quarter_index` 유지
 - quarterly publication/as-of coverage와 aggregation rule 점검
 - 구조 카운트 음수 검출 시 `FAIL`
