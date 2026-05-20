@@ -39,6 +39,8 @@
   - `adm_cd` 기준 행정동명, 자치구명, 5대 권역생활권 정적 lookup
 - `aux_covariates.parquet`
   - `adm_cd-yq` 기준 auxiliary public-data integration layer
+- `aux_covariates_lag_support.parquet`
+  - 2018Q1~2025Q4 `adm_cd-yq` 기준 auxiliary lag-support layer
 - `land_price_lpi_bjd_adm_crosswalk.parquet`
   - 법정동 지가지수를 2020 기준 행정동으로 변환하는 법정동-행정동 면적가중 crosswalk
 - `land_price_lpi_factor_adm_quarter.parquet`
@@ -49,6 +51,8 @@
   - `adm_cd-yq` 기준 서울시 상권분석서비스 신생기업 생존율 layer
 - `registered_resident_population.parquet`
   - `adm_cd-yq` 기준 행정안전부 주민등록인구 기반 상주인구·고령비중 layer
+- `registered_resident_population_lag_support.parquet`
+  - 2018Q1~2025Q4 `adm_cd-yq` 기준 주민등록인구 lag-support layer
 - `registered_resident_population_monthly.parquet`
   - 월별 주민등록인구 중간 layer와 연령합계 검증용 layer
 - `medical_source_preagg.parquet`
@@ -59,7 +63,7 @@
 - `panel_merged_base.parquet`
   - quarter base와 auxiliary covariates 결합 직후의 shared panel
 - `panel_main_pre_vitality.parquet`
-  - shared quarterly derivation과 contemporaneous contract가 반영된 pre-vitality panel
+  - shared quarterly derivation과 등록된 model lag contract가 반영된 pre-vitality panel
 - `panel_main.parquet`
   - vitality가 추가된 최종 canonical panel
 - `vitality_components.parquet`

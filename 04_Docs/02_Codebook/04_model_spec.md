@@ -36,7 +36,7 @@
 ## 3) TWFE 메인 모형
 
 - 입력: `panel_main.parquet`, `W_queen.rds`
-- 기본식: `y_it ~ age60_resident_share + controls_it | adm_cd + yq`
+- 기본식: `y_it ~ lag4_age60_resident_share + lag4_controls_it | adm_cd + yq`
 - 표준오차: `cluster = ~ adm_cd`
 - 종속변수:
   - primary: `vitality_sub_economic`, `vitality_sub_social`, `vitality_sub_temporal`, `vitality_sub_stability`
@@ -61,7 +61,7 @@
 - appendix resident FE COVID interaction family
 - 입력: `panel_main.parquet`, `twfe_main_controls_used.csv`
 - 식 구조:
-  - `M4`: `Y_it ~ age60_resident_share + age60_resident_share:covid_period + controls | adm_cd + yq`
+  - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls | adm_cd + yq`
 
 ## 3A) TWFE Channel Models
 
@@ -71,7 +71,7 @@
   - `twfe_channel_models.csv`
   - `twfe_channel_controls_used.csv`
 - 구현 원칙:
-  - `age60_resident_share`와 `age60_floating_share`를 함께 두는 quarterly appendix contract다.
+  - `lag4_age60_resident_share`와 `lag2_age60_floating_share`를 함께 두는 quarterly appendix contract다.
   - `x_to_m`과 `y_with_channels`를 같은 분기 패널 계약에서 분리 저장한다.
   - `y_with_channels`는 outcome별 메인 TWFE control contract를 상속하고, `x_to_m`은 `twfe_main_controls_used.csv`에서 모든 메인 outcome에 공통으로 선택된 control set을 상속한다.
 
@@ -93,7 +93,7 @@
 
 - 목표: 직접/간접/총효과
 - 입력: `panel_main.parquet`, `W_queen.rds`
-- 메인 노출변수: `age60_resident_share`
+- 메인 노출변수: `lag4_age60_resident_share`
 - 출력:
   - `spdm_main_models.csv`
   - `spdm_impacts.csv`
@@ -102,7 +102,7 @@
 - 구현 원칙:
   - main SPDM은 resident-only exposure로 TWFE 메인 사양과 정렬한다.
   - active main specification은 `y_it = rho W y_it + X_it beta + W X_it theta + adm_cd FE + yq FE + e_it`의 true SDM이다.
-  - `W X` 항은 `W age60_resident_share`와 outcome별 selected controls의 공간시차항을 quarterly panel에서 직접 생성한다.
+  - `W X` 항은 `W lag4_age60_resident_share`와 outcome별 selected controls의 공간시차항을 quarterly panel에서 직접 생성한다.
   - 결과 해석의 중심은 direct / indirect / total effects다.
   - impact는 `S = (I - rho W)^(-1)`와 `S(beta I + theta W)` 행렬식으로 계산하고, simulation 기반 표준오차와 신뢰구간을 저장한다.
   - coefficient와 spatial parameter의 표준오차는 `splm::spml()` fitted object의 model-based asymptotic ML `vcov`에서 온다. impact SE/CI는 같은 `vcov`를 이용한 simulation 기반 추론이며, active SPDM 산출물에서는 이를 robust SE로 명명하지 않는다.
@@ -113,7 +113,7 @@
 - appendix resident SDM COVID interaction family
 - 입력: `panel_main.parquet`, `W_queen.rds`, `spdm_main_controls_used.csv`
 - 식 구조:
-  - `M4`: `Y_it ~ age60_resident_share + age60_resident_share:covid_period + controls`
+  - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls`
 
 ## 5A) SPDM Canonical Channel Path Model
 
@@ -127,7 +127,8 @@
   - `spdm_channel_bootstrap_draws.csv`
   - `spdm_channel_diagnostics.csv`
 - 구현 원칙:
-  - `X = age60_resident_share`, `M = age60_floating_share`로 고정한다.
+  - `X = lag4_age60_resident_share`, `M = lag2_age60_floating_share`로 고정한다.
+  - `lag2_age60_floating_share`는 2018 floating source가 없으므로 2019Q1~2019Q2가 warm-up 결측이고, channel path complete-case sample은 사실상 2019Q3 이후부터 형성된다.
   - total-effect equation은 `Y ~ X + controls + W X + W controls`와 spatial lagged outcome을 quarterly Queen SDM으로 추정한다.
   - mediator equation은 `M ~ X + controls + W X + W controls`와 spatial lagged mediator를 quarterly Queen SDM으로 추정한다.
   - outcome equation은 `Y ~ X + M + controls + W X + W M + W controls`와 spatial lagged outcome을 quarterly Queen SDM으로 추정한다.
@@ -220,8 +221,8 @@
   - `robustness_summary.csv`
   - `robustness_compare.png`
 - 구현 원칙:
-  - canonical shared panel은 동시점 quarterly contract만 유지한다.
-  - 추가 lag/lead family는 만들지 않는다.
+  - canonical shared panel은 동시점 source 변수와 등록된 model lag 변수만 유지한다.
+  - 미등록 lag/lead family는 만들지 않는다.
   - sample-window는 `full`과 `pre2025` quarterly window를 비교한다.
 
 ## 7) GTWR Main Optional Sidecar
@@ -248,9 +249,9 @@
 - 구현 원칙:
   - quarterly sample 기준으로 실행한다.
   - `GTWR_CONTROL_SET=lean`을 기본 통제 사양으로 사용한다.
-  - lean control pool은 `ln_resident_pop`, `ln_land_price_adjusted` 두 개다.
-  - `GTWR_CONTROL_SET=extended`는 lean control에 `transit_accessibility`를 추가한다.
-  - GTWR extended에서 버스정류장 수와 지하철역 수는 별도 통제변수로 투입하지 않고 `transit_accessibility` composite로 투입한다.
+  - lean control pool은 `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted` 두 개다.
+  - `GTWR_CONTROL_SET=extended`는 lean control에 `lag4_transit_accessibility`를 추가한다.
+  - GTWR extended에서 버스정류장 수와 지하철역 수는 별도 통제변수로 투입하지 않고 `lag4_transit_accessibility` composite로 투입한다.
   - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 기록한다.
   - local condition-number는 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 `st.dist`/`gw.weight` 기반 시공간 가중치에 맞춰 적용한다.
   - 기본 bandwidth는 `GTWR_BANDWIDTH_STRATEGY=fixed`, `GTWR_ST_BW=480`으로 통일한다.
@@ -354,7 +355,7 @@
   - GTWR reporting은 latest summary/rankings를 main surface로 쓰고 delta summary/rankings는 appendix diagnostic으로만 쓴다.
 - `02_Code/05_reporting/02_build_presentation_artifacts.R`
   - presentation-only sidecar that derives slide-ready artifacts from canonical outputs
-  - publishes `presentation_spdm_channel_path_diagram.csv` and `presentation_spdm_channel_path_diagram.png` as a slide-left visual for the canonical `age60_resident_share -> age60_floating_share -> commercial vitality` channel path
+  - publishes `presentation_spdm_channel_path_diagram.csv` and `presentation_spdm_channel_path_diagram.png` as a slide-left visual for the canonical `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` channel path
 - `02_Code/05_reporting/03_build_gtwr_level_artifacts.R`
   - optional quarterly GTWR level reporting sidecar
   - reads existing `gtwr_local_beta_panel_<control_set>.csv` and related GTWR tables without rerunning GTWR

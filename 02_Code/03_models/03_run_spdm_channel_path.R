@@ -39,18 +39,22 @@ if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {
   stop("[ERROR] Missing panel or W", call. = FALSE)
 }
 
-x_candidates <- intersect(value_or(cfg$spdm_main_exposure_vars, "age60_resident_share"), cfg$impact_aging_vars)
-x_var <- if (length(x_candidates) > 0L) x_candidates[[1]] else NA_character_
-m_candidates <- intersect(value_or(cfg$spdm_channel_vars, "age60_floating_share"), cfg$impact_aging_vars)
-m_var <- if (length(m_candidates) > 0L) m_candidates[[1]] else NA_character_
+requested_x_vars <- value_or(cfg$spdm_main_exposure_vars, "age60_resident_share")
+requested_m_vars <- value_or(cfg$spdm_channel_vars, "age60_floating_share")
 
 channel_read_cols <- unique(c(
-  value_or(cfg$spdm_channel_vars, "age60_floating_share"),
+  requested_x_vars,
+  requested_m_vars,
   "vitality_sub_economic", "vitality_sub_temporal", "vitality_sub_stability",
   "vitality_index_base"
 ))
 panel <- read_panel_main_view("spdm", extra_cols = channel_read_cols)
 panel$adm_cd <- as.character(panel$adm_cd)
+
+x_candidates <- intersect(requested_x_vars, names(panel))
+x_var <- if (length(x_candidates) > 0L) x_candidates[[1]] else NA_character_
+m_candidates <- intersect(requested_m_vars, names(panel))
+m_var <- if (length(m_candidates) > 0L) m_candidates[[1]] else NA_character_
 
 requested_channel_outcomes <- unique(as.character(value_or(
   cfg$spdm_channel_outcomes,

@@ -47,17 +47,33 @@ q <- arrow::read_parquet(quarter_base_path) |>
   standardize_keys()
 assert_required_cols(q, c("adm_cd", "year", "quarter", "yq", "quarter_index"))
 
-# quarter_base가 가진 adm_cd-yq 조합이 aux branch의 기준 격자다.
-# 어떤 source를 읽든 최종 출력은 이 `base_quarter`에 맞춰 정렬된다.
-years_target <- sort(unique(q$year))
-base_quarter <- q |>
+# quarter_base가 가진 adm_cd universe는 유지하되, lag-support source는
+# 2018Q1부터 확장한다. active 출력은 다시 2019Q1~2025Q4로 자른다.
+active_quarter <- q |>
   dplyr::distinct(adm_cd, year, quarter, yq, quarter_index) |>
   dplyr::arrange(adm_cd, year, quarter)
-base_year <- q |>
+base_adm <- active_quarter |>
+  dplyr::distinct(adm_cd)
+lag_support_calendar <- tibble::as_tibble(cfg$lag_support_quarter_sequence) |>
+  dplyr::mutate(
+    year = as.integer(.data$year),
+    quarter = as.integer(.data$quarter),
+    yq = as.character(.data$yq),
+    quarter_index = as.integer(.data$quarter_index)
+  )
+base_quarter <- base_adm |>
+  dplyr::mutate(.join_key = 1L) |>
+  dplyr::left_join(
+    lag_support_calendar |> dplyr::mutate(.join_key = 1L),
+    by = ".join_key",
+    relationship = "many-to-many"
+  ) |>
+  dplyr::select(-.join_key) |>
+  dplyr::arrange(adm_cd, year, quarter)
+base_year <- base_quarter |>
   dplyr::distinct(adm_cd, year) |>
   dplyr::arrange(adm_cd, year)
-base_adm <- base_year |>
-  dplyr::distinct(adm_cd)
+years_target <- sort(unique(base_quarter$year))
 
 make_quarter_start <- function(year, quarter) {
   lubridate::make_date(as.integer(year), (as.integer(quarter) - 1L) * 3L + 1L, 1L)
@@ -1875,8 +1891,14 @@ assign_subway_open_rule <- function(df) {
 
   line <- trimws(as.character(df[[line_col]]))
   name <- trimws(as.character(df[[name_col]]))
+  name_norm <- stringr::str_squish(stringr::str_remove(name, "\\s*\\([^)]*\\)\\s*$"))
 
   open_date <- dplyr::case_when(
+    line == "공항철도1호선" & name_norm == "마곡나루" ~ as.Date("2018-09-29"),
+    line == "9호선(연장)" & name_norm %in% c(
+      "삼전", "석촌고분", "석촌", "송파나루", "한성백제", "올림픽공원", "둔촌오륜", "중앙보훈병원"
+    ) ~ as.Date("2018-12-01"),
+    line == "6호선" & name_norm == "신내" ~ as.Date("2019-12-21"),
     line == "김포골드라인" ~ as.Date("2019-09-28"),
     line == "5호선" & name %in% c("미사", "하남풍산") ~ as.Date("2020-08-08"),
     line == "5호선" & (name %in% c("강일", "하남검단산") | stringr::str_detect(name, "^하남시청")) ~ as.Date("2021-03-27"),
@@ -5479,7 +5501,7 @@ transit_source_quarter <- bus_stop_source_quarter |>
 # `aux`는 아직 저장 전 객체이고, 여기서 모든 source의 as-of 결과를
 # adm_cd-yq 격자에 맞춰 하나로 합친다. 혼합주기 source는 source precision
 # 한계를 QC와 설계 문서에 남긴다.
-aux <- base_quarter |>
+aux_lag_support <- base_quarter |>
   dplyr::left_join(
     land_price_quarter |>
       dplyr::select(
@@ -5517,15 +5539,29 @@ aux <- base_quarter |>
     )
   )
 
+aux <- active_quarter |>
+  dplyr::left_join(aux_lag_support, by = c("adm_cd", "year", "quarter", "yq", "quarter_index")) |>
+  dplyr::arrange(adm_cd, year, quarter)
+
+validate_panel_keys(aux_lag_support, c("adm_cd", "yq"))
 validate_panel_keys(aux, c("adm_cd", "yq"))
 
 #==============================================================================
 # 4. Save Output and Coverage Logs
 #==============================================================================
 
-# source별 preagg는 사람과 QC가 검토하고, `aux_covariates`는 downstream panel이 소비한다.
+# source별 preagg는 사람과 QC가 검토하고, active `aux_covariates`는 downstream
+# panel이 소비한다. lag-support 출력은 active panel의 4분기 시차 join에만 쓴다.
+write_parquet_safe(aux_lag_support, cfg$paths$aux_covariates_lag_support)
 write_parquet_safe(aux, cfg$paths$aux_covariates)
-append_log(cfg$logs$data_qc, sprintf("- Aux covariates rows: %d", nrow(aux)))
+append_log(
+  cfg$logs$data_qc,
+  sprintf(
+    "- Aux covariates rows: active=%d, lag_support=%d",
+    nrow(aux),
+    nrow(aux_lag_support)
+  )
+)
 
 for (v in c(
   "official_land_price", "land_price_lpi_factor", "land_price_adjusted",

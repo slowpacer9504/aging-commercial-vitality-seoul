@@ -36,15 +36,15 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 3. 공통 active key는 `adm_cd`, `yq`다.
 4. active shared panel은 `year`, `quarter`, `yq`, `quarter_index`를 모두 유지한다.
 5. 좌표계는 `EPSG:5179`다.
-6. canonical timing contract는 **동시점 분기(`t`)** 이다.
-7. main exposure는 `age60_resident_share`다.
-8. `age60_floating_share`, `age60_sales_share`는 보조 축 또는 appendix에서 다룬다.
+6. canonical model timing contract는 **시차 적용 분기 계약** 이다.
+7. main exposure는 `lag4_age60_resident_share`다.
+8. `lag2_age60_floating_share`는 SPDM channel path mediator이고, `age60_floating_share`, `age60_sales_share`는 ESDA 또는 appendix 보조 축으로 다룬다.
 9. 종속변수는 개별 활력지표를 우선하고 `vitality_index_base`는 보조 composite로 둔다.
 10. 기본 공간가중행렬은 `Queen` row-standardized다.
 11. 대안 W는 `Rook`, `kNN6`, `kNN8`다.
 12. TWFE는 main inferential endpoint가 아니라 baseline / spatial-diagnostic layer다.
 13. SPDM main은 main global model이며 direct / indirect / total effect 보고가 중심이다.
-14. `03_run_spdm_channel_path.R`는 canonical channel path model이며 `age60_resident_share -> age60_floating_share -> vitality` 경로를 검정한다.
+14. `03_run_spdm_channel_path.R`는 canonical channel path model이며 `lag4_age60_resident_share -> lag2_age60_floating_share -> vitality` 경로를 검정한다.
 15. GTWR는 optional local sidecar이며 resident-only quarterly contract에 한정한다.
 16. `panel_main.parquet` 하나를 공통 정본으로 두고, ESDA/TWFE/SPDM/GTWR는 method-specific view만 읽는다.
 17. raw data와 boundary 원본은 수정하지 않는다.
@@ -55,7 +55,10 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
   - `seoul_quarter_base.parquet`
   - `adm_region_lookup.parquet`
   - `aux_covariates.parquet`
+  - `aux_covariates_lag_support.parquet`
   - `golmok_survival_rate.parquet`
+  - `registered_resident_population.parquet`
+  - `registered_resident_population_lag_support.parquet`
   - `panel_merged_base.parquet`
   - `panel_main_pre_vitality.parquet`
   - `panel_main.parquet`
@@ -65,8 +68,9 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
   - 보조 공공데이터
   - 2020 기준 행정동 경계
 - 메인 변수 축
-  - main exposure: `age60_resident_share`
-  - supporting exposures: `age60_floating_share`, `age60_sales_share`
+  - main exposure: `lag4_age60_resident_share`
+  - channel mediator: `lag2_age60_floating_share`
+  - supporting exposures: `age60_resident_share`, `age60_floating_share`, `age60_sales_share`
   - primary outcomes: `vitality_sub_economic`, `vitality_sub_social`, `vitality_sub_temporal`, `vitality_sub_stability`
   - supplementary composite: `vitality_index_base`
 - robustness composites: `vitality_index_entropy`, `vitality_index_pca`
@@ -201,12 +205,14 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 
 월별 stock 변수는 연합계가 아니라 분기 평균으로 발행한다. `age60_resident_share`, `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`는 해당 분기 월별 고령 인구 합계를 같은 분기 월별 총인구 합계로 나눈 분모가중 분기 비중이다. age-mix appendix용 `age20_resident_share`~`age60plus_resident_share`는 20세 이상 연령구성 분모에서 계산한다.
 
-2020 기준 경계 정합을 위해 원천 행정동명은 경계 행정동명과 매칭하고, 분석기간 중 분동·개칭은 2020 기준으로 합산 또는 환원한다. `상일제1동`은 `상일동`, `강일동+상일제2동`은 `강일동`, `개포3동`은 `일원2동`, 2025년 `신설동+용두동+용신동`은 `용신동`으로 처리한다. 2020년에 `오류제2동`에서 분동된 `항동`은 2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.
+2020 기준 경계 정합을 위해 원천 행정동명은 경계 행정동명과 매칭하고, 분석기간 중 분동·개칭은 2020 기준으로 합산 또는 환원한다. `상일제1동`은 `상일동`, `강일동+상일제2동`은 `강일동`, `개포3동`은 `일원2동`, 2025년 `신설동+용두동+용신동`은 `용신동`으로 처리한다. 2020년에 `오류제2동`에서 분동된 `항동`은 2018~2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2018~2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.
 
 주요 산출물은 아래와 같다.
 
 - `registered_resident_population.parquet`
   - `resident_pop`, `age60_resident_pop`, `age60_resident_share`, `age65_74_resident_share`, `age75plus_resident_share` 등
+- `registered_resident_population_lag_support.parquet`
+  - 2018Q1~2025Q4 `adm_cd-yq` 주민등록인구 lag-support layer
 - `registered_resident_population_monthly.parquet`
   - 월별 중간 stock과 연령대 합계 검증용 layer
 - `registered_resident_population_mapping_qc.csv`
@@ -216,15 +222,17 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 
 ### 2.7 `06_build_analysis_panel.R`: 공용 분석패널 결합과 공통 파생변수 생성
 
-이 단계의 목적은 `seoul_quarter_base`, `aux_covariates`, `living_population_external_inflow`, `golmok_survival_rate`, `registered_resident_population`을 결합하고, 모든 downstream 분석이 공유하는 공통 파생변수·QC를 한 번에 만들며, 최종 활력지수 계산 직전 상태인 `panel_main_pre_vitality`를 발행하는 것이다.
+이 단계의 목적은 `seoul_quarter_base`, `aux_covariates`, `living_population_external_inflow`, `golmok_survival_rate`, `registered_resident_population`을 결합하고, `aux_covariates_lag_support`, `registered_resident_population_lag_support`에서 canonical lag 변수를 생성하며, 모든 downstream 분석이 공유하는 공통 파생변수·QC를 한 번에 만들고 최종 활력지수 계산 직전 상태인 `panel_main_pre_vitality`를 발행하는 것이다.
 
 먼저 key 무결성을 다시 확인한다.
 
 - `seoul_quarter_base`: `adm_cd-yq` unique
 - `aux_covariates`: `adm_cd-yq` unique
+- `aux_covariates_lag_support`: 2018Q1~2025Q4 `adm_cd-yq` unique
 - `living_population_external_inflow`: `adm_cd-yq` unique when optional output exists
 - `golmok_survival_rate`: `adm_cd-yq` unique
 - `registered_resident_population`: `adm_cd-yq` unique
+- `registered_resident_population_lag_support`: 2018Q1~2025Q4 `adm_cd-yq` unique
 
 그다음 `adm_cd`, `year`, `quarter`, `yq`, `quarter_index` 기준으로 결합해 `panel_merged_base.parquet`를 만든다. 이 파일은 provenance checkpoint다. 이후 문제가 생기면 “join 자체가 깨졌는지”와 “join 이후 파생변수 계산이 깨졌는지”를 분리해서 볼 수 있어야 한다.
 
@@ -236,6 +244,8 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 - `ln_resident_pop`, `ln_floating_pop`, `ln_external_inflow_pop`, `ln_spend_total`
 - `ln_official_land_price`, `ln_land_price_adjusted`
 - `transit_accessibility`
+- `lag4_age60_resident_share`, `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`
+- `lag2_age60_floating_share`
 - `store_density`, `resident_pop_density`, `floating_pop_density`
 - `sales_per_store`, `sales_per_capita`
 - `survival_3y`
@@ -246,9 +256,9 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 
 그 다음 shared quarterly contract를 확정한다.
 
-- canonical shared panel은 동시점 변수만 유지한다.
-- legacy shift/lead 파생열은 active shared panel에 남기지 않는다.
-- timing 민감도는 필요할 때 appendix 또는 별도 robustness로만 다룬다.
+- canonical shared panel은 동시점 source 변수와 등록된 model lag 변수만 유지한다.
+- 허용된 lag 변수는 `lag4_age60_resident_share`, `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`, `lag2_age60_floating_share`다.
+- legacy suffix형 shift/lead 파생열과 미등록 lag 변수는 active shared panel에 남기지 않는다.
 
 이 단계의 주요 QC는 아래와 같다.
 
@@ -310,7 +320,7 @@ ESDA는 모형 추정 이전에 공간 패턴의 존재를 확인하는 단계�
 TWFE는 비공간 기준선과 residual Moran diagnostic을 제공한다.
 
 - 입력: `panel_main.parquet`, `W_queen.rds`
-- 기본식: `y_it ~ age60_resident_share + controls_it | adm_cd + yq`
+- 기본식: `y_it ~ lag4_age60_resident_share + lag4_controls_it | adm_cd + yq`
 - 표준오차: `cluster = ~ adm_cd`
 - 종속변수: `vitality_sub_*`, `vitality_index_base`
 
@@ -327,9 +337,9 @@ TWFE는 비공간 기준선과 residual Moran diagnostic을 제공한다.
 SPDM은 active design의 main global model이다.
 
 - 입력: `panel_main.parquet`, `W_queen.rds`
-- main exposure: `age60_resident_share`
+- main exposure: `lag4_age60_resident_share`
 - specification: `y_it = rho W y_it + X_it beta + W X_it theta + adm_cd FE + yq FE + e_it`
-- implementation: `W age60_resident_share`와 `W controls`를 `yq`별로 직접 생성하고, `splm::spml(lag=TRUE, spatial.error="none", model="within", effect="twoways")`로 추정한다.
+- implementation: `W lag4_age60_resident_share`와 `W controls`를 `yq`별로 직접 생성하고, `splm::spml(lag=TRUE, spatial.error="none", model="within", effect="twoways")`로 추정한다.
 - main output: `direct / indirect / total effects`
 - impact: `S = (I - rho W)^(-1)`와 `S(beta I + theta W)` 기반의 true SDM matrix impact를 사용한다.
 - 표준오차: coefficient와 spatial parameter는 `splm::spml()`의 model-based asymptotic ML `vcov`를 사용하고, impact SE/CI는 같은 `vcov`에서 simulation으로 계산한다. 이 출력은 robust SE가 아니라 model-based inference로 보고한다.
@@ -343,7 +353,7 @@ SPDM은 active design의 main global model이다.
 
 ### 2.12 `03_run_spdm_channel_path.R`: canonical SPDM channel path model
 
-이 단계는 `age60_resident_share -> age60_floating_share -> commercial vitality` 경로를 quarterly Queen SDM 위에서 검정하는 canonical mediation-oriented channel model이다. `age60_resident_share`를 `X`, `age60_floating_share`를 mediator `M`으로 고정하고, 각 활력 outcome별 동일 balanced sample에서 total-effect equation, mediator equation, outcome equation을 모두 추정한다.
+이 단계는 `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` 경로를 quarterly Queen SDM 위에서 검정하는 canonical mediation-oriented channel model이다. `lag4_age60_resident_share`를 `X`, `lag2_age60_floating_share`를 mediator `M`으로 고정하고, 각 활력 outcome별 동일 balanced sample에서 total-effect equation, mediator equation, outcome equation을 모두 추정한다.
 
 - total-effect equation: `Y_it = rho W Y_it + X_it beta_c + W X_it theta_c + controls + W controls + FE + e_it`
 - mediator equation: `M_it = rho W M_it + X_it beta_a + W X_it theta_a + controls + W controls + FE + e_it`
@@ -381,7 +391,7 @@ GTWR main은 quarterly resident-only local sidecar다.
 - 해석 수준: local heterogeneity description
 - 실행 방식: outcome-exposure spec 단위로 계산하며, `GTWR_PARALLEL_SPECS`만큼 병렬 worker를 사용한다.
 - 재개 방식: spec별 RDS cache를 `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/`에 저장하고, 중단 후 재실행하면 유효한 완료 spec은 재사용한다.
-- control set: 기본값은 `GTWR_CONTROL_SET=lean`이다. `lean`은 주민등록인구 기반 `ln_resident_pop`, `ln_land_price_adjusted`만 사용한다. `extended`는 여기에 `transit_accessibility`를 추가한다.
+- control set: 기본값은 `GTWR_CONTROL_SET=lean`이다. `lean`은 주민등록인구 기반 `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`만 사용한다. `extended`는 여기에 `lag4_transit_accessibility`를 추가한다.
 - bandwidth 방식: 기본값은 `GTWR_BANDWIDTH_STRATEGY=fixed`, `GTWR_ST_BW=480`이다. `adaptive=TRUE` 기준으로 각 추정점 주변 시공간 이웃 480개를 사용해 outcome 간 비교 가능성과 extended control set의 추정 가능성을 함께 유지한다. `RUN_GTWR_BANDWIDTH_SENSITIVITY=TRUE`이면 `GTWR_BANDWIDTH_SENSITIVITY_GRID`의 기본값 `240,360,480,600,720`을 같은 outcome-control-spec에 반복 적용하고, baseline 480 대비 beta correlation, 절대변화, sign flip, local condition-number 변화를 `gtwr_bandwidth_sensitivity_<control_set>.csv`에 저장한다. `full_panel_bw_gtwr`와 `anchor_quarter_bw_gtwr`는 명시적으로 선택한 별도 진단 실행에서만 사용한다.
 - lamda 민감도: `RUN_GTWR_LAMDA_SENSITIVITY=TRUE`일 때만 실행한다. `GTWR_LAMDA_SENSITIVITY_GRID`의 각 값을 같은 outcome-control-spec에 적용해 GTWR를 재추정하고, baseline latest-quarter beta 대비 상관, 절대변화, sign flip, local condition-number 변화를 `gtwr_lamda_sensitivity_<control_set>.csv`에 저장한다.
 - local CN 진단: `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 따르되, GTWR에서 사용한 `st.dist`/`gw.weight` 기반 시공간 가중치를 적용한다.

@@ -127,8 +127,8 @@ summarise_proxy_year <- function(flag, proxy_year, direct_year) {
 registered_split_allocation_rules <- function() {
   tibble::tribble(
     ~parent_adm_cd, ~allocated_adm_cd, ~start_year, ~end_year, ~reference_year, ~proxy_type,
-    "0011530780", "0011530780", cfg$short_start, 2019L, 2020L, "pre_2020_oryu2_hangdong_split_2020_ratio",
-    "0011530780", "0011530800", cfg$short_start, 2019L, 2020L, "pre_2020_oryu2_hangdong_split_2020_ratio"
+    "0011530780", "0011530780", cfg$lag_support_start, 2019L, 2020L, "pre_2020_oryu2_hangdong_split_2020_ratio",
+    "0011530780", "0011530800", cfg$lag_support_start, 2019L, 2020L, "pre_2020_oryu2_hangdong_split_2020_ratio"
   )
 }
 
@@ -174,7 +174,8 @@ apply_registered_split_allocations <- function(monthly_age_pop) {
     dplyr::filter(.data$age_band != "계") |>
     dplyr::left_join(
       split_weights,
-      by = c("parent_adm_cd", "reference_year", "month", "age_band")
+      by = c("parent_adm_cd", "reference_year", "month", "age_band"),
+      relationship = "many-to-many"
     ) |>
     dplyr::filter(!is.na(.data$allocated_adm_cd)) |>
     dplyr::mutate(allocated_population = .data$population * .data$split_weight)
@@ -360,7 +361,7 @@ build_boundary_lookup <- function() {
 #==============================================================================
 
 registered_long <- purrr::map_dfr(raw_files, read_one_registered_file) |>
-  dplyr::filter(.data$year >= cfg$short_start, .data$year <= cfg$short_end)
+  dplyr::filter(.data$year >= cfg$lag_support_start, .data$year <= cfg$short_end)
 
 boundary_lookup <- build_boundary_lookup()
 
@@ -558,6 +559,25 @@ quarter_base_keys <- arrow::read_parquet(cfg$paths$quarter_base, col_select = ti
   dplyr::arrange(.data$adm_cd, .data$year, .data$quarter)
 validate_panel_keys(quarter_base_keys, c("adm_cd", "yq"))
 
+lag_support_calendar <- tibble::as_tibble(cfg$lag_support_quarter_sequence) |>
+  dplyr::mutate(
+    year = as.integer(.data$year),
+    quarter = as.integer(.data$quarter),
+    yq = as.character(.data$yq),
+    quarter_index = as.integer(.data$quarter_index)
+  )
+lag_support_quarter_keys <- quarter_base_keys |>
+  dplyr::distinct(adm_cd) |>
+  dplyr::mutate(.join_key = 1L) |>
+  dplyr::left_join(
+    lag_support_calendar |> dplyr::mutate(.join_key = 1L),
+    by = ".join_key",
+    relationship = "many-to-many"
+  ) |>
+  dplyr::select(-.join_key) |>
+  dplyr::arrange(.data$adm_cd, .data$year, .data$quarter)
+validate_panel_keys(lag_support_quarter_keys, c("adm_cd", "yq"))
+
 missing_quarter_keys <- quarter_base_keys |>
   dplyr::anti_join(quarterly, by = c("adm_cd", "year", "quarter", "yq"))
 if (nrow(missing_quarter_keys) > 0L) {
@@ -569,14 +589,26 @@ if (nrow(missing_quarter_keys) > 0L) {
 
 registered_panel <- quarter_base_keys |>
   dplyr::left_join(quarterly, by = c("adm_cd", "year", "quarter", "yq"))
+registered_lag_support_panel <- lag_support_quarter_keys |>
+  dplyr::left_join(quarterly, by = c("adm_cd", "year", "quarter", "yq"))
 
 validate_panel_keys(registered_panel, c("adm_cd", "yq"))
+validate_panel_keys(registered_lag_support_panel, c("adm_cd", "yq"))
 
 missing_core <- registered_panel |>
   dplyr::filter(!is.finite(.data$resident_pop) | !is.finite(.data$age60_resident_share))
 if (nrow(missing_core) > 0L) {
   stop(
     sprintf("[ERROR] registered resident population missing for panel keys: %d", nrow(missing_core)),
+    call. = FALSE
+  )
+}
+
+missing_support_core <- registered_lag_support_panel |>
+  dplyr::filter(!is.finite(.data$resident_pop) | !is.finite(.data$age60_resident_share))
+if (nrow(missing_support_core) > 0L) {
+  stop(
+    sprintf("[ERROR] registered resident population missing for lag-support keys: %d", nrow(missing_support_core)),
     call. = FALSE
   )
 }
@@ -619,39 +651,78 @@ qc_overall <- registered_panel |>
     age_group_total_abs_diff_max = max(.data$age_group_total_abs_diff_max, na.rm = TRUE)
   )
 
-qc <- dplyr::bind_rows(qc_yq, qc_overall) |>
+qc_support_yq <- registered_lag_support_panel |>
+  dplyr::group_by(.data$yq) |>
+  dplyr::summarise(
+    scope = "lag_support_yq",
+    row_n = dplyr::n(),
+    adm_n = dplyr::n_distinct(.data$adm_cd),
+    resident_pop_missing_n = sum(!is.finite(.data$resident_pop)),
+    age60_share_missing_n = sum(!is.finite(.data$age60_resident_share)),
+    registered_month_n_min = min(.data$registered_month_n, na.rm = TRUE),
+    registered_month_n_max = max(.data$registered_month_n, na.rm = TRUE),
+    boundary_proxy_n = sum(.data$registered_boundary_proxy_flag == 1L, na.rm = TRUE),
+    age60_share_min = min(.data$age60_resident_share, na.rm = TRUE),
+    age60_share_max = max(.data$age60_resident_share, na.rm = TRUE),
+    age_group_total_abs_diff_max = max(.data$age_group_total_abs_diff_max, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+qc_support_overall <- registered_lag_support_panel |>
+  dplyr::summarise(
+    yq = NA_character_,
+    scope = "lag_support_overall",
+    row_n = dplyr::n(),
+    adm_n = dplyr::n_distinct(.data$adm_cd),
+    resident_pop_missing_n = sum(!is.finite(.data$resident_pop)),
+    age60_share_missing_n = sum(!is.finite(.data$age60_resident_share)),
+    registered_month_n_min = min(.data$registered_month_n, na.rm = TRUE),
+    registered_month_n_max = max(.data$registered_month_n, na.rm = TRUE),
+    boundary_proxy_n = sum(.data$registered_boundary_proxy_flag == 1L, na.rm = TRUE),
+    age60_share_min = min(.data$age60_resident_share, na.rm = TRUE),
+    age60_share_max = max(.data$age60_resident_share, na.rm = TRUE),
+    age_group_total_abs_diff_max = max(.data$age_group_total_abs_diff_max, na.rm = TRUE)
+  )
+
+qc <- dplyr::bind_rows(qc_yq, qc_overall, qc_support_yq, qc_support_overall) |>
   dplyr::mutate(
     source_file_n = length(raw_files),
-    expected_year_min = cfg$short_start,
+    expected_year_min = dplyr::if_else(
+      stringr::str_detect(.data$scope, "^lag_support"),
+      cfg$lag_support_start,
+      cfg$short_start
+    ),
     expected_year_max = cfg$short_end
   ) |>
   dplyr::select(scope, yq, dplyr::everything())
 
-bad_month_coverage <- registered_panel |>
+bad_month_coverage <- registered_lag_support_panel |>
   dplyr::filter(.data$registered_month_n != 3L)
 if (nrow(bad_month_coverage) > 0L) {
   stop(
-    sprintf("[ERROR] non-3-month registered resident coverage detected: %d panel rows", nrow(bad_month_coverage)),
+    sprintf("[ERROR] non-3-month registered resident coverage detected: %d lag-support panel rows", nrow(bad_month_coverage)),
     call. = FALSE
   )
 }
 
-if (any(!is.finite(registered_panel$age60_resident_share) |
-        registered_panel$age60_resident_share < 0 |
-        registered_panel$age60_resident_share > 1)) {
+if (any(!is.finite(registered_lag_support_panel$age60_resident_share) |
+        registered_lag_support_panel$age60_resident_share < 0 |
+        registered_lag_support_panel$age60_resident_share > 1)) {
   stop("[ERROR] invalid age60_resident_share values in registered resident population layer", call. = FALSE)
 }
 
 write_parquet_safe(monthly, cfg$paths$registered_resident_population_monthly)
+write_parquet_safe(registered_lag_support_panel, cfg$paths$registered_resident_population_lag_support)
 write_parquet_safe(registered_panel, cfg$paths$registered_resident_population)
 write_csv_safe(qc, cfg$logs$registered_resident_population_qc)
 
 append_log(
   cfg$logs$data_qc,
   sprintf(
-    "- Registered resident population published: %s (rows=%d, raw_files=%d)",
+    "- Registered resident population published: %s (active_rows=%d, lag_support_rows=%d, raw_files=%d)",
     basename(cfg$paths$registered_resident_population),
     nrow(registered_panel),
+    nrow(registered_lag_support_panel),
     length(raw_files)
   )
 )
@@ -673,4 +744,8 @@ append_log(
   )
 )
 
-message(sprintf("[DONE] registered resident population rows=%d", nrow(registered_panel)))
+message(sprintf(
+  "[DONE] registered resident population active_rows=%d lag_support_rows=%d",
+  nrow(registered_panel),
+  nrow(registered_lag_support_panel)
+))

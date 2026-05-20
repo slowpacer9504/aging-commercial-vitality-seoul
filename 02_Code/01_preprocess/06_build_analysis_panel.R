@@ -46,8 +46,10 @@ quarter_aggregation_qc_path <- value_or(
 required <- c(
   quarter_base_path,
   cfg$paths$aux_covariates,
+  cfg$paths$aux_covariates_lag_support,
   cfg$paths$golmok_survival_rate,
-  cfg$paths$registered_resident_population
+  cfg$paths$registered_resident_population,
+  cfg$paths$registered_resident_population_lag_support
 )
 missing <- required[!file.exists(required)]
 if (length(missing) > 0) {
@@ -56,6 +58,9 @@ if (length(missing) > 0) {
 
 quarter_base <- arrow::read_parquet(quarter_base_path) |> tibble::as_tibble() |> standardize_keys()
 aux <- arrow::read_parquet(cfg$paths$aux_covariates) |> tibble::as_tibble() |> standardize_keys()
+aux_lag_support <- arrow::read_parquet(cfg$paths$aux_covariates_lag_support) |>
+  tibble::as_tibble() |>
+  standardize_keys()
 living_inflow <- if (file.exists(cfg$paths$living_population_external_inflow)) {
   arrow::read_parquet(cfg$paths$living_population_external_inflow) |>
     tibble::as_tibble() |>
@@ -74,6 +79,9 @@ survival_rate <- arrow::read_parquet(cfg$paths$golmok_survival_rate) |>
   tibble::as_tibble() |>
   standardize_keys()
 registered_resident <- arrow::read_parquet(cfg$paths$registered_resident_population) |>
+  tibble::as_tibble() |>
+  standardize_keys()
+registered_resident_lag_support <- arrow::read_parquet(cfg$paths$registered_resident_population_lag_support) |>
   tibble::as_tibble() |>
   standardize_keys()
 
@@ -138,6 +146,14 @@ pooled_z <- function(x) {
   out
 }
 
+build_lag_source_calendar <- function(lag_quarters, source_label) {
+  tibble::as_tibble(cfg$lag_support_quarter_sequence) |>
+    dplyr::transmute(
+      !!paste0(source_label, "_quarter_index") := as.integer(.data$quarter_index),
+      !!paste0(source_label, "_source_yq") := as.character(.data$yq)
+    )
+}
+
 summarize_join_coverage <- function(df, vars, source_name) {
   vars <- intersect(vars, names(df))
   if (length(vars) == 0L) {
@@ -172,6 +188,7 @@ summarize_join_coverage <- function(df, vars, source_name) {
 quarter_keys <- c("adm_cd", "year", "quarter", "yq", "quarter_index")
 assert_required_cols(quarter_base, quarter_keys, "quarter_base")
 assert_required_cols(aux, quarter_keys, "aux_covariates")
+assert_required_cols(aux_lag_support, c(quarter_keys, "land_price_adjusted", "bus_stop_count_aux", "subway_station_count_aux"), "aux_covariates_lag_support")
 assert_required_cols(living_inflow, c("adm_cd", "year", "quarter", "yq", "quarter_index", "external_inflow_pop"), "living_population_external_inflow")
 assert_required_cols(survival_rate, c("adm_cd", "year", "quarter", "yq", "quarter_index", "survival_3y"), "golmok_survival_rate")
 assert_required_cols(
@@ -179,11 +196,18 @@ assert_required_cols(
   c("adm_cd", "year", "quarter", "yq", "resident_pop", "age60_resident_pop", "age60_resident_share"),
   "registered_resident_population"
 )
+assert_required_cols(
+  registered_resident_lag_support,
+  c("adm_cd", "year", "quarter", "yq", "resident_pop", "age60_resident_share"),
+  "registered_resident_population_lag_support"
+)
 assert_unique_keys(quarter_base, c("adm_cd", "yq"), "quarter_base")
 assert_unique_keys(aux, c("adm_cd", "yq"), "aux_covariates")
+assert_unique_keys(aux_lag_support, c("adm_cd", "yq"), "aux_covariates_lag_support")
 assert_unique_keys(living_inflow, c("adm_cd", "yq"), "living_population_external_inflow")
 assert_unique_keys(survival_rate, c("adm_cd", "yq"), "golmok_survival_rate")
 assert_unique_keys(registered_resident, c("adm_cd", "yq"), "registered_resident_population")
+assert_unique_keys(registered_resident_lag_support, c("adm_cd", "yq"), "registered_resident_population_lag_support")
 
 registered_resident_cols <- c(
   "resident_pop", "age60_resident_pop", "age60_resident_share",
@@ -451,7 +475,97 @@ panel_main_pre_vitality <- panel_main_pre_vitality |>
 
 
 #==============================================================================
-# 4. Validate Shared Contemporaneous Contract
+# 4. Derive Canonical Lagged Model Variables
+#==============================================================================
+
+lag4_calendar <- build_lag_source_calendar(cfg$main_covariate_lag_quarters, "lag4")
+lag4_values <- panel_main_pre_vitality |>
+  dplyr::select(adm_cd, yq, quarter_index) |>
+  dplyr::mutate(lag4_quarter_index = as.integer(.data$quarter_index) - cfg$main_covariate_lag_quarters) |>
+  dplyr::left_join(lag4_calendar, by = "lag4_quarter_index") |>
+  dplyr::left_join(
+    registered_resident_lag_support |>
+      dplyr::select(
+        adm_cd,
+        lag4_source_yq = yq,
+        lag4_resident_pop = resident_pop,
+        lag4_age60_resident_share = age60_resident_share
+      ),
+    by = c("adm_cd", "lag4_source_yq")
+  ) |>
+  dplyr::left_join(
+    aux_lag_support |>
+      dplyr::select(
+        adm_cd,
+        lag4_source_yq = yq,
+        lag4_land_price_adjusted = land_price_adjusted,
+        lag4_bus_stop_count_aux = bus_stop_count_aux,
+        lag4_subway_station_count_aux = subway_station_count_aux
+      ),
+    by = c("adm_cd", "lag4_source_yq")
+  ) |>
+  dplyr::mutate(
+    lag4_ln_resident_pop = safe_log1p(.data$lag4_resident_pop),
+    lag4_ln_land_price_adjusted = dplyr::if_else(
+      is.finite(.data$lag4_land_price_adjusted) & .data$lag4_land_price_adjusted > 0,
+      log(.data$lag4_land_price_adjusted),
+      NA_real_
+    ),
+    lag4_transit_accessibility = {
+      bus_z <- pooled_z(lag4_bus_stop_count_aux)
+      subway_z <- pooled_z(lag4_subway_station_count_aux)
+      dplyr::if_else(is.finite(bus_z) & is.finite(subway_z), (bus_z + subway_z) / 2, NA_real_)
+    }
+  ) |>
+  dplyr::select(
+    adm_cd, yq,
+    lag4_age60_resident_share,
+    lag4_ln_resident_pop,
+    lag4_ln_land_price_adjusted,
+    lag4_transit_accessibility
+  )
+
+panel_main_pre_vitality <- panel_main_pre_vitality |>
+  dplyr::left_join(lag4_values, by = c("adm_cd", "yq")) |>
+  dplyr::arrange(adm_cd, quarter_index) |>
+  dplyr::group_by(adm_cd) |>
+  dplyr::mutate(
+    lag2_age60_floating_share = dplyr::lag(
+      .data$age60_floating_share,
+      n = cfg$channel_mediator_lag_quarters
+    )
+  ) |>
+  dplyr::ungroup() |>
+  dplyr::arrange(adm_cd, year, quarter)
+
+lag4_required_cols <- intersect(
+  c("lag4_age60_resident_share", "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted", "lag4_transit_accessibility"),
+  names(panel_main_pre_vitality)
+)
+lag4_missing <- panel_main_pre_vitality |>
+  dplyr::filter(dplyr::if_any(dplyr::all_of(lag4_required_cols), ~ !is.finite(.x)))
+if (nrow(lag4_missing) > 0L) {
+  stop(
+    sprintf("[ERROR] missing 4-quarter lagged resident/control variables: rows=%d", nrow(lag4_missing)),
+    call. = FALSE
+  )
+}
+
+lag2_missing_after_warmup <- panel_main_pre_vitality |>
+  dplyr::filter(
+    .data$quarter_index > cfg$channel_mediator_lag_quarters,
+    !is.finite(.data$lag2_age60_floating_share)
+  )
+if (nrow(lag2_missing_after_warmup) > 0L) {
+  stop(
+    sprintf("[ERROR] missing 2-quarter lagged floating-aging mediator after warm-up: rows=%d", nrow(lag2_missing_after_warmup)),
+    call. = FALSE
+  )
+}
+
+
+#==============================================================================
+# 5. Validate Shared Temporal Contract
 #==============================================================================
 
 validate_panel_keys(panel_main_pre_vitality, c("adm_cd", "yq"))
@@ -467,12 +581,15 @@ if (length(forbidden_temporal_cols) > 0L) {
   )
 }
 
-shift_cols <- grep("(_l[0-9]+$|_f[0-9]+$)", names(panel_main_pre_vitality), value = TRUE)
-if (length(shift_cols) > 0L) {
+unapproved_lag_cols <- setdiff(
+  grep("^lag[0-9]+_", names(panel_main_pre_vitality), value = TRUE),
+  value_or(cfg$approved_temporal_lag_cols, character())
+)
+if (length(unapproved_lag_cols) > 0L) {
   stop(
     sprintf(
-      "[ERROR] shared quarterly panel still contains forbidden shift columns: %s",
-      paste(head(shift_cols, 12L), collapse = ", ")
+      "[ERROR] shared quarterly panel contains unregistered lag columns: %s",
+      paste(head(unapproved_lag_cols, 12L), collapse = ", ")
     ),
     call. = FALSE
   )
@@ -480,7 +597,7 @@ if (length(shift_cols) > 0L) {
 
 
 #==============================================================================
-# 5. Coverage QC and Structural Count QC
+# 6. Coverage QC and Structural Count QC
 #==============================================================================
 
 quarter_base_core_vars <- intersect(
@@ -519,6 +636,10 @@ aux_core_vars <- intersect(
   ),
   names(panel_main_pre_vitality)
 )
+lagged_model_core_vars <- intersect(
+  value_or(cfg$approved_temporal_lag_cols, character()),
+  names(panel_main_pre_vitality)
+)
 living_pop_core_vars <- intersect(
   c(
     "inner_external_inflow_pop", "metro_external_inflow_pop", "external_inflow_pop",
@@ -540,6 +661,7 @@ join_cov <- dplyr::bind_rows(
   summarize_join_coverage(panel_main_pre_vitality, quarter_base_core_vars, "quarter_base"),
   summarize_join_coverage(panel_main_pre_vitality, registered_resident_core_vars, "registered_resident_population"),
   summarize_join_coverage(panel_main_pre_vitality, aux_core_vars, "aux"),
+  summarize_join_coverage(panel_main_pre_vitality, lagged_model_core_vars, "lagged_model_vars"),
   summarize_join_coverage(panel_main_pre_vitality, living_pop_core_vars, "living_population_external_inflow"),
   summarize_join_coverage(panel_main_pre_vitality, survival_core_vars, "golmok_survival_rate")
 ) |>
@@ -584,7 +706,7 @@ if (any(count_flags$flag_negative, na.rm = TRUE)) {
 
 
 #==============================================================================
-# 6. Persist Outputs
+# 7. Persist Outputs
 #==============================================================================
 
 write_parquet_safe(panel_merged_base, cfg$paths$panel_merged_base)

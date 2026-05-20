@@ -41,18 +41,18 @@
 - `04_build_golmok_survival_rate.R`는 서울시 상권분석서비스 `selectSurvivalRate.json` 응답에서 `golmok_survival_rate.parquet`를 발행한다.
 - 신생기업 생존율은 `2019`, `2022`, `2025` 기준연도 Q4 요청의 3개년 block을 행정동-분기 row로 as-of 재구성하고, `survival_3y`를 active 안정성 하위지수에 사용한다.
 - 생존율 코호트 분모가 0인 행정동-분기는 임의 대체하지 않고 결측으로 유지하며 `golmok_survival_rate_qc.csv`에 기록한다.
-- `05_build_registered_resident_population.R`는 행정안전부 주민등록인구현황 5세별 월별 CSV에서 `registered_resident_population.parquet`를 발행한다.
+- `05_build_registered_resident_population.R`는 행정안전부 주민등록인구현황 5세별 월별 CSV에서 active `registered_resident_population.parquet`와 2018Q1~2025Q4 `registered_resident_population_lag_support.parquet`를 발행한다.
 - 주민등록인구는 행정동명과 2020 기준 경계의 `adm_cd`를 매칭하고, `상일제1동 -> 상일동`, `강일동+상일제2동 -> 강일동`, `개포3동 -> 일원2동`, 2025년 `신설동+용두동+용신동 -> 용신동`처럼 분석기간의 분동·개칭을 2020 기준으로 환원한다.
 - 주민등록인구 월별 stock은 분기 평균으로, 고령비중은 월별 분모가중 분기 비중으로 결합한다.
-- 2020년에 `오류제2동`에서 분동된 `항동`은 2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.
-- `06_build_analysis_panel.R`는 `seoul_quarter_base`, `aux_covariates`, `living_population_external_inflow`, `golmok_survival_rate`, `registered_resident_population`을 `adm_cd`, `year`, `quarter`, `yq`, `quarter_index` 기준으로 결합한다.
+- 2020년에 `오류제2동`에서 분동된 `항동`은 2018~2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2018~2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.
+- `06_build_analysis_panel.R`는 `seoul_quarter_base`, `aux_covariates`, `living_population_external_inflow`, `golmok_survival_rate`, `registered_resident_population`을 `adm_cd`, `year`, `quarter`, `yq`, `quarter_index` 기준으로 결합하고, lag-support layer에서 등록된 4분기·2분기 시차 변수를 생성한다.
 - 결합 직후 결과는 `panel_merged_base.parquet`, shared derivation 후 결과는 `panel_main_pre_vitality.parquet`로 저장한다.
 - 분기 중첩 변수는 active contract에서 제거한다.
 
 ## 6) Shared derived transforms
 
 - shared quarterly transform은 `adm_cd` 그룹 안에서 `quarter_index`순 정렬 후 계산한다.
-- active shared panel은 동시점 변수만 유지하며 legacy shift/lead 파생열은 발행하지 않는다.
+- active shared panel은 동시점 source 변수와 등록된 lag 변수만 유지하며 legacy shift/lead 파생열은 발행하지 않는다.
 - `store_density` 등 공유 파생변수는 `panel_main_pre_vitality` 단계에서 계산한다.
 - `07_build_vitality_index.R`가 최종 `panel_main.parquet`와 `vitality_components.parquet`를 발행한다.
 

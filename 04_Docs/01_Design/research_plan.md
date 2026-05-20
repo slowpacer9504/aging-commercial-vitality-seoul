@@ -24,7 +24,7 @@
 - `RQ1. 직접효과와 전역적 관계`
   - `age60_resident_share`은 서울시 행정동의 근린 상업 활력과 어떤 방향과 크기의 관계를 가지는가.
   - 그 관계는 `economic`, `social`, `temporal`, `stability` 차원에서 서로 다르게 나타나는가.
-  - `age60_resident_share -> age60_floating_share -> vitality` 경로에서 고령 유동인구 구성은 매개 채널로 작동하는가.
+  - `lag4_age60_resident_share -> lag2_age60_floating_share -> vitality` 경로에서 고령 유동인구 구성은 매개 채널로 작동하는가.
 
 - `RQ2. 공간의존과 spillover`
   - 고령화와 상업 활력은 공간 자기상관을 보이는가.
@@ -52,7 +52,8 @@
 - canonical workflow의 시간 범위는 **2019Q1 ~ 2025Q4** 이다.
 - active 분석 단위는 `adm_cd x yq` 분기 패널이다.
 - active 시간 키는 `year`, `quarter`, `yq`, `quarter_index`다.
-- canonical timing contract는 **동시점 분기(`t`)** 이며, 연도·정적 source는 quarter-end as-of 값으로 결합한다.
+- canonical model timing contract는 **시차 적용 분기 계약** 이다. 독립변수와 통제변수는 `t-4`, SPDM channel path의 매개변수는 `t-2` 값을 사용한다.
+- 2018년 주민등록인구, 버스정류소, 공시지가 source는 2019년 active panel의 4분기 시차 계산을 위한 lag-support 범위로만 사용한다.
 
 분기 자료는 active shared panel의 시간축이다. 연도·정적 자료는 같은 값이 반복될 수 있음을 명시하되, 반복값 자체를 숨기지 않고 source precision/QC로 추적한다.
 
@@ -61,8 +62,8 @@
 | 구분 | 기간 | 용도 | 상태 |
 | --- | --- | --- | --- |
 | 서울시 상권분석서비스 | 2019Q1~2025Q4 | 분기 base 구축의 핵심 source | active |
-| 행정안전부 주민등록인구현황 | 2019~2025 | 상주인구 규모와 고령 상주인구 비중 | active |
-| 보조 공공데이터 | 가용 연도 | 통제변수, 물리·입지 보조정보 | active |
+| 행정안전부 주민등록인구현황 | 2018~2025 | 상주인구 규모와 고령 상주인구 비중, 2018은 lag-support | active |
+| 보조 공공데이터 | 2018~2025 가용 연도 | 통제변수, 물리·입지 보조정보, 2018은 lag-support | active |
 | 2020 기준 행정동 경계 | static | 공간 단위, W 구축 | active |
 
 서울시 상권분석서비스 원천 중 분기 자료는 `adm_cd-yq` 기준으로 직접 투입한다. 연도·정적 자료는 `adm_cd-year` 또는 `adm_cd` 수준에서 정리한 뒤 해당 분기의 quarter-end as-of 값으로 결합한다. 따라서 본문 해석의 기준 자료는 “분기 단위 상권 변동을 보존하되, 저주기 source의 precision을 명시한 shared panel”이다.
@@ -86,7 +87,7 @@
    - 공시지가는 행정동-연도별 면적가중평균을 만든 뒤 같은 연도의 4개 분기에 동일하게 발행한다.
    - 대중교통 접근성의 버스정류장 source처럼 단일 snapshot과 월별 snapshot이 섞인 자료는 분기별 발행 snapshot과 carry-forward 여부를 QC에 기록한다.
 
-이 원칙은 분기 상권 변동을 보존하면서 저주기 source의 반복값 문제를 명시적으로 관리하기 위한 최소 계약이다. 시차·선행 파생열은 active shared panel에 기계적으로 추가하지 않고, 기본 분석은 동시점 분기값을 기준으로 수행한다.
+이 원칙은 분기 상권 변동을 보존하면서 저주기 source의 반복값 문제를 명시적으로 관리하기 위한 최소 계약이다. 단, 본 분석 모형의 시간 순서를 분명히 하기 위해 canonical panel에는 등록된 시차 변수만 추가한다. 현재 허용 시차 변수는 `lag4_age60_resident_share`, `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`, `lag2_age60_floating_share`다.
 
 ## 5. 이론적 해석 틀
 
@@ -113,13 +114,14 @@ GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타�
 ### 6.1 핵심 독립변수
 
 - **main exposure**
-  - `age60_resident_share`
+  - `lag4_age60_resident_share`
 - **supporting exposures**
+  - `age60_resident_share`
   - `age60_floating_share`
   - `age60_sales_share`
 
-`age60_resident_share`를 메인 노출변수로 두는 이유는 거주 기반 고령화가 생활권 상권의 구조적 수요 기반을 가장 안정적으로 반영하기 때문이다. 이 변수는 서울시 상권분석서비스의 10세 단위 상주인구가 아니라 행정안전부 주민등록인구현황의 5세 단위 월별 자료에서 산출한다. `age60_floating_share`와 `age60_sales_share`는 활동 및 소비 측면의 보조 축으로 해석한다.
-행정안전부 자료에서는 추후 민감도 분석을 위해 `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`도 함께 발행하지만, canonical main exposure는 `age60_resident_share`로 유지한다.
+`lag4_age60_resident_share`를 메인 노출변수로 두는 이유는 거주 기반 고령화가 생활권 상권의 구조적 수요 기반을 가장 안정적으로 반영하되, 종속변수와의 동시점 반응을 피하기 위해서다. 원천 `age60_resident_share`는 서울시 상권분석서비스의 10세 단위 상주인구가 아니라 행정안전부 주민등록인구현황의 5세 단위 월별 자료에서 산출한다. `age60_floating_share`와 `age60_sales_share`는 활동 및 소비 측면의 보조 축으로 해석하며, SPDM channel path의 mediator는 `lag2_age60_floating_share`를 사용한다.
+행정안전부 자료에서는 추후 민감도 분석을 위해 `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`도 함께 발행하지만, canonical main exposure는 `lag4_age60_resident_share`로 유지한다.
 
 ### 6.2 종속변수
 
@@ -143,11 +145,11 @@ GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타�
 
 ### 6.3 통제변수
 
-메인 TWFE/SPDM의 기본 control candidate pool은 아래 세 개다. `ln_floating_pop`은 사회적 활력 구성요소와 종합 활력지수에 포함되므로 메인 통제변수에서는 사용하지 않는다. `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 남기지만 active TWFE/SPDM/GTWR 통제변수로 투입하지 않는다.
+메인 TWFE/SPDM의 기본 control candidate pool은 아래 세 개의 4분기 시차 변수다. `ln_floating_pop`은 사회적 활력 구성요소와 종합 활력지수에 포함되므로 메인 통제변수에서는 사용하지 않는다. `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 남기지만 active TWFE/SPDM/GTWR 통제변수로 투입하지 않는다.
 
-- `ln_resident_pop`
-- `ln_land_price_adjusted`
-- `transit_accessibility`
+- `lag4_ln_resident_pop`
+- `lag4_ln_land_price_adjusted`
+- `lag4_transit_accessibility`
 
 `ln_land_price_adjusted`는 행정동-연도별 면적가중 공시지가에 한국부동산원 월별 지역별 지가지수의 분기 평균 보정계수를 곱해 만든 지가지수 보정 토지가격 변수다. 법정동 지가지수는 법정동-행정동 공간교차 면적가중치로 행정동 단위에 정합한다. 원 연간 공시지가 로그인 `ln_official_land_price`는 패널에 보존하되 active 통제변수로 쓰지 않는다.
 
@@ -156,13 +158,13 @@ GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타�
 GTWR main sidecar는 local design matrix의 다중공선성 민감도를 고려해 별도 control contract를 둔다.
 
 - `lean` 기본값
-  - `ln_resident_pop`
-  - `ln_land_price_adjusted`
+  - `lag4_ln_resident_pop`
+  - `lag4_ln_land_price_adjusted`
 - `extended` 선택값
   - `lean` 두 변수
-  - `transit_accessibility`
+  - `lag4_transit_accessibility`
 
-`ln_resident_pop`은 행정안전부 주민등록인구현황의 행정동-월별 총인구 stock을 분기 내 평균한 뒤 `log1p`를 적용한 값이다. `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만든 대중교통 접근성 통제변수다. 모든 GTWR control set은 complete-case 표본과 GTWR spatiotemporal weight 기반 local condition-number를 별도 진단으로 기록한다. 이 local CN은 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 시공간 거리·커널 가중치에 맞춰 적용한 보조 진단이다.
+`ln_resident_pop`은 행정안전부 주민등록인구현황의 행정동-월별 총인구 stock을 분기 내 평균한 뒤 `log1p`를 적용한 값이다. `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만든 대중교통 접근성 통제변수이며, main model에는 해당 변수의 4분기 시차 composite를 투입한다. 모든 GTWR control set은 complete-case 표본과 GTWR spatiotemporal weight 기반 local condition-number를 별도 진단으로 기록한다. 이 local CN은 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 시공간 거리·커널 가중치에 맞춰 적용한 보조 진단이다.
 
 ### 6.4 기간 플래그와 보조 변수
 
@@ -192,10 +194,10 @@ active methodology stack은 아래와 같다.
 - 역할: active design의 **main global model** 이다.
 - 핵심 보고 방식: coefficient보다 **direct / indirect / total effects** 중심
 - active 구현은 true SDM/SPDM이다. 즉 `W y`, `X`, `W X`를 함께 포함한다.
-- `02_run_spdm_main.R`는 `splm::spml()`의 Durbin placeholder에 의존하지 않고, quarterly panel에서 `W age60_resident_share`와 `W controls`를 직접 생성한 뒤 추정한다.
+- `02_run_spdm_main.R`는 `splm::spml()`의 Durbin placeholder에 의존하지 않고, quarterly panel에서 `W lag4_age60_resident_share`와 `W controls`를 직접 생성한 뒤 추정한다.
 - direct / indirect / total effects는 `S = (I - rho W)^(-1)`, `S(beta I + theta W)` 행렬식으로 계산한다.
 - coefficient와 spatial parameter의 표준오차는 `splm::spml()` fitted object의 model-based asymptotic ML `vcov`를 사용한다. impact 표준오차와 신뢰구간은 같은 model-based `vcov`에서 `rho`, `beta`, `theta`를 simulation draw로 생성해 계산하며, 이를 robust SE로 부르지 않는다.
-- `03_run_spdm_channel_path.R`는 canonical mediation-oriented channel path model이다. 같은 quarterly Queen SDM 계약에서 mediator 미포함 `c` 경로, `age60_resident_share -> age60_floating_share`의 `a` 경로, `age60_floating_share -> vitality`의 `b` 경로, mediator를 통제한 `c'` 경로를 같은 outcome별 balanced sample에서 추정하고 `a*b` 간접효과와 `c - c'` 직접효과 약화 진단을 별도 산출물로 기록한다. 기본 추론은 행정동 단위 wild residual bootstrap이며, bootstrap이 비활성화되었거나 유효 draw가 부족할 때만 `delta_independent_approx`를 fallback으로 사용한다.
+- `03_run_spdm_channel_path.R`는 canonical mediation-oriented channel path model이다. 같은 quarterly Queen SDM 계약에서 mediator 미포함 `c` 경로, `lag4_age60_resident_share -> lag2_age60_floating_share`의 `a` 경로, `lag2_age60_floating_share -> vitality`의 `b` 경로, mediator를 통제한 `c'` 경로를 같은 outcome별 balanced sample에서 추정하고 `a*b` 간접효과와 `c - c'` 직접효과 약화 진단을 별도 산출물로 기록한다. 기본 추론은 행정동 단위 wild residual bootstrap이며, bootstrap이 비활성화되었거나 유효 draw가 부족할 때만 `delta_independent_approx`를 fallback으로 사용한다.
 - channel path outcome은 유동인구 source와 직접 겹치는 `vitality_sub_social` 단독 지표를 제외하고, `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, `vitality_index_base`를 사용한다. 종합 활력지수는 네 하위지표를 모두 포함하는 기본 정의를 유지하되, 해석에서는 사회적 활력 구성요소가 mediator source와 겹친다는 caveat를 함께 둔다.
 
 ### 7.4 GTWR

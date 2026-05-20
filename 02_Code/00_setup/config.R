@@ -136,6 +136,26 @@ cfg$quarter_sequence <- cfg$quarter_sequence[
 ]
 cfg$quarter_sequence$yq <- sprintf("%dQ%d", cfg$quarter_sequence$year, cfg$quarter_sequence$quarter)
 cfg$quarter_sequence$quarter_index <- seq_len(nrow(cfg$quarter_sequence))
+cfg$main_covariate_lag_quarters <- 4L
+cfg$channel_mediator_lag_quarters <- 2L
+cfg$lag_support_start <- cfg$short_start - ceiling(cfg$main_covariate_lag_quarters / 4L)
+cfg$lag_support_quarter_sequence <- data.frame(
+  year = rep(seq.int(cfg$lag_support_start, cfg$short_end), each = 4L),
+  quarter = rep(seq.int(1L, 4L), times = length(seq.int(cfg$lag_support_start, cfg$short_end)))
+)
+cfg$lag_support_quarter_sequence <- cfg$lag_support_quarter_sequence[
+  !(cfg$lag_support_quarter_sequence$year == cfg$short_end &
+      cfg$lag_support_quarter_sequence$quarter > cfg$short_end_quarter),
+  ,
+  drop = FALSE
+]
+cfg$lag_support_quarter_sequence$yq <- sprintf(
+  "%dQ%d",
+  cfg$lag_support_quarter_sequence$year,
+  cfg$lag_support_quarter_sequence$quarter
+)
+cfg$lag_support_quarter_sequence$quarter_index <- seq_len(nrow(cfg$lag_support_quarter_sequence)) -
+  cfg$main_covariate_lag_quarters
 cfg$covid_years <- 2020:2022
 cfg$covid_start_year <- min(cfg$covid_years)
 cfg$covid_end_year <- max(cfg$covid_years)
@@ -170,10 +190,20 @@ cfg$resident_age_support_vars <- c(
   "age60_64_resident_pop", "age65_74_resident_pop", "age75plus_resident_pop", "age65plus_resident_pop",
   "age60_64_resident_share", "age65_74_resident_share", "age75plus_resident_share", "age65plus_resident_share"
 )
-cfg$twfe_main_exposure_vars <- c("age60_resident_share")
-cfg$twfe_channel_vars <- c("age60_floating_share")
+cfg$lagged_main_exposure_vars <- c("lag4_age60_resident_share")
+cfg$lagged_channel_vars <- c("lag2_age60_floating_share")
+cfg$lagged_main_control_cols <- c(
+  "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted", "lag4_transit_accessibility"
+)
+cfg$approved_temporal_lag_cols <- c(
+  cfg$lagged_main_exposure_vars,
+  cfg$lagged_channel_vars,
+  cfg$lagged_main_control_cols
+)
+cfg$twfe_main_exposure_vars <- cfg$lagged_main_exposure_vars
+cfg$twfe_channel_vars <- cfg$lagged_channel_vars
 cfg$twfe_main_control_cols <- c(
-  "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
+  cfg$lagged_main_control_cols
 )
 cfg$floating_exposure_overlap_outcomes <- c("vitality_sub_social", "ln_floating_pop")
 cfg$primary_outcomes <- c(
@@ -256,13 +286,13 @@ cfg$gtwr_sector_share_outcomes <- c(
   "sales_share_cs1", "sales_share_cs2", "sales_share_cs3",
   "store_share_cs1", "store_share_cs2", "store_share_cs3"
 )
-cfg$spdm_main_exposure_vars <- c("age60_resident_share")
-cfg$spdm_channel_vars <- c("age60_floating_share")
+cfg$spdm_main_exposure_vars <- cfg$lagged_main_exposure_vars
+cfg$spdm_channel_vars <- cfg$lagged_channel_vars
 cfg$spdm_main_control_cols <- c(
-  "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
+  cfg$lagged_main_control_cols
 )
-cfg$gtwr_main_exposure_vars <- c("age60_resident_share")
-cfg$gtwr_floating_exposure_vars <- c("age60_floating_share")
+cfg$gtwr_main_exposure_vars <- cfg$lagged_main_exposure_vars
+cfg$gtwr_floating_exposure_vars <- cfg$lagged_channel_vars
 cfg$gwr_delta_main_exposure_vars <- cfg$gtwr_main_exposure_vars
 cfg$gwr_delta_floating_exposure_vars <- cfg$gtwr_floating_exposure_vars
 cfg$gtwr_age_band_domains <- c("resident", "floating")
@@ -270,13 +300,13 @@ cfg$gtwr_age_band_labels <- c("age20", "age30", "age40", "age50")
 
 # GTWR uses a more parsimonious default control contract than TWFE/SPDM
 # because local design matrices are much more sensitive to collinearity.
-# Set GTWR_CONTROL_SET=extended to add the standardized
-# transit-accessibility composite to the lean pool.
+# Set GTWR_CONTROL_SET=extended to add the lagged transit-accessibility
+# composite to the lean pool.
 cfg$gtwr_lean_control_cols <- c(
-  "ln_resident_pop", "ln_land_price_adjusted"
+  "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted"
 )
 cfg$gtwr_extended_control_cols <- c(
-  "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
+  cfg$lagged_main_control_cols
 )
 cfg$gtwr_control_set <- tolower(trimws(Sys.getenv("GTWR_CONTROL_SET", unset = "lean")))
 if (!cfg$gtwr_control_set %in% c("lean", "extended")) cfg$gtwr_control_set <- "lean"
@@ -336,6 +366,7 @@ cfg$quarterly_join_policy <- "direct_adm_cd_yq_join_with_quarter_end_asof"
 cfg$quarterly_asof_policy <- cfg$quarterly_join_policy
 
 twfe_control_cols <- c(
+  cfg$twfe_main_control_cols,
   "ln_resident_pop",
   "resident_pop",
   "resident_pop_density", "total_household_commercial_density",
@@ -366,12 +397,13 @@ cfg$panel_main_view_specs <- list(
     cfg$vitality_component_appendix_outcomes,
     "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal", "vitality_sub_stability",
     cfg$vitality_robustness_outcomes,
-    cfg$impact_aging_vars, cfg$resident_age_support_vars, twfe_control_cols
+    cfg$impact_aging_vars, cfg$approved_temporal_lag_cols, cfg$resident_age_support_vars, twfe_control_cols
   )),
   spdm = unique(c(
     "adm_cd", "year", "quarter", "yq", "quarter_index", "covid_period",
     cfg$spdm_main_outcomes,
     cfg$spdm_main_exposure_vars,
+    cfg$spdm_channel_vars,
     cfg$resident_age_support_vars,
     cfg$spdm_main_control_cols
   )),
@@ -407,6 +439,7 @@ cfg$aux_source_contracts <- list(
     dir_prefix = "07",
     recursive = FALSE,
     expected_basenames = c(
+      "서울시 버스정류소 위치 데이터(20180502).xlsx",
       "서울시 버스정류소 좌표 데이터(2019.07.10).xlsx",
       "서울시 버스정류소 좌표 데이터(2020.12.31).xlsx",
       "2021년각월1일기준_서울시버스정류소위치정보.csv",
@@ -549,12 +582,14 @@ cfg$paths <- list(
   adm_region_lookup = file.path(cfg$dir_analysis, "adm_region_lookup.parquet"),
   adm_region_lookup_csv = file.path(cfg$dir_tables, "adm_region_lookup.csv"),
   aux_covariates = file.path(cfg$dir_analysis, "aux_covariates.parquet"),
+  aux_covariates_lag_support = file.path(cfg$dir_analysis, "aux_covariates_lag_support.parquet"),
   land_price_lpi_crosswalk = file.path(cfg$dir_intermediate, "land_price_lpi_bjd_adm_crosswalk.parquet"),
   land_price_lpi_factor = file.path(cfg$dir_intermediate, "land_price_lpi_factor_adm_quarter.parquet"),
   living_population_external_inflow = file.path(cfg$dir_analysis, "living_population_external_inflow.parquet"),
   golmok_survival_rate = file.path(cfg$dir_analysis, "golmok_survival_rate.parquet"),
   golmok_survival_all_levels = file.path(cfg$dir_intermediate, "golmok_survival_all_levels.parquet"),
   registered_resident_population = file.path(cfg$dir_analysis, "registered_resident_population.parquet"),
+  registered_resident_population_lag_support = file.path(cfg$dir_analysis, "registered_resident_population_lag_support.parquet"),
   registered_resident_population_monthly = file.path(cfg$dir_intermediate, "registered_resident_population_monthly.parquet"),
   walk_betweenness_cache = file.path(
     cfg$dir_analysis,
@@ -958,11 +993,13 @@ cfg$active_output_contract <- list(
     cfg$paths$quarter_base,
     cfg$paths$adm_region_lookup,
     cfg$paths$aux_covariates,
+    cfg$paths$aux_covariates_lag_support,
     cfg$paths$land_price_lpi_crosswalk,
     cfg$paths$land_price_lpi_factor,
     cfg$paths$living_population_external_inflow,
     cfg$paths$golmok_survival_rate,
     cfg$paths$registered_resident_population,
+    cfg$paths$registered_resident_population_lag_support,
     cfg$paths$panel_merged_base,
     cfg$paths$panel_main_pre_vitality,
     cfg$paths$panel_main,

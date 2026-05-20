@@ -673,43 +673,7 @@ vitality_cols <- c(
   "vitality_sub_stability", "vitality_index_base", "vitality_index_entropy", "vitality_index_pca"
 )
 
-panel_main_view_specs_quarterly <- list(
-  esda = unique(c(
-    "adm_cd", "year", "quarter", "yq", "quarter_index",
-    "age60_resident_share", "age60_floating_share", "age60_sales_share",
-    cfg$resident_age_support_vars,
-    "age60_resident_pop", "age60_floating_pop", "age60_sales_amount",
-    "ln_age60_resident_pop", "ln_age60_floating_pop", "ln_age60_sales_amount",
-    "age60_sales_lq",
-    "ln_total_sales", "ln_floating_pop", "diversity_index",
-    "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
-    "vitality_sub_stability", "vitality_index_base"
-  )),
-  twfe = unique(c(
-    "adm_cd", "year", "quarter", "yq", "quarter_index", "covid_period",
-    "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
-    "vitality_sub_stability", "vitality_index_base",
-    "age60_resident_share", "age60_floating_share", "age60_sales_share",
-    cfg$resident_age_support_vars,
-    "ln_resident_pop", "ln_land_price_adjusted", "ln_official_land_price", "transit_accessibility"
-  )),
-  spdm = unique(c(
-    "adm_cd", "year", "quarter", "yq", "quarter_index",
-    "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
-    "vitality_sub_stability", "vitality_index_base",
-    "age60_resident_share",
-    cfg$resident_age_support_vars,
-    "ln_resident_pop", "ln_land_price_adjusted", "ln_official_land_price", "transit_accessibility"
-  )),
-  gtwr = unique(c(
-    "adm_cd", "year", "quarter", "yq", "quarter_index",
-    "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
-    "vitality_sub_stability", "vitality_index_base",
-    "age60_resident_share",
-    cfg$resident_age_support_vars,
-    "ln_resident_pop", "ln_land_price_adjusted", "ln_official_land_price", "transit_accessibility"
-  ))
-)
+panel_main_view_specs_quarterly <- cfg$panel_main_view_specs
 
 panel_main <- panel_main_pre |>
   dplyr::select(-dplyr::any_of(vitality_cols)) |>
