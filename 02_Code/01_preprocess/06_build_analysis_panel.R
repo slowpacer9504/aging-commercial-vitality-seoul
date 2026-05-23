@@ -197,7 +197,11 @@ summarize_join_coverage <- function(df, vars, source_name) {
 quarter_keys <- c("adm_cd", "year", "quarter", "yq", "quarter_index")
 assert_required_cols(quarter_base, quarter_keys, "quarter_base")
 assert_required_cols(aux, quarter_keys, "aux_covariates")
-assert_required_cols(aux_lag_support, c(quarter_keys, "land_price_adjusted", "bus_stop_count_aux", "subway_station_count_aux"), "aux_covariates_lag_support")
+assert_required_cols(
+  aux_lag_support,
+  c(quarter_keys, "land_price_adjusted", "workplace_worker_pop", "bus_stop_count_aux", "subway_station_count_aux"),
+  "aux_covariates_lag_support"
+)
 assert_required_cols(living_inflow, c("adm_cd", "year", "quarter", "yq", "quarter_index", "external_inflow_pop"), "living_population_external_inflow")
 assert_required_cols(survival_rate, c("adm_cd", "year", "quarter", "yq", "quarter_index", "survival_3y"), "golmok_survival_rate")
 assert_required_cols(
@@ -302,6 +306,7 @@ walk_env_cols <- c("intersection_density", "avg_slope_degree", "betweenness_cent
 expected_numeric_cols <- c(
   "official_land_price", "land_price_lpi_factor", "land_price_adjusted",
   "land_price_lpi_source_bjd_n", "land_price_lpi_weight_coverage",
+  "workplace_worker_pop", "workplace_worker_source_year", "workplace_worker_raw_dong_n",
   "apartment_complex_count",
   "apartment_complex_count_kapt", "apartment_building_count", "apartment_household_count",
   "subway_station_count", "bus_stop_count", "hospital_count", "mall_count",
@@ -376,6 +381,7 @@ panel_main_pre_vitality <- panel_main_pre_vitality |>
     apartment_complex_count_kapt = dplyr::if_else(is.finite(apartment_complex_count_kapt), pmax(apartment_complex_count_kapt, 0), NA_real_),
     apartment_building_count = dplyr::if_else(is.finite(apartment_building_count), pmax(apartment_building_count, 0), NA_real_),
     apartment_household_count = dplyr::if_else(is.finite(apartment_household_count), pmax(apartment_household_count, 0), NA_real_),
+    workplace_worker_pop = dplyr::if_else(is.finite(workplace_worker_pop), pmax(workplace_worker_pop, 0), NA_real_),
     bus_stop_count_aux = dplyr::if_else(is.finite(bus_stop_count_aux), pmax(bus_stop_count_aux, 0), NA_real_),
     subway_station_count_aux = dplyr::if_else(is.finite(subway_station_count_aux), pmax(subway_station_count_aux, 0), NA_real_),
     transit_accessibility = {
@@ -391,6 +397,7 @@ panel_main_pre_vitality <- panel_main_pre_vitality |>
     ln_total_store_count = safe_log1p(total_store_count),
     stability_score = -closure_rate,
     ln_resident_pop = safe_log1p(resident_pop),
+    ln_workplace_worker_pop = safe_log1p(workplace_worker_pop),
     ln_apartment_household_count = safe_log1p(apartment_household_count),
     ln_floating_pop = safe_log1p(floating_pop),
     ln_external_inflow_pop = safe_log1p(external_inflow_pop),
@@ -510,6 +517,7 @@ lag4_values <- panel_main_pre_vitality |>
         adm_cd,
         lag4_source_yq = yq,
         lag4_land_price_adjusted = land_price_adjusted,
+        lag4_workplace_worker_pop = workplace_worker_pop,
         lag4_bus_stop_count_aux = bus_stop_count_aux,
         lag4_subway_station_count_aux = subway_station_count_aux
       ),
@@ -522,6 +530,7 @@ lag4_values <- panel_main_pre_vitality |>
       log(.data$lag4_land_price_adjusted),
       NA_real_
     ),
+    lag4_ln_workplace_worker_pop = safe_log1p(.data$lag4_workplace_worker_pop),
     lag4_transit_accessibility = {
       lag4_analysis_reference <- as.character(.data$yq) %in% get_analysis_yq_sequence()
       bus_z <- pooled_z(lag4_bus_stop_count_aux, reference = lag4_analysis_reference)
@@ -534,7 +543,8 @@ lag4_values <- panel_main_pre_vitality |>
     lag4_age60_resident_share,
     lag4_ln_resident_pop,
     lag4_ln_land_price_adjusted,
-    lag4_transit_accessibility
+    lag4_transit_accessibility,
+    lag4_ln_workplace_worker_pop
   )
 
 panel_main_pre_vitality <- panel_main_pre_vitality |>
@@ -551,7 +561,13 @@ panel_main_pre_vitality <- panel_main_pre_vitality |>
   dplyr::arrange(adm_cd, year, quarter)
 
 lag4_required_cols <- intersect(
-  c("lag4_age60_resident_share", "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted", "lag4_transit_accessibility"),
+  c(
+    "lag4_age60_resident_share",
+    "lag4_ln_resident_pop",
+    "lag4_ln_land_price_adjusted",
+    "lag4_transit_accessibility",
+    "lag4_ln_workplace_worker_pop"
+  ),
   names(panel_main_pre_vitality)
 )
 lag4_missing <- panel_main_pre_vitality |>
@@ -638,6 +654,7 @@ aux_core_vars <- intersect(
     "official_land_price", "ln_official_land_price",
     "land_price_lpi_factor", "land_price_adjusted", "ln_land_price_adjusted",
     "land_price_lpi_source_bjd_n", "land_price_lpi_weight_coverage",
+    "workplace_worker_pop", "ln_workplace_worker_pop", "workplace_worker_source_year",
     "bus_stop_count_aux", "subway_station_count_aux", "transit_accessibility",
     "apartment_complex_count_kapt", "apartment_building_count", "apartment_household_count",
     "ln_apartment_household_count",
@@ -685,6 +702,7 @@ write_csv_safe(join_cov, join_cov_path)
 count_vars <- intersect(
   c(
     "resident_pop", "total_household_commercial", "total_store_count", "floating_pop", "external_inflow_pop",
+    "workplace_worker_pop",
     "apartment_complex_count_kapt", "apartment_building_count", "apartment_household_count"
   ),
   names(panel_main_pre_vitality)

@@ -75,9 +75,7 @@ if (length(robustness_outcomes) == 0L) {
   # 1. Shared Quarterly Contract
   #============================================================================
 
-  control_candidates <- c(
-    "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
-  )
+  control_candidates <- value_or(cfg$twfe_main_control_cols, cfg$lagged_main_control_cols)
 
   control_screen <- resolve_outcome_control_screen(
     panel,

@@ -197,19 +197,21 @@ exposures_main <- c(
 )
 
 controls_structural <- c(
-  "ln_resident_pop",
-  "ln_land_price_adjusted",
-  "transit_accessibility"
+  "lag4_ln_resident_pop",
+  "lag4_ln_land_price_adjusted",
+  "lag4_transit_accessibility",
+  "lag4_ln_workplace_worker_pop"
 )
 
 controls_gtwr_lean <- c(
-  "ln_resident_pop",
-  "ln_land_price_adjusted"
+  "lag4_ln_resident_pop",
+  "lag4_ln_land_price_adjusted"
 )
 
 controls_gtwr_extended <- c(
   controls_gtwr_lean,
-  "transit_accessibility"
+  "lag4_transit_accessibility",
+  "lag4_ln_workplace_worker_pop"
 )
 
 existing_outcomes <- intersect(outcomes_main, names(panel_main))
@@ -289,4 +291,4 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 # - FE는 `adm_cd + yq`로 고정한다.
 # - `year`, `quarter`, `yq`, `quarter_index` are canonical active modeling keys.
 # - GTWR는 optional local sidecar이며 main causal estimator가 아니다.
-# - GTWR lean control은 규모·지가 통제, extended control은 대중교통 접근성 composite를 추가한다.
+# - GTWR lean control은 규모·지가 통제, extended control은 대중교통 접근성 composite와 직장인구를 추가한다.

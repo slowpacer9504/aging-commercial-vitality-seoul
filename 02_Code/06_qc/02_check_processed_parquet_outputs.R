@@ -276,6 +276,7 @@ core_files <- c(
   "seoul_quarter_base.parquet",
   "adm_region_lookup.parquet",
   "aux_covariates.parquet",
+  "workplace_worker_population.parquet",
   "land_price_lpi_bjd_adm_crosswalk.parquet",
   "land_price_lpi_factor_adm_quarter.parquet",
   "registered_resident_population.parquet",
@@ -349,6 +350,37 @@ for (ii in seq_along(quarterly_targets)) {
   checks[[length(checks) + 1L]] <- add_check(sprintf("PQY%02dA", ii), pass = checks_set$range$pass, detail = checks_set$range$detail)
   checks[[length(checks) + 1L]] <- add_check(sprintf("PQY%02dB", ii), pass = checks_set$dup$pass, detail = checks_set$dup$detail)
   checks[[length(checks) + 1L]] <- add_check(sprintf("PQY%02dC", ii), pass = checks_set$time_cols$pass, detail = checks_set$time_cols$detail)
+}
+
+df_workplace_worker <- get_df("workplace_worker_population.parquet", data_map)
+if (!is.null(df_workplace_worker)) {
+  workplace_years <- sort(unique(stats::na.omit(as.integer(df_workplace_worker$year))))
+  expected_workplace_years <- cfg$lag_support_start:cfg$short_end
+  workplace_dup_n <- dup_count(df_workplace_worker, c("adm_cd", "year"))
+  workplace_missing_n <- if ("workplace_worker_pop" %in% names(df_workplace_worker)) {
+    sum(!is.finite(df_workplace_worker$workplace_worker_pop))
+  } else {
+    NA_integer_
+  }
+  checks[[length(checks) + 1L]] <- add_check(
+    "PWW01",
+    pass = identical(workplace_years, expected_workplace_years),
+    detail = sprintf(
+      "workplace_worker_population observed_years=%s; expected_years=%s",
+      paste(workplace_years, collapse = ", "),
+      paste(expected_workplace_years, collapse = ", ")
+    )
+  )
+  checks[[length(checks) + 1L]] <- add_check(
+    "PWW02",
+    pass = !is.na(workplace_dup_n) && workplace_dup_n == 0L,
+    detail = sprintf("workplace_worker_population dup(adm_cd,year)=%s", workplace_dup_n)
+  )
+  checks[[length(checks) + 1L]] <- add_check(
+    "PWW03",
+    pass = !is.na(workplace_missing_n) && workplace_missing_n == 0L,
+    detail = sprintf("workplace_worker_population missing workplace_worker_pop=%s", workplace_missing_n)
+  )
 }
 
 df_adm_region_lookup <- get_df("adm_region_lookup.parquet", data_map)

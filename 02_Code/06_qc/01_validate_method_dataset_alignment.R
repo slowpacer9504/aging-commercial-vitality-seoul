@@ -115,6 +115,8 @@ check_optional_csv_schema <- function(check_id,
 
 expected_main_outcomes <- sort(unique(c(cfg$primary_outcomes, cfg$vitality_supplementary_outcomes)))
 expected_channel_outcomes <- sort(unique(cfg$spdm_channel_outcomes))
+expected_main_exposure <- as.character(value_or(cfg$lagged_main_exposure_vars, "lag4_age60_resident_share")[[1L]])
+expected_channel_mediator <- as.character(value_or(cfg$lagged_channel_vars, "lag2_age60_floating_share")[[1L]])
 w_robustness_expected <- sort(unique(c(cfg$default_w, cfg$alt_w)))
 expected_robustness_axes <- sort(c("outcome_definition", "sample_window", "w_moran"))
 optional_required_test_enabled <- FALSE
@@ -289,7 +291,7 @@ twfe_diag_tbl <- safe_read_csv(cfg$paths$twfe_main_diagnostics)
 if (inherits(twfe_diag_tbl, "data.frame")) {
   missing_cols <- setdiff(c("model_name", "outcome", "exposure", "spec", "status"), names(twfe_diag_tbl))
   success_outcomes <- twfe_diag_tbl |>
-    dplyr::filter(spec == "m2", exposure == "age60_resident_share", status == "success") |>
+    dplyr::filter(spec == "m2", exposure == expected_main_exposure, status == "success") |>
     dplyr::pull(outcome) |>
     unique() |>
     sort()
@@ -312,7 +314,7 @@ if (inherits(twfe_moran_tbl, "data.frame")) {
     names(twfe_moran_tbl)
   )
   success_outcomes <- twfe_moran_tbl |>
-    dplyr::filter(exposure == "age60_resident_share", status == "success") |>
+    dplyr::filter(exposure == expected_main_exposure, status == "success") |>
     dplyr::pull(outcome) |>
     unique() |>
     sort()
@@ -348,7 +350,7 @@ if (inherits(spdm_diag_tbl, "data.frame")) {
       w_type == "queen",
       status == "success",
       impacts_status == "success",
-      exposure == "age60_resident_share"
+      exposure == expected_main_exposure
     ) |>
     dplyr::pull(outcome) |>
     unique() |>
@@ -376,7 +378,7 @@ if (inherits(spdm_impacts_tbl, "data.frame")) {
       model_family == "sdm",
       w_type == "queen",
       status == "success",
-      focal_var == "age60_resident_share"
+      focal_var == expected_main_exposure
     ) |>
     dplyr::pull(outcome) |>
     unique() |>
@@ -424,8 +426,8 @@ if (inherits(spdm_channel_diag_tbl, "data.frame")) {
       equation == "outcome",
       status == "success",
       impacts_status == "success",
-      exposure == "age60_resident_share",
-      mediator == "age60_floating_share"
+      exposure == expected_main_exposure,
+      mediator == expected_channel_mediator
     ) |>
     dplyr::pull(outcome) |>
     unique() |>
@@ -494,7 +496,7 @@ if (inherits(spdm_w_diag_tbl, "data.frame")) {
       model_family == "sdm",
       status == "success",
       impacts_status == "success",
-      exposure == "age60_resident_share"
+      exposure == expected_main_exposure
     ) |>
     dplyr::distinct(outcome, w_type)
   expected_grid <- tidyr::crossing(outcome = expected_main_outcomes, w_type = w_robustness_expected)

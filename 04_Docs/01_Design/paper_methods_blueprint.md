@@ -75,12 +75,13 @@
   - `vitality_index_entropy`
   - `vitality_index_pca`
 - shared control candidate pool
-  - `ln_resident_pop`
-  - `ln_land_price_adjusted`
-  - `transit_accessibility`
+  - `lag4_ln_resident_pop`
+  - `lag4_ln_land_price_adjusted`
+  - `lag4_transit_accessibility`
+  - `lag4_ln_workplace_worker_pop`
 - GTWR local sidecar control pool
-  - lean: `ln_resident_pop`, `ln_land_price_adjusted`
-  - extended: lean + `transit_accessibility`
+  - lean: `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`
+  - extended: lean + `lag4_transit_accessibility`, `lag4_ln_workplace_worker_pop`
 
 ### 2.3 Main Text와 Appendix의 경계
 
@@ -180,7 +181,7 @@ GTWR는 전역모형 이후에도 지역별 반응 강도와 방향이 다를 �
 | --- | --- | --- | --- |
 | `01_build_adm_region_lookup.R` | 행정동-자치구-생활권 lookup 구축 | `adm_region_lookup.parquet`, `adm_region_lookup.csv` | Methods/QC: 공간단위 정합 |
 | `02_build_seoul_quarter_base.R` | 서울시 상권 원자료를 분기 base로 정리 | `seoul_quarter_base.parquet`, `seoul_raw_review.parquet` | Methods: 데이터와 분석단위 |
-| `03_build_auxiliary_covariates.R` | 보조 공공데이터를 quarterly as-of auxiliary contract로 정리 | `aux_covariates.parquet`, pre-aggregation files | Methods: 통제변수 구축 |
+| `03_build_auxiliary_covariates.R` | 보조 공공데이터를 quarterly as-of auxiliary contract로 정리 | `aux_covariates.parquet`, `workplace_worker_population.parquet`, pre-aggregation files | Methods: 통제변수 구축 |
 | `04_build_golmok_survival_rate.R` | 서울시 상권분석서비스 신생기업 생존율 JSON을 quarterly as-of contract로 정리 | `golmok_survival_rate.parquet`, `golmok_survival_rate_qc.csv` | Methods: 안정성 구성 |
 | `05_build_registered_resident_population.R` | 행정안전부 주민등록인구현황에서 상주인구와 고령 상주비중을 quarterly contract로 정리 | `registered_resident_population.parquet`, mapping/QC logs | Methods: 핵심 독립변수와 인구 통제변수 |
 | `06_build_analysis_panel.R` | 기초 패널과 보조변수 및 주민등록인구 layer를 결합하고 shared transform을 완성 | `panel_merged_base.parquet`, `panel_main_pre_vitality.parquet` | Methods: 분석패널 구성 |

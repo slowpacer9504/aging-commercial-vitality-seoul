@@ -42,7 +42,7 @@ gtwr_retired_control_cols <- function() {
 }
 
 gtwr_main_control_candidate_cols <- function() {
-  default_controls <- c("ln_resident_pop", "ln_land_price_adjusted")
+  default_controls <- c("lag4_ln_resident_pop", "lag4_ln_land_price_adjusted")
   controls <- value_or(cfg$gtwr_main_control_cols, default_controls)
   clean_gtwr_control_vector(controls)
 }

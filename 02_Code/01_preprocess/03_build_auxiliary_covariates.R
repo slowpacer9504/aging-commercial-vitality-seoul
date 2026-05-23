@@ -1469,6 +1469,284 @@ normalize_unicode_text <- function(x) {
   x
 }
 
+normalize_workplace_adm_key <- function(x) {
+  x <- normalize_unicode_text(x)
+  x <- stringr::str_squish(x)
+  x <- stringr::str_replace_all(x, "\\.", "·")
+  x <- stringr::str_replace_all(x, "\\s+", "")
+  dplyr::na_if(x, "")
+}
+
+parse_workplace_worker_count <- function(x) {
+  x <- normalize_unicode_text(x)
+  x <- stringr::str_replace_all(x, ",", "")
+  x <- stringr::str_replace_all(x, "-", "")
+  safe_num(x)
+}
+
+resolve_single_workplace_worker_csv <- function() {
+  root <- value_or(
+    cfg$dir_workplace_worker_population,
+    file.path(cfg$dir_raw, "15_서울시 사업체현황(종사자규모별:동별) 통계 (2018~2024)")
+  )
+  if (!dir.exists(root)) {
+    stop(sprintf("[ERROR] Workplace worker raw directory is missing: %s", root), call. = FALSE)
+  }
+
+  csv_paths <- list.files(root, pattern = "[.]csv$", recursive = TRUE, full.names = TRUE)
+  csv_paths <- csv_paths[file.exists(csv_paths)]
+  if (length(csv_paths) == 0L) {
+    stop(sprintf("[ERROR] Workplace worker CSV is missing under: %s", root), call. = FALSE)
+  }
+  if (length(csv_paths) > 1L) {
+    info <- file.info(csv_paths)
+    csv_paths <- csv_paths[order(info$mtime, decreasing = TRUE)]
+    append_log(
+      cfg$logs$data_qc,
+      sprintf(
+        "- Workplace worker source: multiple CSV files found; using newest=%s",
+        basename(csv_paths[[1L]])
+      )
+    )
+  }
+
+  csv_paths[[1L]]
+}
+
+read_workplace_worker_csv <- function(path) {
+  read_one <- function(encoding) {
+    readr::read_csv(
+      path,
+      locale = readr::locale(encoding = encoding),
+      show_col_types = FALSE,
+      col_types = readr::cols(.default = readr::col_character()),
+      progress = FALSE
+    )
+  }
+
+  tryCatch(
+    read_one("UTF-8"),
+    error = function(e) read_one("CP949")
+  )
+}
+
+build_workplace_worker_year <- function(base_year) {
+  csv_path <- resolve_single_workplace_worker_csv()
+  raw <- read_workplace_worker_csv(csv_path)
+  if (ncol(raw) < 4L) {
+    stop(sprintf("[ERROR] Workplace worker CSV has unexpected schema: %s", basename(csv_path)), call. = FALSE)
+  }
+
+  names(raw)[1:3] <- c("si_level", "gu_name", "adm_nm")
+  year_cols <- grep("^20[0-9]{2}$", names(raw), value = TRUE)
+  if (length(year_cols) == 0L) {
+    stop(sprintf("[ERROR] Workplace worker CSV has no year columns: %s", basename(csv_path)), call. = FALSE)
+  }
+  source_years <- sort(as.integer(year_cols))
+  max_source_year <- max(source_years, na.rm = TRUE)
+
+  raw <- raw |>
+    dplyr::mutate(
+      si_level = stringr::str_squish(normalize_unicode_text(.data$si_level)),
+      gu_name = stringr::str_squish(normalize_unicode_text(.data$gu_name)),
+      adm_nm = stringr::str_squish(normalize_unicode_text(.data$adm_nm))
+    ) |>
+    dplyr::filter(
+      !is.na(.data$gu_name),
+      !is.na(.data$adm_nm),
+      !stringr::str_detect(.data$si_level, "^동별"),
+      !stringr::str_detect(.data$gu_name, "^동별"),
+      !stringr::str_detect(.data$adm_nm, "^동별")
+    )
+
+  city_total <- raw |>
+    dplyr::filter(.data$gu_name == "소계", .data$adm_nm == "소계") |>
+    tidyr::pivot_longer(
+      dplyr::all_of(year_cols),
+      names_to = "source_year",
+      values_to = "raw_city_total"
+    ) |>
+    dplyr::mutate(
+      source_year = as.integer(.data$source_year),
+      raw_city_total = parse_workplace_worker_count(.data$raw_city_total)
+    ) |>
+    dplyr::filter(is.finite(.data$raw_city_total)) |>
+    dplyr::select(source_year, raw_city_total)
+
+  dong_rows <- raw |>
+    dplyr::filter(.data$gu_name != "소계", .data$adm_nm != "소계")
+  raw_dong_rows <- nrow(dong_rows)
+
+  raw_long <- dong_rows |>
+    dplyr::mutate(
+      gu_name = stringr::str_squish(.data$gu_name),
+      raw_adm_nm = stringr::str_squish(.data$adm_nm),
+      raw_adm_key = normalize_workplace_adm_key(.data$raw_adm_nm),
+      target_adm_key = dplyr::case_when(
+        .data$gu_name == "강동구" & .data$raw_adm_key %in% c("상일1동", "상일2동") ~ "상일동",
+        .data$gu_name == "강남구" & .data$raw_adm_key == "개포3동" ~ "일원2동",
+        TRUE ~ .data$raw_adm_key
+      ),
+      harmonization_rule = dplyr::case_when(
+        .data$gu_name == "강동구" & .data$raw_adm_key %in% c("상일1동", "상일2동") ~ "aggregate_sangil1_sangil2_to_sangil",
+        .data$gu_name == "강남구" & .data$raw_adm_key == "개포3동" ~ "map_gaepo3_to_ilwon2",
+        stringr::str_detect(.data$raw_adm_nm, "\\.") ~ "normalize_dot_separator",
+        TRUE ~ "direct_name_match"
+      )
+    ) |>
+    tidyr::pivot_longer(
+      dplyr::all_of(year_cols),
+      names_to = "source_year",
+      values_to = "workplace_worker_pop"
+    ) |>
+    dplyr::mutate(
+      source_year = as.integer(.data$source_year),
+      workplace_worker_pop = parse_workplace_worker_count(.data$workplace_worker_pop)
+    ) |>
+    dplyr::filter(is.finite(.data$workplace_worker_pop))
+
+  hangdong_shares <- raw_long |>
+    dplyr::filter(
+      .data$gu_name == "구로구",
+      .data$source_year == 2020L,
+      .data$target_adm_key %in% c("오류2동", "항동")
+    ) |>
+    dplyr::group_by(source_year) |>
+    dplyr::mutate(worker_share_2020 = .data$workplace_worker_pop / sum(.data$workplace_worker_pop, na.rm = TRUE)) |>
+    dplyr::ungroup() |>
+    dplyr::select(target_adm_key, worker_share_2020)
+
+  if (nrow(hangdong_shares) != 2L || any(!is.finite(hangdong_shares$worker_share_2020))) {
+    stop("[ERROR] Cannot derive 2020 Oryu2/Hang-dong worker shares for 2018-2019 backcast.", call. = FALSE)
+  }
+
+  hangdong_backcast_parent <- raw_long |>
+    dplyr::filter(
+      .data$gu_name == "구로구",
+      .data$source_year %in% c(2018L, 2019L),
+      .data$target_adm_key == "오류2동"
+    ) |>
+    dplyr::group_by(source_year) |>
+    dplyr::summarise(parent_worker_pop = sum(.data$workplace_worker_pop, na.rm = TRUE), .groups = "drop")
+
+  if (nrow(hangdong_backcast_parent) != 2L || any(!is.finite(hangdong_backcast_parent$parent_worker_pop))) {
+    stop("[ERROR] Cannot find 2018-2019 Oryu2 parent worker counts for Hang-dong backcast.", call. = FALSE)
+  }
+
+  hangdong_backcast <- tidyr::crossing(
+    hangdong_backcast_parent,
+    hangdong_shares
+  ) |>
+    dplyr::mutate(
+      gu_name = "구로구",
+      raw_adm_nm = "오류2동",
+      raw_adm_key = "오류2동",
+      workplace_worker_pop = .data$parent_worker_pop * .data$worker_share_2020,
+      harmonization_rule = dplyr::if_else(
+        .data$target_adm_key == "항동",
+        "backcast_hangdong_from_oryu2_2020_share",
+        "backcast_oryu2_remaining_2020_share"
+      )
+    ) |>
+    dplyr::select(
+      gu_name, raw_adm_nm, raw_adm_key, target_adm_key, source_year,
+      workplace_worker_pop, harmonization_rule
+    )
+
+  worker_observed <- raw_long |>
+    dplyr::filter(!(
+      .data$gu_name == "구로구" &
+        .data$source_year %in% c(2018L, 2019L) &
+        .data$target_adm_key == "오류2동"
+    )) |>
+    dplyr::select(
+      gu_name, raw_adm_nm, raw_adm_key, target_adm_key, source_year,
+      workplace_worker_pop, harmonization_rule
+    ) |>
+    dplyr::bind_rows(hangdong_backcast) |>
+    dplyr::group_by(gu_name, target_adm_key, source_year) |>
+    dplyr::summarise(
+      workplace_worker_pop = sum(.data$workplace_worker_pop, na.rm = TRUE),
+      workplace_worker_raw_dong_n = dplyr::n_distinct(.data$raw_adm_key),
+      workplace_worker_rule = paste(sort(unique(.data$harmonization_rule)), collapse = ";"),
+      .groups = "drop"
+    )
+
+  lookup <- arrow::read_parquet(cfg$paths$adm_region_lookup) |>
+    tibble::as_tibble() |>
+    standardize_keys() |>
+    dplyr::transmute(
+      adm_cd,
+      gu_name = stringr::str_squish(normalize_unicode_text(.data$gu_name)),
+      target_adm_key = normalize_workplace_adm_key(.data$adstrd_nm)
+    )
+
+  out <- base_year |>
+    dplyr::mutate(
+      year = as.integer(.data$year),
+      workplace_worker_source_year = pmin(.data$year, max_source_year)
+    ) |>
+    dplyr::left_join(lookup, by = "adm_cd") |>
+    dplyr::left_join(
+      worker_observed,
+      by = c("gu_name", "target_adm_key", "workplace_worker_source_year" = "source_year")
+    ) |>
+    dplyr::mutate(
+      workplace_worker_source_rule = dplyr::if_else(
+        .data$year > .data$workplace_worker_source_year,
+        paste("carry_forward_latest_available", .data$workplace_worker_rule, sep = ";"),
+        .data$workplace_worker_rule
+      )
+    ) |>
+    dplyr::select(
+      adm_cd, year,
+      workplace_worker_pop,
+      workplace_worker_source_year,
+      workplace_worker_raw_dong_n,
+      workplace_worker_source_rule
+    ) |>
+    dplyr::arrange(adm_cd, year)
+
+  missing_rows <- out |>
+    dplyr::filter(!is.finite(.data$workplace_worker_pop))
+  if (nrow(missing_rows) > 0L) {
+    sample_missing <- missing_rows |>
+      dplyr::slice_head(n = 12L) |>
+      dplyr::mutate(key = paste(.data$adm_cd, .data$year, sep = ":")) |>
+      dplyr::pull(key)
+    stop(
+      sprintf(
+        "[ERROR] Workplace worker population has unmatched adm-year rows: %s",
+        paste(sample_missing, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  source_totals <- worker_observed |>
+    dplyr::group_by(source_year) |>
+    dplyr::summarise(workplace_worker_sum = sum(.data$workplace_worker_pop, na.rm = TRUE), .groups = "drop") |>
+    dplyr::left_join(city_total, by = "source_year") |>
+    dplyr::mutate(city_total_diff = .data$workplace_worker_sum - .data$raw_city_total)
+
+  qc <- source_totals |>
+    dplyr::mutate(
+      source_file = basename(csv_path),
+      raw_dong_rows = raw_dong_rows,
+      output_rows = nrow(out),
+      output_missing_n = sum(!is.finite(out$workplace_worker_pop)),
+      backcast_output_rows = sum(stringr::str_detect(out$workplace_worker_source_rule, "backcast"), na.rm = TRUE),
+      carry_forward_output_rows = sum(out$year > out$workplace_worker_source_year, na.rm = TRUE),
+      source_year_min = min(source_years),
+      source_year_max = max(source_years),
+      target_year_min = min(out$year),
+      target_year_max = max(out$year),
+      .before = 1
+    )
+
+  list(year = out, qc = qc)
+}
+
 guess_point_crs <- function(x, y) {
   xx <- safe_num(x)
   yy <- safe_num(y)
@@ -5384,6 +5662,11 @@ append_log(cfg$logs$data_qc, "- Building walk-environment variables")
 physical_static <- build_physical_env_static(park_static)
 physical_year <- expand_static_to_year(physical_static, years_target)
 
+append_log(cfg$logs$data_qc, "- Building workplace worker population annual layer")
+workplace_worker_out <- build_workplace_worker_year(base_year)
+workplace_worker_year <- workplace_worker_out$year
+write_csv_safe(workplace_worker_out$qc, cfg$paths$workplace_worker_population_qc)
+
 # record-level 검토가 필요한 source만 preagg 파일을 남긴다.
 # medical/mall/senior/bus/subway는 주소·좌표·직접매칭 검토 가치가 크기 때문이다.
 write_aux_source_preagg(medical_raw, cfg$paths$medical_source_preagg, "medical")
@@ -5516,6 +5799,7 @@ aux_lag_support <- base_quarter |>
   ) |>
   dplyr::left_join(park_year, by = c("adm_cd", "year")) |>
   dplyr::left_join(senior_source_year, by = c("adm_cd", "year")) |>
+  dplyr::left_join(workplace_worker_year, by = c("adm_cd", "year")) |>
   dplyr::left_join(transit_source_quarter, by = c("adm_cd", "year", "quarter", "yq", "quarter_index")) |>
   dplyr::left_join(medical_source_year, by = c("adm_cd", "year")) |>
   dplyr::left_join(mall_source_year, by = c("adm_cd", "year")) |>
@@ -5528,6 +5812,7 @@ aux_lag_support <- base_quarter |>
         official_land_price, land_price_lpi_factor, land_price_adjusted,
         land_price_lpi_source_bjd_n, land_price_lpi_weight_coverage,
         park_area, senior_facility_count,
+        workplace_worker_pop, workplace_worker_source_year, workplace_worker_raw_dong_n,
         bus_stop_count_aux, subway_station_count_aux, hospital_count_aux, mall_count_aux,
         apartment_complex_count_kapt, apartment_building_count, apartment_household_count,
         road_length_km, sidewalk_length_km, intersection_density, avg_slope_degree, betweenness_centrality,
@@ -5552,6 +5837,7 @@ validate_panel_keys(aux, c("adm_cd", "yq"))
 
 # source별 preagg는 사람과 QC가 검토하고, active `aux_covariates`는 downstream
 # panel이 소비한다. lag-support 출력은 active panel의 4분기 시차 join에만 쓴다.
+write_parquet_safe(workplace_worker_year, cfg$paths$workplace_worker_population)
 write_parquet_safe(aux_lag_support, cfg$paths$aux_covariates_lag_support)
 write_parquet_safe(aux, cfg$paths$aux_covariates)
 append_log(
@@ -5562,11 +5848,20 @@ append_log(
     nrow(aux_lag_support)
   )
 )
+append_log(
+  cfg$logs$data_qc,
+  sprintf(
+    "- Workplace worker population rows: annual=%d, qc=%s",
+    nrow(workplace_worker_year),
+    basename(cfg$paths$workplace_worker_population_qc)
+  )
+)
 
 for (v in c(
   "official_land_price", "land_price_lpi_factor", "land_price_adjusted",
   "land_price_lpi_source_bjd_n", "land_price_lpi_weight_coverage",
   "park_area", "senior_facility_count",
+  "workplace_worker_pop",
   "bus_stop_count_aux", "subway_station_count_aux", "hospital_count_aux", "mall_count_aux",
   "apartment_complex_count_kapt", "apartment_building_count", "apartment_household_count",
   "road_length_km", "sidewalk_length_km", "intersection_density", "avg_slope_degree", "betweenness_centrality",

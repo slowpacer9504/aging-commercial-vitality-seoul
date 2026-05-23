@@ -225,7 +225,8 @@ spdm_wx_name <- function(var) {
 
 spdm_main_control_candidate_cols <- function() {
   default_controls <- c(
-    "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
+    "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted", "lag4_transit_accessibility",
+    "lag4_ln_workplace_worker_pop"
   )
   controls <- spdm_cfg_value("spdm_main_control_cols", default_controls)
   controls <- unique(as.character(value_or(controls, default_controls)))

@@ -249,8 +249,8 @@
   - quarterly sample 기준으로 실행한다.
   - `GTWR_CONTROL_SET=lean`을 기본 통제 사양으로 사용한다.
   - lean control pool은 `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted` 두 개다.
-  - `GTWR_CONTROL_SET=extended`는 lean control에 `lag4_transit_accessibility`를 추가한다.
-  - GTWR extended에서 버스정류장 수와 지하철역 수는 별도 통제변수로 투입하지 않고 `lag4_transit_accessibility` composite로 투입한다.
+  - `GTWR_CONTROL_SET=extended`는 lean control에 `lag4_transit_accessibility`와 `lag4_ln_workplace_worker_pop`을 추가한다.
+  - GTWR extended에서 버스정류장 수와 지하철역 수는 별도 통제변수로 투입하지 않고 `lag4_transit_accessibility` composite로 투입하며, 직장인구 규모는 `lag4_ln_workplace_worker_pop`으로 통제한다.
   - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 기록한다.
   - local condition-number는 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 `st.dist`/`gw.weight` 기반 시공간 가중치에 맞춰 적용한다.
   - 기본 bandwidth는 fixed `GTWR_ST_BW=480`으로 통일한다.

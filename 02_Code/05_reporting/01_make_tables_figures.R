@@ -466,6 +466,11 @@ desc_var_registry <- tibble::tribble(
   "survival_3y",                     "New-enterprise 3-year survival rate",       "stability_component",
   "ln_resident_pop",                 "Log quarterly resident population",         "model_control",
   "ln_land_price_adjusted",          "Log land price, LPI-adjusted",              "model_control",
+  "ln_workplace_worker_pop",          "Log workplace worker population",           "diagnostic_support",
+  "lag4_ln_resident_pop",             "Lag-4 log resident population",             "model_control",
+  "lag4_ln_land_price_adjusted",      "Lag-4 log LPI-adjusted land price",         "model_control",
+  "lag4_transit_accessibility",       "Lag-4 transit accessibility",               "model_control",
+  "lag4_ln_workplace_worker_pop",     "Lag-4 log workplace worker population",     "model_control",
   "ln_official_land_price",          "Log official land price",                   "diagnostic_support",
   "transit_accessibility",           "Transit accessibility",                     "model_control"
 ) |>

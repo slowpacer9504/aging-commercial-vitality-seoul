@@ -634,7 +634,8 @@ read_twfe_main_controls_used <- function(path = cfg$paths$twfe_main_controls_use
 
 twfe_main_control_candidate_cols <- function() {
   value_or(cfg$twfe_main_control_cols, c(
-    "ln_resident_pop", "ln_land_price_adjusted", "transit_accessibility"
+    "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted", "lag4_transit_accessibility",
+    "lag4_ln_workplace_worker_pop"
   ))
 }
 

@@ -101,6 +101,10 @@ cfg$dir_land_price_lpi <- resolve_numbered_raw_dir(
   "14",
   "14_한국부동산원_전국지가변동률조사"
 )
+cfg$dir_workplace_worker_population <- resolve_numbered_raw_dir(
+  "15",
+  "15_서울시 사업체현황(종사자규모별:동별) 통계 (2018~2024)"
+)
 cfg$dir_golmok_survival_json <- file.path(cfg$dir_intermediate, "golmok_survival_json")
 
 
@@ -211,7 +215,8 @@ cfg$resident_age_support_vars <- c(
 cfg$lagged_main_exposure_vars <- c("lag4_age60_resident_share")
 cfg$lagged_channel_vars <- c("lag2_age60_floating_share")
 cfg$lagged_main_control_cols <- c(
-  "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted", "lag4_transit_accessibility"
+  "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted", "lag4_transit_accessibility",
+  "lag4_ln_workplace_worker_pop"
 )
 cfg$approved_temporal_lag_cols <- c(
   cfg$lagged_main_exposure_vars,
@@ -318,8 +323,8 @@ cfg$gtwr_age_band_labels <- c("age20", "age30", "age40", "age50")
 
 # GTWR uses a more parsimonious default control contract than TWFE/SPDM
 # because local design matrices are much more sensitive to collinearity.
-# Set GTWR_CONTROL_SET=extended to add the lagged transit-accessibility
-# composite to the lean pool.
+# Set GTWR_CONTROL_SET=extended to add lagged transit-accessibility and
+# workplace-worker controls to the lean pool.
 cfg$gtwr_lean_control_cols <- c(
   "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted"
 )
@@ -588,6 +593,8 @@ cfg$paths <- list(
   adm_region_lookup_csv = file.path(cfg$dir_tables, "adm_region_lookup.csv"),
   aux_covariates = file.path(cfg$dir_analysis, "aux_covariates.parquet"),
   aux_covariates_lag_support = file.path(cfg$dir_analysis, "aux_covariates_lag_support.parquet"),
+  workplace_worker_population = file.path(cfg$dir_analysis, "workplace_worker_population.parquet"),
+  workplace_worker_population_qc = file.path(cfg$dir_logs, "workplace_worker_population_qc.csv"),
   land_price_lpi_crosswalk = file.path(cfg$dir_intermediate, "land_price_lpi_bjd_adm_crosswalk.parquet"),
   land_price_lpi_factor = file.path(cfg$dir_intermediate, "land_price_lpi_factor_adm_quarter.parquet"),
   living_population_external_inflow = file.path(cfg$dir_analysis, "living_population_external_inflow.parquet"),
@@ -1002,6 +1009,7 @@ cfg$active_output_contract <- list(
     cfg$paths$adm_region_lookup,
     cfg$paths$aux_covariates,
     cfg$paths$aux_covariates_lag_support,
+    cfg$paths$workplace_worker_population,
     cfg$paths$land_price_lpi_crosswalk,
     cfg$paths$land_price_lpi_factor,
     cfg$paths$living_population_external_inflow,

@@ -65,8 +65,9 @@
 - `lag4_ln_resident_pop`
 - `lag4_ln_land_price_adjusted`
 - `lag4_transit_accessibility`
+- `lag4_ln_workplace_worker_pop`
 
-위 3개는 TWFE/SPDM 기본 control candidate pool이며, 각각 `ln_resident_pop`, `ln_land_price_adjusted`, `transit_accessibility`의 4분기 시차값이다. usable subset은 finite-count와 collinearity 점검을 거쳐 확정한다. `ln_land_price_adjusted`는 연간 공시지가 수준에 한국부동산원 월별 지가지수의 분기 평균 보정계수를 적용한 지가지수 보정 토지가격 변수다. `ln_floating_pop`은 사회적 활력 구성요소이므로 메인 통제변수로 사용하지 않는다. `ln_official_land_price`, `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 유지하지만 active TWFE/SPDM/GTWR 통제변수로 사용하지 않는다.
+위 4개는 TWFE/SPDM 기본 control candidate pool이며, 각각 `ln_resident_pop`, `ln_land_price_adjusted`, `transit_accessibility`, `ln_workplace_worker_pop`의 4분기 시차값이다. usable subset은 finite-count와 collinearity 점검을 거쳐 확정한다. `ln_land_price_adjusted`는 연간 공시지가 수준에 한국부동산원 월별 지가지수의 분기 평균 보정계수를 적용한 지가지수 보정 토지가격 변수다. `ln_workplace_worker_pop`은 서울시 사업체현황 종사자규모별 동별 통계에서 행정동별 총 종사자 수를 2020 기준 행정동으로 정합한 직장인구 로그다. `ln_floating_pop`은 사회적 활력 구성요소이므로 메인 통제변수로 사용하지 않는다. `ln_official_land_price`, `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 유지하지만 active TWFE/SPDM/GTWR 통제변수로 사용하지 않는다.
 
 GTWR는 별도 control set을 사용한다.
 
@@ -77,8 +78,9 @@ GTWR는 별도 control set을 사용한다.
   - `lag4_ln_resident_pop`
   - `lag4_ln_land_price_adjusted`
   - `lag4_transit_accessibility`
+  - `lag4_ln_workplace_worker_pop`
 
-GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직접 투입하지 않고, 두 변수를 표준화 평균한 `lag4_transit_accessibility`를 통제변수로 투입한다.
+GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직접 투입하지 않고, 두 변수를 표준화 평균한 `lag4_transit_accessibility`와 직장인구 규모 통제인 `lag4_ln_workplace_worker_pop`을 추가 통제변수로 투입한다.
 `bus_stop_count_aux`는 혼합주기 snapshot source다. 2019, 2020, 2025처럼 단일 snapshot만 있는 해는 해당 연도 4개 분기에 반복하고, 2021년 1월~2024년 4월 월별 snapshot 구간은 분기말 이전 최신 snapshot을 사용한다. `subway_station_count_aux`는 station master에 개통일 규칙을 부여한 뒤 `open_date <= quarter_end`인 역을 분기별로 count한다.
 
 ## 5) Appendix Sidecar 변수

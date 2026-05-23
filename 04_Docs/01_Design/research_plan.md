@@ -89,7 +89,7 @@
    - 공시지가는 행정동-연도별 면적가중평균을 만든 뒤 같은 연도의 4개 분기에 동일하게 발행한다.
    - 대중교통 접근성의 버스정류장 source처럼 단일 snapshot과 월별 snapshot이 섞인 자료는 분기별 발행 snapshot과 carry-forward 여부를 QC에 기록한다.
 
-이 원칙은 분기 상권 변동을 보존하면서 저주기 source의 반복값 문제를 명시적으로 관리하기 위한 최소 계약이다. 단, 본 분석 모형의 시간 순서를 분명히 하기 위해 canonical panel에는 등록된 시차 변수만 추가한다. 현재 허용 시차 변수는 `lag4_age60_resident_share`, `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`, `lag2_age60_floating_share`다.
+이 원칙은 분기 상권 변동을 보존하면서 저주기 source의 반복값 문제를 명시적으로 관리하기 위한 최소 계약이다. 단, 본 분석 모형의 시간 순서를 분명히 하기 위해 canonical panel에는 등록된 시차 변수만 추가한다. 현재 허용 시차 변수는 `lag4_age60_resident_share`, `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`, `lag4_ln_workplace_worker_pop`, `lag2_age60_floating_share`다.
 
 ## 5. 이론적 해석 틀
 
@@ -147,13 +147,15 @@ GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타�
 
 ### 6.3 통제변수
 
-메인 TWFE/SPDM의 기본 control candidate pool은 아래 세 개의 4분기 시차 변수다. `ln_floating_pop`은 사회적 활력 구성요소와 종합 활력지수에 포함되므로 메인 통제변수에서는 사용하지 않는다. `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 남기지만 active TWFE/SPDM/GTWR 통제변수로 투입하지 않는다.
+메인 TWFE/SPDM의 기본 control candidate pool은 아래 네 개의 4분기 시차 변수다. `ln_floating_pop`은 사회적 활력 구성요소와 종합 활력지수에 포함되므로 메인 통제변수에서는 사용하지 않는다. `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 남기지만 active TWFE/SPDM/GTWR 통제변수로 투입하지 않는다.
 
 - `lag4_ln_resident_pop`
 - `lag4_ln_land_price_adjusted`
 - `lag4_transit_accessibility`
+- `lag4_ln_workplace_worker_pop`
 
 `ln_land_price_adjusted`는 행정동-연도별 면적가중 공시지가에 한국부동산원 월별 지역별 지가지수의 분기 평균 보정계수를 곱해 만든 지가지수 보정 토지가격 변수다. 법정동 지가지수는 법정동-행정동 공간교차 면적가중치로 행정동 단위에 정합한다. 원 연간 공시지가 로그인 `ln_official_land_price`는 패널에 보존하되 active 통제변수로 쓰지 않는다.
+`ln_workplace_worker_pop`은 서울시 사업체현황 종사자규모별 동별 통계의 행정동별 총 종사자 수를 2020 기준 행정동으로 정합한 뒤 `log1p`를 적용한 값이다. 2018~2019년 `항동`은 2020년 `오류2동`/`항동` 종사자 비율로 분동 전 `오류2동` 값을 배분하고, 2025년은 2024년 최신 관측값을 carry-forward한 as-of 값으로 둔다. main model에는 해당 변수의 4분기 시차값을 투입한다.
 
 메인 TWFE/SPDM은 finite observation 수와 추정 가능성에 따라 usable subset을 기록한다.
 
@@ -165,6 +167,7 @@ GTWR main sidecar는 local design matrix의 다중공선성 민감도를 고려�
 - `extended` 선택값
   - `lean` 두 변수
   - `lag4_transit_accessibility`
+  - `lag4_ln_workplace_worker_pop`
 
 `ln_resident_pop`은 행정안전부 주민등록인구현황의 행정동-월별 총인구 stock을 분기 내 평균한 뒤 `log1p`를 적용한 값이다. `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만든 대중교통 접근성 통제변수이며, main model에는 해당 변수의 4분기 시차 composite를 투입한다. 모든 GTWR control set은 complete-case 표본과 GTWR spatiotemporal weight 기반 local condition-number를 별도 진단으로 기록한다. 이 local CN은 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 시공간 거리·커널 가중치에 맞춰 적용한 보조 진단이다.
 

@@ -16,6 +16,9 @@
   - 분기 자료는 `adm_cd-yq` 기준으로 직접 발행한다.
 - 보조 공공데이터
   - 공시지가, 교통, 병의원, 대형유통, 노인시설, 보행환경 등 구조 변수
+- 서울시 사업체현황 종사자규모별 동별 통계
+  - 행정동별 총 종사자 수를 2020 기준 행정동으로 정합해 직장인구 통제변수를 만든다.
+  - 2018~2019년 `항동`은 2020년 `오류2동`/`항동` 종사자 비율로 분동 전 `오류2동` 값을 배분하고, 2025년은 2024년 최신 관측값을 carry-forward한다.
 - 서울생활인구
   - 관내이동과 대도시권 내외국인 월별 ZIP에서 외부 유입 인구를 산출한다.
   - 생활인구는 시점 인구이므로 연합계가 아니라 월별 평균 시점인구를 먼저 만들고, 분기 내 월평균의 평균으로 발행한다.
@@ -41,6 +44,8 @@
   - `adm_cd-yq` 기준 auxiliary public-data integration layer
 - `aux_covariates_lag_support.parquet`
   - 2018Q1~2025Q4 `adm_cd-yq` 기준 auxiliary lag-support layer
+- `workplace_worker_population.parquet`
+  - 2018~2025 `adm_cd-year` 기준 직장인구/종사자수 annual as-of layer
 - `land_price_lpi_bjd_adm_crosswalk.parquet`
   - 법정동 지가지수를 2020 기준 행정동으로 변환하는 법정동-행정동 면적가중 crosswalk
 - `land_price_lpi_factor_adm_quarter.parquet`
@@ -88,6 +93,8 @@
   - `land_price_lpi_raw_match_qc.csv` (`FAIL`, 월별 지가지수 법정동명-법정동 경계 1:1 매칭)
   - `land_price_lpi_crosswalk_qc.csv` (`FAIL`, 425개 행정동 coverage와 정규화 weight 합계)
   - `land_price_lpi_adjustment_qc.csv` (`WARN`, 분기별 보정계수와 보정 공시지가 coverage)
+- 직장인구 정합 점검
+  - `workplace_worker_population_qc.csv` (`FAIL`, source 연도별 서울 합계 일치와 425개 행정동 coverage; `WARN`, 2018~2019 `항동` backcast와 2025 carry-forward 건수)
 - 서울생활인구 외부 유입 인구 점검
   - `living_population_inflow_manifest.csv` (`WARN`, member-level 처리 로그와 month-level coverage flag)
   - `living_population_inflow_qc.csv` (`WARN`, 연도별 coverage와 값 범위)
