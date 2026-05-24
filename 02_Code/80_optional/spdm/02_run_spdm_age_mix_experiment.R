@@ -462,7 +462,11 @@ run_one_spec <- function(spec_row) {
   )
 }
 
-results <- purrr::map(split(spec_registry, spec_registry$spec_id), run_one_spec)
+results <- run_spdm_optional_spec_jobs(
+  split(spec_registry, spec_registry$spec_id),
+  run_one_spec,
+  label = "SPDM age-mix specs"
+)
 
 spec_meta <- spec_registry |>
   dplyr::transmute(

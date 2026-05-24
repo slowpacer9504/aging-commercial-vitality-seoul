@@ -352,6 +352,11 @@ cfg$spdm_channel_impact_sim_R <- suppressWarnings(as.integer(Sys.getenv("SPDM_CH
 if (!is.finite(cfg$spdm_channel_impact_sim_R) || cfg$spdm_channel_impact_sim_R < 1L) cfg$spdm_channel_impact_sim_R <- 1000L
 cfg$spdm_channel_impact_cores <- suppressWarnings(as.integer(Sys.getenv("SPDM_CHANNEL_IMPACT_CORES", unset = "4")))
 if (!is.finite(cfg$spdm_channel_impact_cores) || cfg$spdm_channel_impact_cores < 1L) cfg$spdm_channel_impact_cores <- 1L
+cfg$spdm_optional_spec_cores <- suppressWarnings(as.integer(Sys.getenv("SPDM_OPTIONAL_SPEC_CORES", unset = "1")))
+if (!is.finite(cfg$spdm_optional_spec_cores) || cfg$spdm_optional_spec_cores < 1L) cfg$spdm_optional_spec_cores <- 1L
+cfg$spdm_optional_impact_cores <- suppressWarnings(as.integer(Sys.getenv("SPDM_OPTIONAL_IMPACT_CORES", unset = "1")))
+if (!is.finite(cfg$spdm_optional_impact_cores) || cfg$spdm_optional_impact_cores < 1L) cfg$spdm_optional_impact_cores <- 1L
+options(spdm_impact_cores = cfg$spdm_optional_impact_cores)
 cfg$spdm_coef_se_method <- "model_based_asymptotic_ml_vcov"
 cfg$spdm_spatial_param_se_method <- "model_based_asymptotic_ml_vcov"
 cfg$spdm_impact_se_method <- "simulation_from_model_based_ml_vcov"
@@ -643,6 +648,9 @@ cfg$paths <- list(
   twfe_age_mix_experiment_models = file.path(cfg$dir_tables, "twfe_age_mix_experiment_models.csv"),
   twfe_age_mix_experiment_controls_used = file.path(cfg$dir_tables, "twfe_age_mix_experiment_controls_used.csv"),
   twfe_age_mix_experiment_diagnostics = file.path(cfg$dir_tables, "twfe_age_mix_experiment_diagnostics.csv"),
+  twfe_vitality_component_models = file.path(cfg$dir_tables, "twfe_vitality_component_models.csv"),
+  twfe_vitality_component_controls_used = file.path(cfg$dir_tables, "twfe_vitality_component_controls_used.csv"),
+  twfe_vitality_component_diagnostics = file.path(cfg$dir_tables, "twfe_vitality_component_diagnostics.csv"),
   spdm_main_models = file.path(cfg$dir_tables, "spdm_main_models.csv"),
   spdm_impacts = file.path(cfg$dir_tables, "spdm_impacts.csv"),
   spdm_controls_used = file.path(cfg$dir_tables, "spdm_controls_used.csv"),
@@ -662,6 +670,10 @@ cfg$paths <- list(
   spdm_age_mix_experiment_impacts = file.path(cfg$dir_tables, "spdm_age_mix_experiment_impacts.csv"),
   spdm_age_mix_experiment_controls_used = file.path(cfg$dir_tables, "spdm_age_mix_experiment_controls_used.csv"),
   spdm_age_mix_experiment_diagnostics = file.path(cfg$dir_tables, "spdm_age_mix_experiment_diagnostics.csv"),
+  spdm_vitality_component_models = file.path(cfg$dir_tables, "spdm_vitality_component_models.csv"),
+  spdm_vitality_component_impacts = file.path(cfg$dir_tables, "spdm_vitality_component_impacts.csv"),
+  spdm_vitality_component_controls_used = file.path(cfg$dir_tables, "spdm_vitality_component_controls_used.csv"),
+  spdm_vitality_component_diagnostics = file.path(cfg$dir_tables, "spdm_vitality_component_diagnostics.csv"),
   spdm_sector_share_experiment_models = file.path(cfg$dir_tables, "spdm_sector_share_experiment_models.csv"),
   spdm_sector_share_experiment_impacts = file.path(cfg$dir_tables, "spdm_sector_share_experiment_impacts.csv"),
   spdm_sector_share_experiment_controls_used = file.path(cfg$dir_tables, "spdm_sector_share_experiment_controls_used.csv"),
@@ -991,11 +1003,13 @@ cfg$manual_quarterly_appendix_scripts <- c(
   "02_Code/80_optional/twfe/01_run_twfe_channel_models.R",
   "02_Code/80_optional/twfe/02_run_twfe_interaction_models.R",
   "02_Code/80_optional/twfe/03_run_twfe_age_mix_experiment.R",
+  "02_Code/80_optional/twfe/04_run_twfe_vitality_component_models.R",
   "02_Code/80_optional/spdm/01_run_spdm_interaction_models.R",
   "02_Code/80_optional/spdm/02_run_spdm_age_mix_experiment.R",
   "02_Code/80_optional/spdm/03_run_spdm_sector_share_experiment.R",
   "02_Code/80_optional/spdm/04_run_spdm_selection_sidecar.R",
   "02_Code/80_optional/spdm/05_run_spdm_family_comparison_sidecar.R",
+  "02_Code/80_optional/spdm/06_run_spdm_vitality_component_models.R",
   "02_Code/80_optional/gtwr/02_run_gtwr_floating_only.R",
   "02_Code/80_optional/gtwr/03_run_gtwr_age_band.R",
   "02_Code/80_optional/gtwr/04_run_gtwr_sector_share.R",

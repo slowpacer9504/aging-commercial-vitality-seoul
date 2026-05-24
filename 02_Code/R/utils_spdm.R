@@ -34,6 +34,56 @@ spdm_impact_se_method <- function() {
   as.character(spdm_cfg_value("spdm_impact_se_method", "simulation_from_model_based_ml_vcov"))
 }
 
+resolve_spdm_optional_spec_cores <- function(n_jobs) {
+  if (n_jobs <= 0L) return(0L)
+  requested <- suppressWarnings(as.integer(spdm_cfg_value("spdm_optional_spec_cores", 1L)[[1]]))
+  if (!is.finite(requested) || requested < 1L) requested <- 1L
+  logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
+  if (!is.finite(logical_cores) || logical_cores < 1L) logical_cores <- 1L
+  as.integer(max(1L, min(requested, n_jobs, max(1L, logical_cores - 1L))))
+}
+
+run_spdm_optional_spec_jobs <- function(jobs, worker, label = "SPDM optional specs") {
+  n_jobs <- length(jobs)
+  workers <- resolve_spdm_optional_spec_cores(n_jobs)
+  if (exists("cfg", inherits = TRUE)) {
+    append_log(
+      get("cfg", inherits = TRUE)$logs$model_run,
+      sprintf("- %s execution: specs=%d, workers=%d", label, n_jobs, workers)
+    )
+  }
+  run_one <- function(job) {
+    tryCatch(
+      worker(job),
+      error = function(e) {
+        structure(
+          list(message = conditionMessage(e), call = conditionCall(e)),
+          class = "spdm_optional_worker_error"
+        )
+      }
+    )
+  }
+  results <- if (workers > 1L && !identical(.Platform$OS.type, "windows")) {
+    parallel::mclapply(jobs, run_one, mc.cores = workers, mc.preschedule = FALSE)
+  } else {
+    lapply(jobs, run_one)
+  }
+  failed <- vapply(results, inherits, logical(1), "spdm_optional_worker_error")
+  if (any(failed)) {
+    messages <- vapply(results[failed], function(x) x$message[[1]], character(1))
+    stop(
+      sprintf(
+        "%s failed in %d worker(s): %s",
+        label,
+        sum(failed),
+        paste(messages, collapse = " | ")
+      ),
+      call. = FALSE
+    )
+  }
+  results
+}
+
 spdm_empty_coef_tbl <- function() {
   tibble::tibble(
     spec_id = character(),
@@ -1617,7 +1667,9 @@ compute_true_sdm_impacts_row <- function(spec_id,
   }
   impact_cores <- suppressWarnings(as.integer(getOption("spdm_impact_cores", 1L)))
   if (!is.finite(impact_cores) || impact_cores < 1L) impact_cores <- 1L
-  impact_cores <- min(impact_cores, nrow(draws), max(1L, parallel::detectCores(logical = FALSE) - 1L))
+  logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
+  if (!is.finite(logical_cores) || logical_cores < 1L) logical_cores <- 1L
+  impact_cores <- min(impact_cores, nrow(draws), max(1L, logical_cores - 1L))
   impact_draws <- if (impact_cores > 1L && .Platform$OS.type != "windows") {
     do.call(rbind, parallel::mclapply(seq_len(nrow(draws)), impact_draw_fn, mc.cores = impact_cores, mc.preschedule = TRUE))
   } else {

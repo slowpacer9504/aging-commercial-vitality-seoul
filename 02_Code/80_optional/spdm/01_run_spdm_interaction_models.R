@@ -858,7 +858,7 @@ if (length(outcomes) == 0L || length(main_exposure) == 0L || sum(is.finite(panel
       dplyr::arrange(interaction_family, outcome_order) |>
       dplyr::mutate(spec_id = sprintf("SI%02d", dplyr::row_number()))
 
-    res <- purrr::pmap(
+    spec_jobs <- purrr::pmap(
       list(
         spec_id = spec_grid$spec_id,
         interaction_family = spec_grid$interaction_family,
@@ -867,19 +867,34 @@ if (length(outcomes) == 0L || length(main_exposure) == 0L || sum(is.finite(panel
         effect_defs = spec_grid$effect_defs
       ),
       function(spec_id, interaction_family, outcome, rhs_vars, effect_defs) {
-        run_one_spec(
+        list(
           spec_id = spec_id,
           interaction_family = interaction_family,
           outcome = outcome,
           rhs_vars = rhs_vars,
-          effect_defs = effect_defs,
-          panel = panel,
-          lw = lw,
-          w_ids = w_ids,
-          requested_controls = control_contracts[[outcome]]$requested_controls,
-          usable_controls = control_contracts[[outcome]]$usable_controls
+          effect_defs = effect_defs
         )
       }
+    )
+
+    res <- run_spdm_optional_spec_jobs(
+      spec_jobs,
+      function(job) {
+        do.call(
+          run_one_spec,
+          c(
+            job,
+            list(
+              panel = panel,
+              lw = lw,
+              w_ids = w_ids,
+              requested_controls = control_contracts[[job$outcome]]$requested_controls,
+              usable_controls = control_contracts[[job$outcome]]$usable_controls
+            )
+          )
+        )
+      },
+      label = "SPDM interaction specs"
     )
 
     out_coef <- dplyr::bind_rows(purrr::map(res, "coefs"))

@@ -621,10 +621,10 @@ if (length(outcomes) == 0L || length(exposures) == 0L) {
     write_selection_outputs(empty_tests, empty_family)
     append_log(cfg$logs$model_run, "- SPDM selection sidecar skipped: region.id missing in W")
   } else {
-    tests_out <- selection_empty_tests_tbl()
-    family_out <- selection_empty_family_tbl()
+    run_selection_outcome <- function(outcome) {
+      tests_out <- selection_empty_tests_tbl()
+      family_out <- selection_empty_family_tbl()
 
-    for (outcome in outcomes) {
       for (exposure in exposures) {
         spec_id <- sprintf("%s__%s__selection", outcome, exposure)
         main_row <- main_diag |>
@@ -909,7 +909,16 @@ if (length(outcomes) == 0L || length(exposures) == 0L) {
           )
         )
       }
+      list(tests = tests_out, family = family_out)
     }
+
+    selection_results <- run_spdm_optional_spec_jobs(
+      as.list(outcomes),
+      run_selection_outcome,
+      label = "SPDM selection outcome specs"
+    )
+    tests_out <- dplyr::bind_rows(purrr::map(selection_results, "tests"))
+    family_out <- dplyr::bind_rows(purrr::map(selection_results, "family"))
 
     write_selection_outputs(tests_out, family_out)
     append_log(

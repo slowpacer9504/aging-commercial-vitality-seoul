@@ -1323,12 +1323,9 @@ resolve_gtwr_worker_count <- function(n_jobs) {
   if (n_jobs <= 0L) return(0L)
   requested <- suppressWarnings(as.integer(cfg$gtwr_parallel_specs[[1]]))
   if (!is.finite(requested) || requested < 1L) requested <- 1L
-  physical_cores <- suppressWarnings(parallel::detectCores(logical = FALSE))
-  if (!is.finite(physical_cores) || physical_cores < 1L) {
-    physical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
-  }
-  if (!is.finite(physical_cores) || physical_cores < 1L) physical_cores <- 1L
-  as.integer(max(1L, min(requested, n_jobs, max(1L, physical_cores - 1L))))
+  logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
+  if (!is.finite(logical_cores) || logical_cores < 1L) logical_cores <- 1L
+  as.integer(max(1L, min(requested, n_jobs, max(1L, logical_cores - 1L))))
 }
 
 run_gtwr_spec_cache_job <- function(job, panel_xy) {

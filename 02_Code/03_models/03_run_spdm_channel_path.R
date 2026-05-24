@@ -572,10 +572,12 @@ run_channel_bootstrap <- function(spec_id,
   if (is.null(unit_ids)) unit_ids <- unique(as.character(prep$pdat$adm_cd))
   spec_offset <- suppressWarnings(as.integer(gsub("\\D+", "", spec_id)))
   if (!is.finite(spec_offset)) spec_offset <- 0L
+  logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
+  if (!is.finite(logical_cores) || logical_cores < 1L) logical_cores <- 1L
   bootstrap_cores <- min(
     as.integer(channel_bootstrap_cores),
     as.integer(channel_bootstrap_R),
-    max(1L, parallel::detectCores(logical = FALSE) - 1L)
+    max(1L, logical_cores - 1L)
   )
   if (!is.finite(bootstrap_cores) || bootstrap_cores < 1L) bootstrap_cores <- 1L
 

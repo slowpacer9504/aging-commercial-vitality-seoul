@@ -702,7 +702,7 @@ path_relations <- value_or(cfg$paths$spdm_sector_share_experiment_exposure_relat
         dplyr::arrange(outcome_family, outcome, exposure_order) |>
         dplyr::mutate(spec_id = sprintf("S%02d", dplyr::row_number()))
 
-      res <- purrr::pmap(
+      spec_jobs <- purrr::pmap(
         list(
           spec_grid$spec_id,
           spec_grid$model_name,
@@ -712,20 +712,35 @@ path_relations <- value_or(cfg$paths$spdm_sector_share_experiment_exposure_relat
           spec_grid$exposure_var
         ),
         function(spec_id, model_name, outcome, outcome_family, exposure_family, exposure_var) {
-          run_one_spec(
+          list(
             spec_id = spec_id,
             model_name = model_name,
             outcome = outcome,
             outcome_family = outcome_family,
             exposure_family = exposure_family,
-            exposure_var = exposure_var,
-            panel = panel,
-            lw = lw,
-            w_ids = w_ids,
-            requested_controls = control_candidates,
-            usable_controls = usable_controls
+            exposure_var = exposure_var
           )
         }
+      )
+
+      res <- run_spdm_optional_spec_jobs(
+        spec_jobs,
+        function(job) {
+          do.call(
+            run_one_spec,
+            c(
+              job,
+              list(
+                panel = panel,
+                lw = lw,
+                w_ids = w_ids,
+                requested_controls = control_candidates,
+                usable_controls = usable_controls
+              )
+            )
+          )
+        },
+        label = "SPDM sector-share specs"
       )
 
       out_coef <- dplyr::bind_rows(purrr::map(res, "coefs")) |>

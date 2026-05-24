@@ -247,11 +247,9 @@ if (nrow(main_diag) == 0L) {
 # 2. Run Family Comparison on Main Contract
 #==============================================================================
 
-family_out <- spdm_empty_family_comparison_tbl()
-family_models_out <- spdm_empty_coef_tbl()
-
-for (i in seq_len(nrow(main_diag))) {
-  main_row <- main_diag[i, , drop = FALSE]
+run_family_comparison_spec <- function(main_row) {
+  family_out <- spdm_empty_family_comparison_tbl()
+  family_models_out <- spdm_empty_coef_tbl()
   spec_id <- as.character(main_row$spec_id[[1]])
   outcome <- as.character(main_row$outcome[[1]])
   exposure <- as.character(main_row$exposure[[1]])
@@ -275,7 +273,7 @@ for (i in seq_len(nrow(main_diag))) {
     )
     family_out <- dplyr::bind_rows(family_out, failed$family)
     family_models_out <- dplyr::bind_rows(family_models_out, failed$family_models)
-    next
+    return(list(family = family_out, family_models = family_models_out))
   }
 
   if (!identical(as.character(main_row$status[[1]]), "success")) {
@@ -294,7 +292,7 @@ for (i in seq_len(nrow(main_diag))) {
     )
     family_out <- dplyr::bind_rows(family_out, failed$family)
     family_models_out <- dplyr::bind_rows(family_models_out, failed$family_models)
-    next
+    return(list(family = family_out, family_models = family_models_out))
   }
 
   prep <- rebuild_main_spdm_sample(
@@ -323,7 +321,7 @@ for (i in seq_len(nrow(main_diag))) {
     )
     family_out <- dplyr::bind_rows(family_out, failed$family)
     family_models_out <- dplyr::bind_rows(family_models_out, failed$family_models)
-    next
+    return(list(family = family_out, family_models = family_models_out))
   }
 
   twfe_fit <- fit_twfe_common_model(
@@ -570,7 +568,16 @@ for (i in seq_len(nrow(main_diag))) {
       )
     )
   }
+  list(family = family_out, family_models = family_models_out)
 }
+
+  family_results <- run_spdm_optional_spec_jobs(
+    split(main_diag, seq_len(nrow(main_diag))),
+    run_family_comparison_spec,
+    label = "SPDM family-comparison specs"
+  )
+  family_out <- dplyr::bind_rows(purrr::map(family_results, "family"))
+  family_models_out <- dplyr::bind_rows(purrr::map(family_results, "family_models"))
 
   finalized <- finalize_family_outputs(family_out, family_models_out)
   write_csv_safe(finalized$family, cfg$paths$spdm_family_comparison)
