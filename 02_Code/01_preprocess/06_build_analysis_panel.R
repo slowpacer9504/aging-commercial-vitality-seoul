@@ -363,7 +363,11 @@ panel_main_pre_vitality <- panel_main_pre_vitality |>
       mall_count_aux_core,
       mall_hypermarket_count_aux + mall_department_store_count_aux + mall_shopping_center_count_aux
     ),
-    covid_period = dplyr::if_else(year >= 2020L & year <= 2022L, 1L, 0L),
+    covid_period = dplyr::if_else(
+      quarter_index >= cfg$covid_start_idx & quarter_index <= cfg$covid_end_idx,
+      1L,
+      0L
+    ),
     resident_pop = dplyr::if_else(is.finite(resident_pop), pmax(resident_pop, 0), NA_real_),
     age20_resident_pop = dplyr::if_else(is.finite(age20_resident_pop), pmax(age20_resident_pop, 0), NA_real_),
     age30_resident_pop = dplyr::if_else(is.finite(age30_resident_pop), pmax(age30_resident_pop, 0), NA_real_),

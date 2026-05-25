@@ -1,11 +1,11 @@
 #==============================================================================
-# Script    : 03_run_spdm_channel_path.R
+# Script    : 07_run_spdm_channel_path.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Run the canonical SPDM channel path model for
+# Purpose   : Run the optional SPDM channel path sidecar for
 #             resident aging -> floating aging -> commercial vitality.
 # Author    : Codex
 # Created   : 2026-03-27
-# Status    : QUARTERLY_CANONICAL / SPDM channel path model
+# Status    : QUARTERLY_OPTIONAL / manual SPDM channel path sidecar
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, W_queen.rds
 # Outputs   : spdm_channel_models.csv, spdm_channel_impacts.csv,
@@ -26,7 +26,7 @@ source(here::here("02_Code", "R", "utils_model.R"))
 source(here::here("02_Code", "R", "utils_spdm.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_spdm_channel_path", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 07_run_spdm_channel_path", timestamp()))
 
 path_channel_models <- value_or(cfg$paths$spdm_channel_models, file.path(cfg$dir_tables, "spdm_channel_models.csv"))
 path_channel_impacts <- value_or(cfg$paths$spdm_channel_impacts, file.path(cfg$dir_tables, "spdm_channel_impacts.csv"))
@@ -67,7 +67,7 @@ base_registry <- get_outcome_registry(include_robustness = TRUE)
 outcome_registry <- tibble::tibble(outcome = channel_outcomes) |>
   dplyr::left_join(base_registry, by = "outcome") |>
   dplyr::mutate(
-    outcome_group = dplyr::coalesce(outcome_group, "canonical_channel_path"),
+    outcome_group = dplyr::coalesce(outcome_group, "optional_channel_path"),
     outcome_order = dplyr::coalesce(
       outcome_order,
       max(base_registry$outcome_order, na.rm = TRUE) + dplyr::row_number()
@@ -86,7 +86,7 @@ control_screen <- resolve_outcome_control_screen(
 )
 assert_spdm_main_controls_current(
   control_screen,
-  context = "03_run_spdm_channel_path",
+  context = "07_run_spdm_channel_path",
   control_col = "control",
   selected_col = "selected"
 )

@@ -2,14 +2,12 @@
 # Script    : 03_run_twfe_age_mix_experiment.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run an appendix TWFE sidecar that replaces the resident-only
-#             age60 exposure with domain-specific age-mix share vectors for
-#             resident and floating populations.
+#             age60 exposure with grouped resident age-population vectors.
 # Author    : Codex
 # Created   : 2026-03-29
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : panel_modeling
-# Inputs    : panel_main.parquet, registered_resident_population.parquet,
-#             seoul_raw_integrated_wide.parquet
+# Inputs    : panel_main.parquet, registered_resident_population.parquet
 # Outputs   : twfe_age_mix_experiment_models.csv,
 #             twfe_age_mix_experiment_controls_used.csv,
 #             twfe_age_mix_experiment_diagnostics.csv
@@ -23,9 +21,8 @@
 #==============================================================================
 
 # 이 sidecar는 메인 TWFE를 대체하지 않는다.
-# panel_main은 그대로 두고, resident는 행안부 주민등록인구 연령구성을,
-# floating은 raw integrated wide에서 복원한 연령구성을 사용해
-# 도메인별 appendix FE 비교표만 만든다.
+# panel_main은 그대로 두고, 행안부 주민등록인구 연령대별 분기 평균 stock을
+# 청년(20-30), 중년(40-50), 노년(60+) 로그 인구수로 묶어 appendix FE 비교표를 만든다.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -39,18 +36,21 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_twfe_age_mix_experiment
 {
 
 if (!file.exists(cfg$paths$panel_main) ||
-    !file.exists(cfg$paths$registered_resident_population) ||
-    !file.exists(cfg$paths$seoul_raw_integrated_wide)) {
+    !file.exists(cfg$paths$registered_resident_population)) {
   stop("[ERROR] Required inputs for TWFE age-mix experiment missing", call. = FALSE)
 }
 
 panel <- read_panel_main_view("twfe")
 
 
-summarize_family_qc <- function(panel_family, domain, model_family, same_domain_total_control) {
-  share_cols <- sprintf("%s_%s_share", c("age20", "age30", "age40", "age50", "age60plus"), domain)
+summarize_family_qc <- function(panel_family, family_rec) {
+  domain <- family_rec$domain[[1]]
+  model_family <- family_rec$model_family[[1]]
+  same_domain_total_control <- family_rec$same_domain_total_control[[1]]
+  composition_cols <- family_rec$share_cols[[1]]
+  diagnostic_cols <- unique(c(family_rec$exposure_vars[[1]], composition_cols))
 
-  share_mat <- as.matrix(panel_family[, intersect(share_cols, names(panel_family)), drop = FALSE])
+  share_mat <- as.matrix(panel_family[, intersect(composition_cols, names(panel_family)), drop = FALSE])
   share_complete <- if (ncol(share_mat) == 0L) rep(FALSE, nrow(panel_family)) else apply(share_mat, 1L, function(x) all(is.finite(x)))
   share_dev <- if (any(share_complete)) {
     abs(rowSums(share_mat[share_complete, , drop = FALSE]) - 1)
@@ -59,16 +59,16 @@ summarize_family_qc <- function(panel_family, domain, model_family, same_domain_
   }
 
   finite_counts <- setNames(
-    as.list(vapply(share_cols, function(v) sum(is.finite(panel_family[[v]])), integer(1))),
-    paste0("finite_n__", share_cols)
+    as.list(vapply(diagnostic_cols, function(v) sum(is.finite(panel_family[[v]])), integer(1))),
+    paste0("finite_n__", diagnostic_cols)
   )
 
   tibble::tibble(
     model_family = model_family,
     domain = domain,
-    exposure_scale = "share",
-    omitted_reference = "age60plus",
-    reference_population = "age20_to_60plus",
+    exposure_scale = family_rec$exposure_scale[[1]],
+    omitted_reference = family_rec$omitted_reference[[1]],
+    reference_population = family_rec$reference_population[[1]],
     same_domain_total_control = same_domain_total_control,
     same_domain_total_control_dropped = FALSE,
     share_sum_mean_abs_dev = if (length(share_dev) > 0L) mean(share_dev) else NA_real_,
@@ -86,10 +86,8 @@ build_model_name <- function(model_family, outcome) {
 # 2. Resolve Inputs and Build Domain-Specific Age-Mix Panels
 #==============================================================================
 
-# 20대~60+ 내부 조성 share를 노출로 쓴다.
-# 60+는 기준범주로 생략한다. resident family는 현행 main control에 포함된
-# `ln_resident_pop`만 유지하고, floating family는 제거된 `ln_floating_pop`을
-# 다시 추가하지 않는다.
+# 청년(20-30), 중년(40-50), 노년(60+) 주민등록인구 로그값을 모두 노출로 쓴다.
+# lag4 총 주민등록인구 로그 통제는 규모 보정 control로 유지한다.
 outcome_registry <- resolve_model_outcomes(
   panel,
   requested_outcomes = value_or(cfg$twfe_age_mix_outcomes, cfg$twfe_main_outcomes),
@@ -97,7 +95,7 @@ outcome_registry <- resolve_model_outcomes(
 )
 outcomes <- outcome_registry$outcome
 
-family_registry <- resolve_age_mix_family_registry(c("resident", "floating"))
+family_registry <- resolve_age_mix_family_registry("resident", exposure_mode = "resident_log_population")
 
 main_control_contract <- load_twfe_main_control_contracts(outcomes)
 assert_twfe_main_controls_current(main_control_contract$screen, context = "03_run_twfe_age_mix_experiment")
@@ -122,12 +120,7 @@ for (ii in seq_len(nrow(family_registry))) {
   )
   family_panel <- add_current_age_shares(panel, domain_df, family_rec$domain[[1]])
   family_panels[[family_rec$model_family[[1]]]] <- family_panel
-  family_qc[[ii]] <- summarize_family_qc(
-    family_panel,
-    domain = family_rec$domain[[1]],
-    model_family = family_rec$model_family[[1]],
-    same_domain_total_control = family_rec$same_domain_total_control[[1]]
-  )
+  family_qc[[ii]] <- summarize_family_qc(family_panel, family_rec)
 }
 family_qc <- dplyr::bind_rows(family_qc)
 
@@ -149,15 +142,12 @@ family_contracts <- tidyr::crossing(
 ) |>
   dplyr::left_join(outcome_registry, by = "outcome") |>
   dplyr::mutate(
-    requested_controls_list = purrr::map2(
+    requested_controls_list = purrr::map(
       outcome,
-      same_domain_total_control,
-      function(outcome, same_domain_total_control) {
+      function(outcome) {
         inherited <- unique(as.character(value_or(main_controls_by_outcome[[outcome]], character())))
         inherited <- inherited[!is.na(inherited) & nzchar(inherited)]
-        same_domain_total_control <- unique(as.character(value_or(same_domain_total_control, character())))
-        same_domain_total_control <- same_domain_total_control[!is.na(same_domain_total_control) & nzchar(same_domain_total_control)]
-        unique(c(intersect(same_domain_total_control, inherited), setdiff(inherited, same_domain_total_control)))
+        inherited
       }
     ),
     control_screen = purrr::map(
@@ -231,8 +221,8 @@ write_csv_safe(control_screen_expanded, cfg$paths$twfe_age_mix_experiment_contro
 # 3. Estimate Domain-Specific M2 Models
 #==============================================================================
 
-# 60+를 기준범주로 생략한 20/30/40/50대 share를 함께 넣는다.
-# floating family는 main control contract에서 빠진 `ln_floating_pop`을 추가하지 않는다.
+# 청년, 중년, 노년 주민등록 로그 인구수를 함께 넣는다.
+# `lag4_ln_resident_pop`은 lagged resident scale control로 유지한다.
 spec_registry <- family_contracts |>
   dplyr::left_join(
     family_qc |>
@@ -380,12 +370,13 @@ model_diag <- spec_registry |>
 write_csv_safe(model_diag, cfg$paths$twfe_age_mix_experiment_diagnostics)
 
 family_control_summary <- family_contracts |>
-  dplyr::distinct(model_family, requested_controls) |>
+  dplyr::distinct(model_family, requested_controls, same_domain_total_control) |>
   dplyr::transmute(
     family_summary = sprintf(
-      "%s(ref=age60plus; controls=%s)",
+      "%s(exposure=resident_log_population; controls=%s; retained_total=%s)",
       model_family,
-      requested_controls
+      requested_controls,
+      same_domain_total_control
     )
   ) |>
   dplyr::pull(family_summary) |>
@@ -394,7 +385,7 @@ family_control_summary <- family_contracts |>
 append_log(
   cfg$logs$model_run,
   sprintf(
-    "- TWFE age-mix experiment specs: success=%d, skipped=%d, failed=%d (families=%d, outcomes=%d, exposure_scale=share, %s)",
+    "- TWFE age-mix experiment specs: success=%d, skipped=%d, failed=%d (families=%d, outcomes=%d, exposure_scale=log_population, %s)",
     sum(model_diag$status == "success", na.rm = TRUE),
     sum(model_diag$status == "not_estimated", na.rm = TRUE),
     sum(model_diag$status == "failed", na.rm = TRUE),

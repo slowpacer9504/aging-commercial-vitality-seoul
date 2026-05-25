@@ -40,9 +40,10 @@ append_log(cfg$logs$model_run, sprintf("\n# Pipeline Start: %s", timestamp()))
 
 # 배열 순서 자체가 canonical pipeline order다.
 # default run은 active quarterly panel -> ESDA -> TWFE -> SPDM main ->
-# SPDM channel path -> robustness -> QC -> reporting 흐름만 실행한다.
+# W robustness -> robustness -> QC -> reporting 흐름만 실행한다.
 # optional/sidecar scripts는 quarterly contract에 맞게 유지하되 default
 # run_all success contract와 필수 test plan에서는 제외한다.
+# SPDM channel path는 optional/manual appendix sidecar로 직접 실행한다.
 # Fresh auxiliary geocoding requires KAKAO_REST_API_KEY only when the
 # existing cache files do not already resolve all needed addresses or queries.
 scripts <- cfg$canonical_pipeline_scripts

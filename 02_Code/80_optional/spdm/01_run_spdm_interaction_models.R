@@ -128,31 +128,36 @@ infer_summary_scope <- function(effect_kind) {
   )
 }
 
-infer_covid_baseline_label <- function(sample_year, sample_covid) {
-  sample_year <- suppressWarnings(as.integer(sample_year))
+infer_covid_baseline_label <- function(sample_quarter_index, sample_covid) {
+  sample_quarter_index <- suppressWarnings(as.integer(sample_quarter_index))
   sample_covid <- suppressWarnings(as.numeric(sample_covid))
-  covid_start_year <- suppressWarnings(as.integer(cfg$covid_start_year))
-  covid_end_year <- suppressWarnings(as.integer(cfg$covid_end_year))
-  non_covid_year <- sample_year[!is.na(sample_year) & !is.na(sample_covid) & sample_covid == 0]
-  if (length(non_covid_year) == 0L) {
+  covid_start_idx <- suppressWarnings(as.integer(cfg$covid_start_idx))
+  covid_end_idx <- suppressWarnings(as.integer(cfg$covid_end_idx))
+  non_covid_qidx <- sample_quarter_index[
+    !is.na(sample_quarter_index) & !is.na(sample_covid) & sample_covid == 0
+  ]
+  if (length(non_covid_qidx) == 0L) {
     return("non_covid_in_sample")
   }
 
-  if (all(non_covid_year < covid_start_year)) {
+  if (all(non_covid_qidx < covid_start_idx)) {
     return("pre_covid")
   }
-  if (all(non_covid_year > covid_end_year)) {
+  if (all(non_covid_qidx > covid_end_idx)) {
     return("post_covid")
   }
-  if (any(non_covid_year < covid_start_year) && any(non_covid_year > covid_end_year)) {
+  if (any(non_covid_qidx < covid_start_idx) && any(non_covid_qidx > covid_end_idx)) {
     return("non_covid_mixed_sample")
   }
 
   "non_covid_in_sample"
 }
 
-resolve_effect_definition <- function(interaction_family, rhs_vars, sample_year = NULL, sample_covid = NULL) {
-  baseline_label <- infer_covid_baseline_label(sample_year = sample_year, sample_covid = sample_covid)
+resolve_effect_definition <- function(interaction_family, rhs_vars, sample_quarter_index = NULL, sample_covid = NULL) {
+  baseline_label <- infer_covid_baseline_label(
+    sample_quarter_index = sample_quarter_index,
+    sample_covid = sample_covid
+  )
   effect_defs <- list(
     stats::setNames(1, rhs_vars[[1]]),
     covid_period = stats::setNames(c(1, 1), rhs_vars[1:2])
@@ -163,9 +168,8 @@ resolve_effect_definition <- function(interaction_family, rhs_vars, sample_year 
     baseline_period_label = baseline_label,
     covid_period_label = "covid_period",
     effect_label_definition = sprintf(
-      "covid_period denotes realized sample observations within %s to %s; %s denotes realized non-COVID observations outside that window.",
-      cfg$covid_start_year,
-      cfg$covid_end_year,
+      "covid_period denotes realized sample observations within %s; %s denotes realized non-COVID observations outside that quarter window.",
+      cfg$covid_period_label,
       baseline_label
     )
   )
@@ -176,7 +180,7 @@ build_interaction_diag_row <- function(spec_id,
                                        outcome,
                                        status,
                                        sample_yq = character(),
-                                       sample_year = character(),
+                                       sample_quarter_index = integer(),
                                        sample_covid = numeric(),
                                        n_units = NA_integer_,
                                        n_periods = NA_integer_,
@@ -187,10 +191,10 @@ build_interaction_diag_row <- function(spec_id,
                                        effect_label_definition = NA_character_,
                                        message = NA_character_) {
   sample_yq <- as.character(sample_yq)
-  sample_year <- as.character(sample_year)
+  sample_quarter_index <- suppressWarnings(as.integer(sample_quarter_index))
   sample_covid <- suppressWarnings(as.numeric(sample_covid))
   has_yq <- length(sample_yq) > 0L
-  has_year <- length(sample_year) > 0L
+  has_quarter_index <- length(sample_quarter_index) > 0L
 
   tibble::tibble(
     spec_id = spec_id,
@@ -202,10 +206,18 @@ build_interaction_diag_row <- function(spec_id,
     n_obs = as.integer(n_obs),
     sample_min_yq = if (has_yq) as.character(min(sample_yq, na.rm = TRUE)) else NA_character_,
     sample_max_yq = if (has_yq) as.character(max(sample_yq, na.rm = TRUE)) else NA_character_,
-    n_covid_obs = if (has_year) as.integer(sum(sample_covid == 1, na.rm = TRUE)) else NA_integer_,
-    n_non_covid_obs = if (has_year) as.integer(sum(sample_covid == 0, na.rm = TRUE)) else NA_integer_,
-    n_pre_covid_obs = if (has_year) as.integer(sum(sample_covid == 0 & sample_year < cfg$covid_start_year, na.rm = TRUE)) else NA_integer_,
-    n_post_covid_obs = if (has_year) as.integer(sum(sample_covid == 0 & sample_year > cfg$covid_end_year, na.rm = TRUE)) else NA_integer_,
+    n_covid_obs = if (has_quarter_index) as.integer(sum(sample_covid == 1, na.rm = TRUE)) else NA_integer_,
+    n_non_covid_obs = if (has_quarter_index) as.integer(sum(sample_covid == 0, na.rm = TRUE)) else NA_integer_,
+    n_pre_covid_obs = if (has_quarter_index) {
+      as.integer(sum(sample_covid == 0 & sample_quarter_index < cfg$covid_start_idx, na.rm = TRUE))
+    } else {
+      NA_integer_
+    },
+    n_post_covid_obs = if (has_quarter_index) {
+      as.integer(sum(sample_covid == 0 & sample_quarter_index > cfg$covid_end_idx, na.rm = TRUE))
+    } else {
+      NA_integer_
+    },
     baseline_period_label = as.character(baseline_period_label),
     covid_period_label = as.character(covid_period_label),
     effect_label_definition = as.character(effect_label_definition),
@@ -697,7 +709,7 @@ run_one_spec <- function(spec_id,
   effect_info <- resolve_effect_definition(
     interaction_family = interaction_family,
     rhs_vars = rhs_vars,
-    sample_year = pdat_try$year,
+    sample_quarter_index = pdat_try$quarter_index,
     sample_covid = pdat_try$covid_period
   )
 
@@ -748,7 +760,7 @@ run_one_spec <- function(spec_id,
     outcome = outcome,
     status = "success",
     sample_yq = pdat_try$yq,
-    sample_year = pdat_try$year,
+    sample_quarter_index = pdat_try$quarter_index,
     sample_covid = pdat_try$covid_period,
     n_units = n_units,
     n_periods = n_periods,

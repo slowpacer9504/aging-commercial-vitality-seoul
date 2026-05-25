@@ -114,9 +114,7 @@ check_optional_csv_schema <- function(check_id,
 }
 
 expected_main_outcomes <- sort(unique(c(cfg$primary_outcomes, cfg$vitality_supplementary_outcomes)))
-expected_channel_outcomes <- sort(unique(cfg$spdm_channel_outcomes))
 expected_main_exposure <- as.character(value_or(cfg$lagged_main_exposure_vars, "lag4_age60_resident_share")[[1L]])
-expected_channel_mediator <- as.character(value_or(cfg$lagged_channel_vars, "lag2_age60_floating_share")[[1L]])
 w_robustness_expected <- sort(unique(c(cfg$default_w, cfg$alt_w)))
 expected_robustness_axes <- sort(c("outcome_definition", "sample_window", "w_moran"))
 optional_required_test_enabled <- FALSE
@@ -394,84 +392,6 @@ if (inherits(spdm_impacts_tbl, "data.frame")) {
   detail <- if (inherits(spdm_impacts_tbl, "error")) spdm_impacts_tbl$message else "unavailable"
 }
 rows[[length(rows) + 1L]] <- add_row("S03", "spdm_main", pass, detail)
-
-
-#==============================================================================
-# 5A. SPDM Canonical Channel Path Contract
-#==============================================================================
-
-spdm_channel_paths <- c(
-  cfg$paths$spdm_channel_models,
-  cfg$paths$spdm_channel_impacts,
-  cfg$paths$spdm_channel_controls_used,
-  cfg$paths$spdm_channel_path_effects,
-  cfg$paths$spdm_channel_bootstrap_draws,
-  cfg$paths$spdm_channel_diagnostics
-)
-rows[[length(rows) + 1L]] <- add_row(
-  "C01",
-  "spdm_channel_path",
-  all(file.exists(spdm_channel_paths)),
-  describe_presence(spdm_channel_paths)
-)
-
-spdm_channel_diag_tbl <- safe_read_csv(cfg$paths$spdm_channel_diagnostics)
-if (inherits(spdm_channel_diag_tbl, "data.frame")) {
-  missing_cols <- setdiff(
-    c("outcome", "equation", "path", "exposure", "mediator", "status", "impacts_status", "sample_min_yq", "sample_max_yq"),
-    names(spdm_channel_diag_tbl)
-  )
-  success_outcomes <- spdm_channel_diag_tbl |>
-    dplyr::filter(
-      equation == "outcome",
-      status == "success",
-      impacts_status == "success",
-      exposure == expected_main_exposure,
-      mediator == expected_channel_mediator
-    ) |>
-    dplyr::pull(outcome) |>
-    unique() |>
-    sort()
-  pass <- length(missing_cols) == 0L && identical(success_outcomes, expected_channel_outcomes)
-  detail <- sprintf(
-    "missing cols=%s; successful channel outcomes=%s",
-    if (length(missing_cols) == 0L) "none" else paste(missing_cols, collapse = ", "),
-    if (length(success_outcomes) == 0L) "none" else paste(success_outcomes, collapse = ", ")
-  )
-} else {
-  pass <- FALSE
-  detail <- if (inherits(spdm_channel_diag_tbl, "error")) spdm_channel_diag_tbl$message else "unavailable"
-}
-rows[[length(rows) + 1L]] <- add_row("C02", "spdm_channel_path", pass, detail)
-
-spdm_channel_path_tbl <- safe_read_csv(cfg$paths$spdm_channel_path_effects)
-if (inherits(spdm_channel_path_tbl, "data.frame")) {
-  missing_cols <- setdiff(
-    c(
-      "outcome", "effect_scale",
-      "c_total_estimate", "c_prime_estimate", "direct_attenuation",
-      "indirect_effect", "indirect_p", "status", "inference_method",
-      "bootstrap_valid_draws", "bootstrap_R", "bootstrap_method"
-    ),
-    names(spdm_channel_path_tbl)
-  )
-  success_total_outcomes <- spdm_channel_path_tbl |>
-    dplyr::filter(effect_scale == "total", status == "success") |>
-    dplyr::pull(outcome) |>
-    unique() |>
-    sort()
-  pass <- length(missing_cols) == 0L && identical(success_total_outcomes, expected_channel_outcomes)
-  detail <- sprintf(
-    "missing cols=%s; successful total indirect outcomes=%s",
-    if (length(missing_cols) == 0L) "none" else paste(missing_cols, collapse = ", "),
-    if (length(success_total_outcomes) == 0L) "none" else paste(success_total_outcomes, collapse = ", ")
-  )
-} else {
-  pass <- FALSE
-  detail <- if (inherits(spdm_channel_path_tbl, "error")) spdm_channel_path_tbl$message else "unavailable"
-}
-rows[[length(rows) + 1L]] <- add_row("C03", "spdm_channel_path", pass, detail)
-
 
 #==============================================================================
 # 6. SPDM W-Robustness Contract

@@ -1,14 +1,13 @@
 #==============================================================================
 # Script    : utils_age_mix.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Shared helpers for quarterly resident/floating age-mix appendix
-#             sidecars.
+# Purpose   : Shared helpers for quarterly age-mix appendix sidecars.
 # Author    : Codex
 # Created   : 2026-04-22
 # Type      : utility
 # Inputs    : registered_resident_population.parquet,
 #             seoul_raw_integrated_wide.parquet, panel views, cfg
-# Outputs   : In-memory quarterly age-share tibbles merged into modeling panels
+# Outputs   : In-memory quarterly age-mix tibbles merged into modeling panels
 # DependsOn : utils_io.R, utils_model.R, utils_qc.R, arrow
 #==============================================================================
 
@@ -16,9 +15,14 @@
 # 1. Shared Age-Mix Registry
 #==============================================================================
 
-resolve_age_mix_family_registry <- function(domains = c("resident", "floating")) {
+resolve_age_mix_family_registry <- function(domains = c("resident", "floating"),
+                                            exposure_mode = c("share", "resident_log_population")) {
+  exposure_mode <- match.arg(exposure_mode)
   age_labels <- c("age20", "age30", "age40", "age50", "age60plus")
   domains <- intersect(as.character(domains), c("resident", "floating"))
+  if (identical(exposure_mode, "resident_log_population")) {
+    domains <- intersect(domains, "resident")
+  }
   if (length(domains) == 0L) {
     return(tibble::tibble())
   }
@@ -47,13 +51,32 @@ resolve_age_mix_family_registry <- function(domains = c("resident", "floating"))
       )
     )
   ) |>
-    dplyr::filter(domain %in% domains) |>
-    dplyr::mutate(
-      share_cols = purrr::map(domain, ~ sprintf("%s_%s_share", age_labels, .x)),
-      exposure_vars = purrr::map(domain, ~ sprintf("%s_%s_share", age_labels[1:4], .x)),
-      omitted_reference_var = sprintf("age60plus_%s_share", domain),
-      requested_exposures = purrr::map_chr(exposure_vars, collapse_chr)
-    )
+    dplyr::filter(domain %in% domains)
+
+  if (identical(exposure_mode, "resident_log_population")) {
+    registry <- registry |>
+      dplyr::mutate(
+        share_cols = purrr::map(domain, ~ sprintf("%s_%s_share", c("young", "middle", "old"), .x)),
+        exposure_vars = purrr::map(domain, ~ sprintf("ln_%s_%s_pop", c("young", "middle", "old"), .x)),
+        omitted_reference_var = NA_character_,
+        exposure_scale = "log_population",
+        omitted_reference = "none",
+        reference_population = "not_applicable",
+        same_domain_total_control = "lag4_ln_resident_pop",
+        requested_exposures = purrr::map_chr(exposure_vars, collapse_chr)
+      )
+  } else {
+    registry <- registry |>
+      dplyr::mutate(
+        share_cols = purrr::map(domain, ~ sprintf("%s_%s_share", age_labels, .x)),
+        exposure_vars = purrr::map(domain, ~ sprintf("%s_%s_share", age_labels[1:4], .x)),
+        omitted_reference_var = sprintf("age60plus_%s_share", domain),
+        exposure_scale = "share",
+        omitted_reference = "age60plus",
+        reference_population = "age20_to_60plus",
+        requested_exposures = purrr::map_chr(exposure_vars, collapse_chr)
+      )
+  }
 
   registry
 }
@@ -65,6 +88,17 @@ resolve_age_mix_family_registry <- function(domains = c("resident", "floating"))
 
 safe_num_age_mix <- function(x) {
   suppressWarnings(as.numeric(x))
+}
+
+safe_log1p_age_pop <- function(x) {
+  x_num <- safe_num_age_mix(x)
+  dplyr::if_else(is.finite(x_num) & x_num >= 0, log1p(x_num), NA_real_)
+}
+
+safe_ratio_age_mix <- function(num, den) {
+  num <- safe_num_age_mix(num)
+  den <- safe_num_age_mix(den)
+  dplyr::if_else(is.finite(num) & is.finite(den) & den > 0, num / den, NA_real_)
 }
 
 read_age_mix_source <- function(source_value, raw_cols) {
@@ -107,11 +141,25 @@ build_domain_age_shares <- function(source_value,
           quarter_index,
           age_mix_total = age20_resident_pop + age30_resident_pop +
             age40_resident_pop + age50_resident_pop + age60_resident_pop,
+          age20_resident_pop,
+          age30_resident_pop,
+          age40_resident_pop,
+          age50_resident_pop,
+          age60_resident_pop,
+          young_resident_pop = age20_resident_pop + age30_resident_pop,
+          middle_resident_pop = age40_resident_pop + age50_resident_pop,
+          old_resident_pop = age60_resident_pop,
+          ln_young_resident_pop = safe_log1p_age_pop(young_resident_pop),
+          ln_middle_resident_pop = safe_log1p_age_pop(middle_resident_pop),
+          ln_old_resident_pop = safe_log1p_age_pop(old_resident_pop),
           age20_resident_share,
           age30_resident_share,
           age40_resident_share,
           age50_resident_share,
-          age60plus_resident_share
+          age60plus_resident_share,
+          young_resident_share = safe_ratio_age_mix(young_resident_pop, age_mix_total),
+          middle_resident_share = safe_ratio_age_mix(middle_resident_pop, age_mix_total),
+          old_resident_share = safe_ratio_age_mix(old_resident_pop, age_mix_total)
         ) |>
         dplyr::arrange(adm_cd, quarter_index)
     )
@@ -173,10 +221,11 @@ build_domain_age_shares <- function(source_value,
 }
 
 add_current_age_shares <- function(base_panel, domain_df, domain) {
-  share_cols <- sprintf("%s_%s_share", c("age20", "age30", "age40", "age50", "age60plus"), domain)
+  join_keys <- c("adm_cd", "year", "quarter", "yq", "quarter_index")
+  domain_cols <- setdiff(names(domain_df), join_keys)
 
   base_panel |>
-    dplyr::select(-dplyr::any_of(c("age_mix_total", share_cols))) |>
+    dplyr::select(-dplyr::any_of(domain_cols)) |>
     dplyr::left_join(domain_df, by = c("adm_cd", "year", "quarter", "yq", "quarter_index")) |>
-    dplyr::relocate(dplyr::any_of(share_cols), .after = "quarter_index")
+    dplyr::relocate(dplyr::any_of(domain_cols), .after = "quarter_index")
 }

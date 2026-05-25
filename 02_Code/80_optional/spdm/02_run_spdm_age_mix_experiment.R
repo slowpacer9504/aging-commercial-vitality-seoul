@@ -2,14 +2,13 @@
 # Script    : 02_run_spdm_age_mix_experiment.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run an appendix SPDM sidecar that replaces the resident-only
-#             age60 exposure with domain-specific age-mix share vectors for
-#             resident and floating populations.
+#             age60 exposure with grouped resident age-population vectors.
 # Author    : Codex
 # Created   : 2026-03-30
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, registered_resident_population.parquet,
-#             seoul_raw_integrated_wide.parquet, W_queen.rds
+#             W_queen.rds
 # Outputs   : spdm_age_mix_experiment_models.csv,
 #             spdm_age_mix_experiment_impacts.csv,
 #             spdm_age_mix_experiment_controls_used.csv,
@@ -38,16 +37,19 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_spdm_age_mix_experiment
 
 if (!file.exists(cfg$paths$panel_main) ||
     !file.exists(cfg$paths$registered_resident_population) ||
-    !file.exists(cfg$paths$seoul_raw_integrated_wide) ||
     !file.exists(cfg$paths$w_queen)) {
   stop("[ERROR] Required inputs for SPDM age-mix experiment missing", call. = FALSE)
 }
 
 
-summarize_family_qc <- function(panel_family, domain, model_family, same_domain_total_control) {
-  share_cols <- sprintf("%s_%s_share", c("age20", "age30", "age40", "age50", "age60plus"), domain)
+summarize_family_qc <- function(panel_family, family_rec) {
+  domain <- family_rec$domain[[1]]
+  model_family <- family_rec$model_family[[1]]
+  same_domain_total_control <- family_rec$same_domain_total_control[[1]]
+  composition_cols <- family_rec$share_cols[[1]]
+  diagnostic_cols <- unique(c(family_rec$exposure_vars[[1]], composition_cols))
 
-  share_mat <- as.matrix(panel_family[, intersect(share_cols, names(panel_family)), drop = FALSE])
+  share_mat <- as.matrix(panel_family[, intersect(composition_cols, names(panel_family)), drop = FALSE])
   share_complete <- if (ncol(share_mat) == 0L) rep(FALSE, nrow(panel_family)) else apply(share_mat, 1L, function(x) all(is.finite(x)))
   share_dev <- if (any(share_complete)) {
     abs(rowSums(share_mat[share_complete, , drop = FALSE]) - 1)
@@ -56,16 +58,16 @@ summarize_family_qc <- function(panel_family, domain, model_family, same_domain_
   }
 
   finite_counts <- setNames(
-    as.list(vapply(share_cols, function(v) sum(is.finite(panel_family[[v]])), integer(1))),
-    paste0("finite_n__", share_cols)
+    as.list(vapply(diagnostic_cols, function(v) sum(is.finite(panel_family[[v]])), integer(1))),
+    paste0("finite_n__", diagnostic_cols)
   )
 
   tibble::tibble(
     model_family = model_family,
     domain = domain,
-    exposure_scale = "share",
-    omitted_reference = "age60plus",
-    reference_population = "age20_to_60plus",
+    exposure_scale = family_rec$exposure_scale[[1]],
+    omitted_reference = family_rec$omitted_reference[[1]],
+    reference_population = family_rec$reference_population[[1]],
     same_domain_total_control = same_domain_total_control,
     share_sum_mean_abs_dev = if (length(share_dev) > 0L) mean(share_dev) else NA_real_,
     share_sum_max_abs_dev = if (length(share_dev) > 0L) max(share_dev) else NA_real_
@@ -119,7 +121,7 @@ assert_spdm_main_controls_current(
   selected_col = "selected"
 )
 
-family_registry <- resolve_age_mix_family_registry(c("resident", "floating"))
+family_registry <- resolve_age_mix_family_registry("resident", exposure_mode = "resident_log_population")
 
 family_panels <- list()
 family_qc <- vector("list", nrow(family_registry))
@@ -136,12 +138,7 @@ for (ii in seq_len(nrow(family_registry))) {
   family_panel <- add_current_age_shares(panel, domain_df, family_rec$domain[[1]])
 
   family_panels[[family_rec$model_family[[1]]]] <- family_panel
-  family_qc[[ii]] <- summarize_family_qc(
-    family_panel,
-    domain = family_rec$domain[[1]],
-    model_family = family_rec$model_family[[1]],
-    same_domain_total_control = family_rec$same_domain_total_control[[1]]
-  )
+  family_qc[[ii]] <- summarize_family_qc(family_panel, family_rec)
 }
 family_qc <- dplyr::bind_rows(family_qc)
 
@@ -150,7 +147,7 @@ family_contracts <- tidyr::crossing(
     dplyr::mutate(
       requested_controls_list = purrr::map(
         same_domain_total_control,
-        ~ c(.x, setdiff(control_candidates, .x))
+        ~ control_candidates
       )
     ) |>
     dplyr::select(

@@ -24,11 +24,10 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 1. `ESDA`
 2. `TWFE baseline / residual spatial-diagnostic`
 3. `SPDM main global model`
-4. `SPDM canonical channel path model`
-5. `GTWR resident-only optional local sidecar`
+4. `GTWR resident-only optional local sidecar`
 
 이 순서는 코드 실행 순서이자 해석 순서다. 먼저 공간 패턴의 존재를 확인하고, 비공간 기준선으로 방향성을 잡고, 공간 확장모형으로 직접효과와 파급효과를 해석한 뒤, 필요할 때만 국지적 이질성을 별도 sidecar로 읽는다.
-`80_optional/**`의 preprocessing, TWFE, SPDM, GTWR sidecar는 `run_all.R` 밖의 manual surface이며, 해당 파일을 직접 실행하면 별도 `RUN_*` 실행 플래그 없이 실제 작업을 수행한다.
+`80_optional/**`의 preprocessing, TWFE, SPDM, GTWR sidecar는 `run_all.R` 밖의 manual surface이며, SPDM channel path도 이 optional/manual surface에 포함한다. 해당 파일을 직접 실행하면 별도 `RUN_*` 실행 플래그 없이 실제 작업을 수행한다.
 
 ### 1.2 비협상 수행 원칙
 
@@ -39,13 +38,13 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 5. 좌표계는 `EPSG:5179`다.
 6. canonical model timing contract는 **시차 적용 분기 계약** 이다.
 7. main exposure는 `lag4_age60_resident_share`다.
-8. `lag2_age60_floating_share`는 SPDM channel path mediator이고, `age60_floating_share`, `age60_sales_share`는 ESDA 또는 appendix 보조 축으로 다룬다.
+8. `lag2_age60_floating_share`는 optional SPDM channel path mediator이고, `age60_floating_share`, `age60_sales_share`는 ESDA 또는 appendix 보조 축으로 다룬다.
 9. 종속변수는 개별 활력지표를 우선하고 `vitality_index_base`는 보조 composite로 둔다.
 10. 기본 공간가중행렬은 `Queen` row-standardized다.
 11. 대안 W는 `Rook`, `kNN6`, `kNN8`다.
 12. TWFE는 main inferential endpoint가 아니라 baseline / spatial-diagnostic layer다.
 13. SPDM main은 main global model이며 direct / indirect / total effect 보고가 중심이다.
-14. `03_run_spdm_channel_path.R`는 canonical channel path model이며 `lag4_age60_resident_share -> lag2_age60_floating_share -> vitality` 경로를 검정한다.
+14. `80_optional/spdm/07_run_spdm_channel_path.R`는 optional channel path sidecar이며 `lag4_age60_resident_share -> lag2_age60_floating_share -> vitality` 경로를 검정한다.
 15. GTWR는 optional local sidecar이며 resident-only quarterly contract에 한정한다.
 16. `panel_main.parquet` 하나를 공통 정본으로 두고, ESDA/TWFE/SPDM/GTWR는 method-specific view만 읽는다.
 17. raw data와 boundary 원본은 수정하지 않는다.
@@ -205,7 +204,7 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 
 이 단계의 목적은 행정안전부 주민등록인구현황의 행정동별 5세 단위 월별 CSV를 2020 기준 서울시 행정동 코드로 정합해 상주인구 규모와 고령 상주인구 비중을 만드는 것이다. 서울시 상권분석서비스 상주인구는 active main exposure와 `ln_resident_pop`의 원천으로 사용하지 않는다.
 
-월별 stock 변수는 연합계가 아니라 분기 평균으로 발행한다. `age60_resident_share`, `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`는 해당 분기 월별 고령 인구 합계를 같은 분기 월별 총인구 합계로 나눈 분모가중 분기 비중이다. age-mix appendix용 `age20_resident_share`~`age60plus_resident_share`는 20세 이상 연령구성 분모에서 계산한다.
+월별 stock 변수는 연합계가 아니라 분기 평균으로 발행한다. `age60_resident_share`, `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`는 해당 분기 월별 고령 인구 합계를 같은 분기 월별 총인구 합계로 나눈 분모가중 분기 비중이다. TWFE/SPDM age-mix appendix는 이 주민등록인구 layer에서 청년(20~30대), 중년(40~50대), 노년(60세 이상) 분기 평균 인구수를 만들고 `log1p` 변환한 `ln_young_resident_pop`, `ln_middle_resident_pop`, `ln_old_resident_pop`을 모두 노출로 사용한다. `lag4_ln_resident_pop`은 lagged resident scale control로 유지한다.
 
 2020 기준 경계 정합을 위해 원천 행정동명은 경계 행정동명과 매칭하고, 분석기간 중 분동·개칭은 2020 기준으로 합산 또는 환원한다. `상일제1동`은 `상일동`, `강일동+상일제2동`은 `강일동`, `개포3동`은 `일원2동`, 2025년 `신설동+용두동+용신동`은 `용신동`으로 처리한다. 2020년에 `오류제2동`에서 분동된 `항동`은 2018~2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2018~2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.
 
@@ -242,6 +241,7 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 이 스크립트에서 만드는 대표적 변수군은 아래와 같다.
 
 - `covid_period`
+  - `2020Q1~2022Q2` 분기 범위를 표시하는 appendix interaction flag
 - `ln_total_sales`, `ln_sales_count`, `ln_total_store_count`, `ln_sales_per_store`
 - `sales_quarter_stability`, `floating_quarter_stability`
 - `ln_resident_pop`, `ln_floating_pop`, `ln_external_inflow_pop`, `ln_spend_total`
@@ -355,9 +355,9 @@ SPDM은 active design의 main global model이다.
 - `spdm_controls_used.csv`
 - `spdm_main_diagnostics.csv`
 
-### 2.12 `03_run_spdm_channel_path.R`: canonical SPDM channel path model
+### 2.12 `07_run_spdm_channel_path.R`: optional SPDM channel path sidecar
 
-이 단계는 `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` 경로를 quarterly Queen SDM 위에서 검정하는 canonical mediation-oriented channel model이다. `lag4_age60_resident_share`를 `X`, `lag2_age60_floating_share`를 mediator `M`으로 고정하고, 각 활력 outcome별 동일 balanced sample에서 total-effect equation, mediator equation, outcome equation을 모두 추정한다.
+이 단계는 `02_Code/80_optional/spdm/07_run_spdm_channel_path.R`를 직접 실행할 때만 수행하는 optional mediation-oriented channel sidecar다. `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` 경로를 quarterly Queen SDM 위에서 검정한다. `lag4_age60_resident_share`를 `X`, `lag2_age60_floating_share`를 mediator `M`으로 고정하고, 각 활력 outcome별 동일 balanced sample에서 total-effect equation, mediator equation, outcome equation을 모두 추정한다.
 
 - total-effect equation: `Y_it = rho W Y_it + X_it beta_c + W X_it theta_c + controls + W controls + FE + e_it`
 - mediator equation: `M_it = rho W M_it + X_it beta_a + W X_it theta_a + controls + W controls + FE + e_it`
@@ -442,7 +442,7 @@ GTWR의 핵심 운영 원칙은 아래와 같다.
 - ESDA, TWFE, SPDM은 모두 `panel_main.parquet` 기준으로 동작해야 한다.
 - TWFE residual Moran output은 필수다.
 - SPDM은 direct / indirect / total effects를 보고해야 한다.
-- SPDM channel path는 `a`, `b`, `c'`, `a*b` effects와 diagnostics를 보고해야 한다.
+- SPDM channel path는 optional sidecar이며 absence 자체를 failure로 해석하지 않는다. 실행한 경우 `a`, `b`, `c'`, `a*b` effects와 diagnostics를 appendix artifact로 보고한다.
 - GTWR는 optional sidecar이며, absence 자체를 failure로 해석하지 않는다.
 
 ### 3.3 처리 산출물 무결성 점검

@@ -52,7 +52,6 @@ active canonical surface는 아래 순서를 따른다.
 - `02_run_esda.R`
 - `01_run_twfe_main.R`
 - `02_run_spdm_main.R`
-- `03_run_spdm_channel_path.R`
 - `01_run_spdm_w_robustness.R`
 - `02_run_robustness.R`
 - `01_make_tables_figures.R`
@@ -62,6 +61,7 @@ active canonical surface는 아래 순서를 따른다.
 optional/manual surface는 `80_optional/**`와 `05_reporting/02_*`, `05_reporting/03_*`,
 `06_qc/02_*`, `06_qc/03_*`처럼 폴더와 파일명에서 active canonical surface와 분리한다.
 `80_optional/**` 스크립트는 `run_all.R`에서 제외되며, 파일을 직접 실행하면 별도 `RUN_*` 실행 플래그 없이 실제 작업을 수행한다.
+SPDM channel path는 `02_Code/80_optional/spdm/07_run_spdm_channel_path.R`에 두는 optional/manual sidecar다.
 
 ## 4. 파일 헤더 규칙
 

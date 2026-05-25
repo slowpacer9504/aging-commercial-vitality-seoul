@@ -190,7 +190,6 @@ GTWR는 전역모형 이후에도 지역별 반응 강도와 방향이 다를 �
 | `02_run_esda.R` | 공간 자기상관과 분포 확인 | Moran/LISA/EHSA tables and maps | Results 초반: descriptive spatial evidence |
 | `01_run_twfe_main.R` | 비공간 기준선 추정과 residual Moran 계산 | TWFE tables, diagnostics, residual Moran outputs | Results: baseline FE + spatial necessity |
 | `02_run_spdm_main.R` | main global spatial model 추정 | `spdm_main_models.csv`, `spdm_impacts.csv` | Results 핵심: direct/indirect/total effects |
-| `03_run_spdm_channel_path.R` | 고령 상주인구 -> 고령 유동인구 -> 활력 경로 검정 | `spdm_channel_path_effects.csv`, `spdm_channel_diagnostics.csv` | Results: channel path |
 | `01_run_spdm_w_robustness.R` | W 민감도 확인 | W-robustness tables and impacts | Results/Appendix: robustness summary |
 | `02_run_robustness.R` | outcome, sample-window, W-Moran 민감도 점검 | `robustness_summary.csv`, `robustness_compare.png` | Appendix robustness |
 | `01_make_tables_figures.R` | 본문/부록용 표·그림 패키징 | descriptive and reporting outputs | Results tables/figures assembly |
@@ -200,6 +199,7 @@ GTWR는 전역모형 이후에도 지역별 반응 강도와 방향이 다를 �
 | Script | 연구 역할 | 주요 산출물 | 논문 연결 |
 | --- | --- | --- | --- |
 | `01_build_living_population_inflow.R` | 서울생활인구 월별 ZIP에서 외부 유입 인구를 quarterly contract로 정리 | `living_population_external_inflow.parquet`, inflow manifest/QC | Methods: 사회적 활력 구성 |
+| `07_run_spdm_channel_path.R` | 고령 상주인구 -> 고령 유동인구 -> 활력 경로 검정 | `spdm_channel_path_effects.csv`, `spdm_channel_diagnostics.csv` | Appendix: optional channel path |
 | `01_run_gtwr_main.R` | resident-only quarterly local sidecar | `gtwr_main_models_<control_set>.csv`, `gtwr_local_coefficients_<control_set>.csv`, `gtwr_local_beta_panel_<control_set>.csv` | Results 후반 또는 Appendix의 local heterogeneity evidence |
 
 ### 4.3 Supplementary and Appendix Flow

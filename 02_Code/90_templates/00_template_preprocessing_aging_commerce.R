@@ -56,8 +56,8 @@ boundary_year <- if (exists("boundary_year", inherits = FALSE)) boundary_year el
 short_panel_start_year <- if (exists("cfg", inherits = FALSE) && is.environment(cfg)) cfg$short_start else 2019L
 short_panel_end_year <- if (exists("cfg", inherits = FALSE) && is.environment(cfg)) cfg$short_end else 2025L
 short_panel_years <- seq.int(short_panel_start_year, short_panel_end_year)
-covid_start_year <- 2020L
-covid_end_year <- 2022L
+covid_start_yq <- if (exists("cfg", inherits = FALSE) && is.environment(cfg)) cfg$covid_start_yq else "2020Q1"
+covid_end_yq <- if (exists("cfg", inherits = FALSE) && is.environment(cfg)) cfg$covid_end_yq else "2022Q2"
 
 ## 0-4. Define paths -----------------------------------------------------------
 dir_raw <- here::here("01_Data", "01_Raw_Data")
@@ -293,7 +293,7 @@ quarterize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("
 # panel_base <- panel_base |>
 #   dplyr::mutate(
 #     covid_period = dplyr::if_else(
-#       year >= covid_start_year & year <= covid_end_year,
+#       yq >= covid_start_yq & yq <= covid_end_yq,
 #       1L,
 #       0L
 #     ),

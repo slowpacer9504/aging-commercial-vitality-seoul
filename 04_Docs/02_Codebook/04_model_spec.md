@@ -2,10 +2,10 @@
 
 ## 0) Canonical vs Supplementary Surface
 
-- active canonical model surface는 `02_run_esda.R -> 01_run_twfe_main.R -> 02_run_spdm_main.R -> 03_run_spdm_channel_path.R -> 01_run_spdm_w_robustness.R -> 02_run_robustness.R -> 01_make_tables_figures.R`이다.
+- active canonical model surface는 `02_run_esda.R -> 01_run_twfe_main.R -> 02_run_spdm_main.R -> 01_run_spdm_w_robustness.R -> 02_run_robustness.R -> 01_make_tables_figures.R`이다.
 - 모든 active canonical model과 reporting은 `2019Q4~2025Q4` 분석 표본을 사용한다. `2019Q1~2019Q3`는 panel 구축 및 rolling/lag warm-up 구간으로만 유지한다.
 - `80_optional/**`의 TWFE, SPDM, GTWR, optional preprocessing scripts는 default run과 required test plan에서 제외되는 manual direct-run surface다. 파일을 직접 실행하면 별도 `RUN_*` 실행 플래그 없이 실제 작업을 수행한다.
-- TWFE channel, interaction, age-mix, sector-share, selection, family-comparison, GTWR local appendix 계열은 supplementary/manual 또는 appendix sidecar로 취급한다. SPDM channel path(`03_run_spdm_channel_path.R`)는 예외적으로 canonical surface에 포함한다.
+- TWFE channel, interaction, age-mix, sector-share, selection, family-comparison, SPDM channel path, GTWR local appendix 계열은 supplementary/manual 또는 appendix sidecar로 취급한다. SPDM channel path는 `02_Code/80_optional/spdm/07_run_spdm_channel_path.R`를 직접 실행한다.
 
 ## 1) ESDA
 
@@ -61,6 +61,7 @@
 
 - appendix resident FE COVID interaction family
 - 입력: `panel_main.parquet`, `twfe_main_controls_used.csv`
+- 기간 플래그: `covid_period = 1`은 `2020Q1~2022Q2` 분기 표본이다.
 - 식 구조:
   - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls | adm_cd + yq`
 
@@ -80,16 +81,15 @@
 
 - appendix TWFE age-mix family
 - 실행 조건: `80_optional/twfe/03_run_twfe_age_mix_experiment.R` 직접 실행
-- 입력: `panel_main.parquet`, `registered_resident_population.parquet`, `seoul_raw_integrated_wide.parquet`
+- 입력: `panel_main.parquet`, `registered_resident_population.parquet`
 - 출력:
   - `twfe_age_mix_experiment_models.csv`
   - `twfe_age_mix_experiment_controls_used.csv`
   - `twfe_age_mix_experiment_diagnostics.csv`
 - 구현 원칙:
-  - resident/floating domain별 `age20~age50 share`를 두고 `age60plus`는 기준범주로 생략한다.
-  - controls는 `twfe_main_controls_used.csv`의 현재 메인 TWFE control contract를 상속한다.
-  - resident age-mix family는 행정안전부 주민등록인구현황에서 만든 `age20_resident_share`~`age60plus_resident_share`를 사용하고, 메인 control에 포함된 `ln_resident_pop`만 same-domain total control로 유지한다.
-  - floating age-mix family는 종속변수 구성요소와 겹치는 `ln_floating_pop`을 다시 추가하지 않는다.
+  - 행정안전부 주민등록인구현황에서 만든 분기 평균 연령대별 주민등록인구를 청년(20~30대), 중년(40~50대), 노년(60세 이상)으로 묶고 `log1p` 변환한 `ln_young_resident_pop`, `ln_middle_resident_pop`, `ln_old_resident_pop`을 모두 노출로 둔다.
+  - 구성비 모형이 아니므로 노년층은 기준범주로 생략하지 않는다.
+  - controls는 `twfe_main_controls_used.csv`의 현재 메인 TWFE control contract를 상속하고, lagged resident scale control인 `lag4_ln_resident_pop`도 유지한다.
 
 ## 5) SPDM
 
@@ -114,12 +114,14 @@
 
 - appendix resident SDM COVID interaction family
 - 입력: `panel_main.parquet`, `W_queen.rds`, `spdm_main_controls_used.csv`
+- 기간 플래그: `covid_period = 1`은 `2020Q1~2022Q2` 분기 표본이다.
 - 식 구조:
   - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls`
 
-## 5A) SPDM Canonical Channel Path Model
+## 5A) SPDM Optional Channel Path Sidecar
 
-- canonical SPDM path family
+- optional/manual SPDM path family
+- 실행 조건: `02_Code/80_optional/spdm/07_run_spdm_channel_path.R` 직접 실행
 - 입력: `panel_main.parquet`, `W_queen.rds`
 - 출력:
   - `spdm_channel_models.csv`
@@ -150,8 +152,9 @@
   - `spdm_age_mix_experiment_controls_used.csv`
   - `spdm_age_mix_experiment_diagnostics.csv`
 - 구현 원칙:
-  - resident/floating domain별 `age20~age50 share`를 두고 `age60plus`는 기준범주로 둔다.
-  - resident domain의 age share는 `registered_resident_population.parquet`에서, floating domain의 age share는 서울시 상권분석서비스 길단위인구에서 분기 발행한 값을 사용한다.
+  - 행정안전부 주민등록인구현황에서 만든 분기 평균 연령대별 주민등록인구를 청년(20~30대), 중년(40~50대), 노년(60세 이상)으로 묶고 `log1p` 변환한 `ln_young_resident_pop`, `ln_middle_resident_pop`, `ln_old_resident_pop`을 모두 노출로 둔다.
+  - 구성비 모형이 아니므로 노년층은 기준범주로 생략하지 않는다.
+  - controls는 current SPDM main control candidate를 상속하고, lagged resident scale control인 `lag4_ln_resident_pop`도 유지한다.
   - age-mix appendix도 `sample_min_yq`, `sample_max_yq`를 갖는 quarterly impact schema를 쓴다.
 
 ## 5D) SPDM Sector-Share Experiment
@@ -383,7 +386,7 @@
   - GTWR reporting은 latest summary/rankings를 main surface로 쓰고 delta summary/rankings는 appendix diagnostic으로만 쓴다.
 - `02_Code/05_reporting/02_build_presentation_artifacts.R`
   - presentation-only sidecar that derives slide-ready artifacts from canonical outputs
-  - publishes `presentation_spdm_channel_path_diagram.csv` and `presentation_spdm_channel_path_diagram.png` as a slide-left visual for the canonical `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` channel path
+  - publishes `presentation_spdm_channel_path_diagram.csv` and `presentation_spdm_channel_path_diagram.png` as a slide-left visual when the optional `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` channel path outputs exist
 - `02_Code/05_reporting/03_build_gtwr_level_artifacts.R`
   - optional quarterly GTWR level reporting sidecar
   - reads existing `gtwr_local_beta_panel_<control_set>.csv` and related GTWR tables without rerunning GTWR

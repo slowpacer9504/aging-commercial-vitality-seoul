@@ -179,9 +179,21 @@ cfg$lag_support_quarter_sequence$yq <- sprintf(
 )
 cfg$lag_support_quarter_sequence$quarter_index <- seq_len(nrow(cfg$lag_support_quarter_sequence)) -
   cfg$main_covariate_lag_quarters
-cfg$covid_years <- 2020:2022
-cfg$covid_start_year <- min(cfg$covid_years)
-cfg$covid_end_year <- max(cfg$covid_years)
+cfg$covid_start_yq <- "2020Q1"
+cfg$covid_end_yq <- "2022Q2"
+cfg$covid_start_idx <- match(cfg$covid_start_yq, cfg$quarter_sequence$yq)
+cfg$covid_end_idx <- match(cfg$covid_end_yq, cfg$quarter_sequence$yq)
+if (!is.finite(cfg$covid_start_idx) || !is.finite(cfg$covid_end_idx) || cfg$covid_start_idx > cfg$covid_end_idx) {
+  stop("[ERROR] COVID quarter window must exist in cfg$quarter_sequence and start before end", call. = FALSE)
+}
+cfg$covid_quarter_sequence <- cfg$quarter_sequence[
+  cfg$quarter_sequence$quarter_index >= cfg$quarter_sequence$quarter_index[cfg$covid_start_idx] &
+    cfg$quarter_sequence$quarter_index <= cfg$quarter_sequence$quarter_index[cfg$covid_end_idx],
+  ,
+  drop = FALSE
+]
+cfg$covid_yq <- as.character(cfg$covid_quarter_sequence$yq)
+cfg$covid_period_label <- sprintf("%s~%s", cfg$covid_start_yq, cfg$covid_end_yq)
 cfg$spdm_min_periods <- suppressWarnings(as.integer(Sys.getenv("SPDM_MIN_PERIODS", unset = "20")))
 if (!is.finite(cfg$spdm_min_periods) || cfg$spdm_min_periods < 4L) cfg$spdm_min_periods <- 20L
 cfg$living_pop_hours <- trimws(Sys.getenv("LIVING_POP_HOURS", unset = "0-23"))
@@ -989,7 +1001,6 @@ cfg$canonical_pipeline_scripts <- c(
   "02_Code/02_esda/02_run_esda.R",
   "02_Code/03_models/01_run_twfe_main.R",
   "02_Code/03_models/02_run_spdm_main.R",
-  "02_Code/03_models/03_run_spdm_channel_path.R",
   "02_Code/04_robustness/01_run_spdm_w_robustness.R",
   "02_Code/04_robustness/02_run_robustness.R",
   "02_Code/06_qc/01_validate_method_dataset_alignment.R",
@@ -1010,6 +1021,7 @@ cfg$manual_quarterly_appendix_scripts <- c(
   "02_Code/80_optional/spdm/04_run_spdm_selection_sidecar.R",
   "02_Code/80_optional/spdm/05_run_spdm_family_comparison_sidecar.R",
   "02_Code/80_optional/spdm/06_run_spdm_vitality_component_models.R",
+  "02_Code/80_optional/spdm/07_run_spdm_channel_path.R",
   "02_Code/80_optional/gtwr/02_run_gtwr_floating_only.R",
   "02_Code/80_optional/gtwr/03_run_gtwr_age_band.R",
   "02_Code/80_optional/gtwr/04_run_gtwr_sector_share.R",
@@ -1064,13 +1076,7 @@ cfg$active_output_contract <- list(
     cfg$paths$spdm_main_models,
     cfg$paths$spdm_impacts,
     cfg$paths$spdm_controls_used,
-    cfg$paths$spdm_main_diagnostics,
-    cfg$paths$spdm_channel_models,
-    cfg$paths$spdm_channel_impacts,
-    cfg$paths$spdm_channel_controls_used,
-    cfg$paths$spdm_channel_path_effects,
-    cfg$paths$spdm_channel_bootstrap_draws,
-    cfg$paths$spdm_channel_diagnostics
+    cfg$paths$spdm_main_diagnostics
   ),
   spdm_w_robustness = c(
     cfg$paths$spdm_w_robustness_models,

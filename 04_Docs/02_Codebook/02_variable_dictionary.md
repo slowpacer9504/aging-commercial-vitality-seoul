@@ -13,7 +13,7 @@
 - `quarter_index`
   - `2019Q1`부터 시작하는 정수형 분기 순서
 - `covid_period`
-  - `2020~2022` 표본을 표시하는 appendix interaction flag
+  - `2020Q1~2022Q2` 표본을 표시하는 appendix interaction flag
 
 ## 1A) 지역 reference metadata
 
@@ -87,7 +87,12 @@ GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직
 
 - COVID interaction appendix
   - `covid_period`
-- age-mix appendix
+- TWFE/SPDM resident age-population appendix
+  - `ln_young_resident_pop`
+  - `ln_middle_resident_pop`
+  - `ln_old_resident_pop`
+  - `lag4_ln_resident_pop` retained as lagged resident scale control
+- GTWR age-band appendix
   - `age20_resident_share`
   - `age30_resident_share`
   - `age40_resident_share`
@@ -106,9 +111,9 @@ GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직
 - 연령 축은 active design에서 `60+`로 통일한다.
 - 메인 노출변수는 `lag4_age60_resident_share`다.
 - 상주인구 규모와 상주 고령비중은 서울시 상권분석서비스 상주인구가 아니라 행정안전부 주민등록인구현황 5세별 월별 자료에서 만든다.
-- SPDM channel path의 mediator는 `lag2_age60_floating_share`이고, `age60_floating_share`와 `age60_sales_share`는 보조 축이다.
+- Optional SPDM channel path의 mediator는 `lag2_age60_floating_share`이고, `age60_floating_share`와 `age60_sales_share`는 보조 축이다.
 - `vitality_sub_*` 4개를 우선 보고하고 `vitality_index_base`는 보조 종합지수로 둔다.
-- SPDM channel path에서는 mediator와 유동인구 source가 겹치는 `vitality_sub_social` 단독 지표를 제외하되, 종합 활력지수는 네 하위차원을 모두 포함하는 `vitality_index_base`를 사용한다.
+- Optional SPDM channel path에서는 mediator와 유동인구 source가 겹치는 `vitality_sub_social` 단독 지표를 제외하되, 종합 활력지수는 네 하위차원을 모두 포함하는 `vitality_index_base`를 사용한다.
 - `vitality_sub_economic`은 `ln_sales_count`와 `ln_total_sales`의 pooled z-score 평균으로 구성한다.
 - 거래 규모 축(`economic_transaction_scale`)은 active 경제 하위지수와 같은 `ln_sales_count`와 `ln_total_sales`의 pooled z-score 평균이다.
 - `ln_total_store_count`와 `ln_sales_per_store`는 패널에는 유지하지만, 경제 하위지수 구성요소와 reporting 경제 component에서는 제외한다.
@@ -141,7 +146,7 @@ GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직
 - additive flow는 분기 합계가 기본이다. 예: `ln_total_sales`, `ln_sales_count`, `ln_age60_sales_amount`.
 - level 또는 stock은 분기 평균, Q4 snapshot as-of, 또는 승인일 기반 active stock을 쓴다. 예: `ln_floating_pop`은 분기 평균이고, `ln_resident_pop`은 행정안전부 월별 주민등록인구 stock의 분기 평균이며, `ln_total_store_count`는 분기 점포수 stock의 분기 대표값에 `log1p`를 적용한 값이다.
 - 주민등록인구 기반 `age60_resident_share`, `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`는 해당 분기 월별 연령대 인구 합계를 같은 분기 월별 총인구 합계로 나눈 분모가중 분기 비중이다.
-- 주민등록인구 age-mix appendix 변수(`age20_resident_share`~`age60plus_resident_share`)는 20세 이상 연령구성 분모에서 계산한다.
+- TWFE/SPDM age-mix appendix는 주민등록인구 분기 평균 stock에서 청년(20~30대), 중년(40~50대), 노년(60세 이상) 인구수를 묶고 `log1p` 변환한 `ln_young_resident_pop`, `ln_middle_resident_pop`, `ln_old_resident_pop`을 사용한다. 주민등록인구 age-share 변수(`age20_resident_share`~`age60plus_resident_share`)는 20세 이상 연령구성 분모에서 계산하며 GTWR age-band appendix와 진단용 support로 유지한다.
 - 2020년에 `오류제2동`에서 분동된 `항동`은 2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.
 - 공시지가는 필지 polygon의 내부 대표점으로 행정동을 배정한 뒤 필지 면적을 가중치로 하는 행정동-연도별 면적가중평균을 계산한다. 이 연간 수준값은 원 변수 `ln_official_land_price`로 보존한다.
 - active 토지가격 통제변수는 한국부동산원 월별 지역별 지가지수를 이용한 `ln_land_price_adjusted`다. 법정동별 보정계수는 전년도 12월 지수 대비 해당 분기 3개월 지수비의 평균이며, 법정동-행정동 공간교차 면적가중치로 행정동 보정계수 `land_price_lpi_factor`를 만든 뒤 연간 공시지가에 곱한다.

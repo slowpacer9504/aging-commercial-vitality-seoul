@@ -53,7 +53,7 @@
 - canonical panel 구축 범위는 **2019Q1 ~ 2025Q4** 이고, active 분석기간은 **2019Q4 ~ 2025Q4** 이다.
 - active 분석 단위는 `adm_cd x yq` 분기 패널이다.
 - active 시간 키는 `year`, `quarter`, `yq`, `quarter_index`다.
-- canonical model timing contract는 **시차 적용 분기 계약** 이다. 독립변수와 통제변수는 `t-4`, SPDM channel path의 매개변수는 `t-2` 값을 사용한다.
+- canonical model timing contract는 **시차 적용 분기 계약** 이다. 독립변수와 통제변수는 `t-4` 값을 사용한다. Optional SPDM channel path sidecar의 매개변수는 `t-2` 값을 사용한다.
 - 2018년 주민등록인구, 버스정류소, 공시지가 source는 2019년 active panel의 4분기 시차 계산을 위한 lag-support 범위로만 사용한다.
 - 2019Q1~2019Q3는 rolling 4-quarter 활력지표와 시차 변수 검증을 위한 warm-up 구간이며, 본문 ESDA/TWFE/SPDM/GTWR와 reporting 표본에는 포함하지 않는다.
 
@@ -122,7 +122,7 @@ GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타�
   - `age60_floating_share`
   - `age60_sales_share`
 
-`lag4_age60_resident_share`를 메인 노출변수로 두는 이유는 거주 기반 고령화가 생활권 상권의 구조적 수요 기반을 가장 안정적으로 반영하되, 종속변수와의 동시점 반응을 피하기 위해서다. 원천 `age60_resident_share`는 서울시 상권분석서비스의 10세 단위 상주인구가 아니라 행정안전부 주민등록인구현황의 5세 단위 월별 자료에서 산출한다. `age60_floating_share`와 `age60_sales_share`는 활동 및 소비 측면의 보조 축으로 해석하며, SPDM channel path의 mediator는 `lag2_age60_floating_share`를 사용한다.
+`lag4_age60_resident_share`를 메인 노출변수로 두는 이유는 거주 기반 고령화가 생활권 상권의 구조적 수요 기반을 가장 안정적으로 반영하되, 종속변수와의 동시점 반응을 피하기 위해서다. 원천 `age60_resident_share`는 서울시 상권분석서비스의 10세 단위 상주인구가 아니라 행정안전부 주민등록인구현황의 5세 단위 월별 자료에서 산출한다. `age60_floating_share`와 `age60_sales_share`는 활동 및 소비 측면의 보조 축으로 해석하며, optional SPDM channel path sidecar의 mediator는 `lag2_age60_floating_share`를 사용한다.
 행정안전부 자료에서는 추후 민감도 분석을 위해 `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`도 함께 발행하지만, canonical main exposure는 `lag4_age60_resident_share`로 유지한다.
 
 ### 6.2 종속변수
@@ -174,7 +174,7 @@ GTWR main sidecar는 local design matrix의 다중공선성 민감도를 고려�
 ### 6.4 기간 플래그와 보조 변수
 
 - `covid_period`
-  - `2020~2022` 연도를 표시하는 appendix interaction flag다.
+  - `2020Q1~2022Q2` 분기 범위를 표시하는 appendix interaction flag다.
 - 추가 age-mix, 대체 활력지수 정의, 표본창 민감도는 robustness 또는 appendix에서 다룬다.
 
 ## 7. 방법론 계층
@@ -202,7 +202,7 @@ active methodology stack은 아래와 같다.
 - `02_run_spdm_main.R`는 `splm::spml()`의 Durbin placeholder에 의존하지 않고, quarterly panel에서 `W lag4_age60_resident_share`와 `W controls`를 직접 생성한 뒤 추정한다.
 - direct / indirect / total effects는 `S = (I - rho W)^(-1)`, `S(beta I + theta W)` 행렬식으로 계산한다.
 - coefficient와 spatial parameter의 표준오차는 `splm::spml()` fitted object의 model-based asymptotic ML `vcov`를 사용한다. impact 표준오차와 신뢰구간은 같은 model-based `vcov`에서 `rho`, `beta`, `theta`를 simulation draw로 생성해 계산하며, 이를 robust SE로 부르지 않는다.
-- `03_run_spdm_channel_path.R`는 canonical mediation-oriented channel path model이다. 같은 quarterly Queen SDM 계약에서 mediator 미포함 `c` 경로, `lag4_age60_resident_share -> lag2_age60_floating_share`의 `a` 경로, `lag2_age60_floating_share -> vitality`의 `b` 경로, mediator를 통제한 `c'` 경로를 같은 outcome별 balanced sample에서 추정하고 `a*b` 간접효과와 `c - c'` 직접효과 약화 진단을 별도 산출물로 기록한다. 기본 추론은 행정동 단위 wild residual bootstrap이며, bootstrap이 비활성화되었거나 유효 draw가 부족할 때만 `delta_independent_approx`를 fallback으로 사용한다.
+- `80_optional/spdm/07_run_spdm_channel_path.R`는 optional mediation-oriented channel path sidecar이다. 같은 quarterly Queen SDM 계약에서 mediator 미포함 `c` 경로, `lag4_age60_resident_share -> lag2_age60_floating_share`의 `a` 경로, `lag2_age60_floating_share -> vitality`의 `b` 경로, mediator를 통제한 `c'` 경로를 같은 outcome별 balanced sample에서 추정하고 `a*b` 간접효과와 `c - c'` 직접효과 약화 진단을 별도 산출물로 기록한다. 기본 추론은 행정동 단위 wild residual bootstrap이며, bootstrap이 비활성화되었거나 유효 draw가 부족할 때만 `delta_independent_approx`를 fallback으로 사용한다.
 - channel path outcome은 유동인구 source와 직접 겹치는 `vitality_sub_social` 단독 지표를 제외하고, `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, `vitality_index_base`를 사용한다. 종합 활력지수는 네 하위지표를 모두 포함하는 기본 정의를 유지하되, 해석에서는 사회적 활력 구성요소가 mediator source와 겹친다는 caveat를 함께 둔다.
 
 ### 7.4 GTWR
@@ -223,15 +223,15 @@ active methodology stack은 아래와 같다.
   - ESDA 핵심 결과
   - TWFE baseline과 residual Moran
   - SPDM main impacts
-  - SPDM channel path effects
   - 필요 시 GTWR 요약 지도
 
 - **Appendix**
   - interaction family
   - age-mix family
+  - SPDM channel path sidecar
   - spatial family comparison (`SLX`, `SAR`, `SDM`, `SEM`, `SDEM`, `SARAR/SAC`, `GNS`)
   - W robustness 상세표
   - GTWR 추가 sidecar
   - 세부 QC inventory
 
-이렇게 두면 본문은 `ESDA -> TWFE -> SPDM main -> SPDM channel path -> GTWR(optional)`의 해석 흐름을 유지하면서도, 보조 민감도와 local sidecar를 부록으로 분리할 수 있다.
+이렇게 두면 본문은 `ESDA -> TWFE -> SPDM main -> GTWR(optional)`의 해석 흐름을 유지하면서도, channel path와 보조 민감도, local sidecar를 부록으로 분리할 수 있다.

@@ -40,12 +40,14 @@ path_relations <- value_or(cfg$paths$spdm_sector_share_experiment_exposure_relat
     stop("[ERROR] Missing panel or W", call. = FALSE)
   }
 
+  sector_share_exposure_vars <- c("age60_resident_share", "age60_floating_share")
+
   extra_cols <- unique(c(
     value_or(cfg$spdm_sector_share_outcomes, c(
       "sales_share_cs1", "sales_share_cs2", "sales_share_cs3",
       "store_share_cs1", "store_share_cs2", "store_share_cs3"
     )),
-    "age60_floating_share"
+    sector_share_exposure_vars
   ))
   panel <- read_panel_main_view("spdm", extra_cols = extra_cols)
   panel$adm_cd <- as.character(panel$adm_cd)
@@ -61,7 +63,7 @@ path_relations <- value_or(cfg$paths$spdm_sector_share_experiment_exposure_relat
   )
   exposure_defs <- tibble::tibble(
     exposure_family = c("resident_only", "floating_only"),
-    exposure_var = c("age60_resident_share", "age60_floating_share"),
+    exposure_var = sector_share_exposure_vars,
     exposure_order = c(1L, 2L)
   ) |>
     dplyr::filter(exposure_var %in% names(panel))
@@ -97,7 +99,7 @@ path_relations <- value_or(cfg$paths$spdm_sector_share_experiment_exposure_relat
   sales_share_qc <- calc_share_qc(panel, c("sales_share_cs1", "sales_share_cs2", "sales_share_cs3"))
   store_share_qc <- calc_share_qc(panel, c("store_share_cs1", "store_share_cs2", "store_share_cs3"))
   exposure_finite_n <- vapply(
-    c("age60_resident_share", "age60_floating_share"),
+    sector_share_exposure_vars,
     function(v) {
       if (!v %in% names(panel)) return(0L)
       as.integer(sum(is.finite(panel[[v]]), na.rm = TRUE))
@@ -106,7 +108,7 @@ path_relations <- value_or(cfg$paths$spdm_sector_share_experiment_exposure_relat
   )
 
   build_exposure_relations <- function(data) {
-    exposure_vars <- c("age60_resident_share", "age60_floating_share")
+    exposure_vars <- sector_share_exposure_vars
     if (!all(exposure_vars %in% names(data))) {
       return(tibble::tibble(
         relation_type = character(),

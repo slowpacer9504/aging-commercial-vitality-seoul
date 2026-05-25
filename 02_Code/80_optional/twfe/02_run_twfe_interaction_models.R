@@ -73,23 +73,25 @@ build_model_name <- function(outcome, exposure, spec) {
   paste(outcome, exposure, spec, sep = "__")
 }
 
-infer_covid_baseline_label <- function(sample_year, sample_covid) {
-  sample_year <- suppressWarnings(as.integer(sample_year))
+infer_covid_baseline_label <- function(sample_quarter_index, sample_covid) {
+  sample_quarter_index <- suppressWarnings(as.integer(sample_quarter_index))
   sample_covid <- suppressWarnings(as.numeric(sample_covid))
-  covid_start <- min(cfg$covid_years)
-  covid_end <- max(cfg$covid_years)
-  non_covid_year <- sample_year[!is.na(sample_year) & !is.na(sample_covid) & sample_covid == 0]
-  if (length(non_covid_year) == 0L) return("non_covid_in_sample")
-  if (all(non_covid_year < covid_start)) return("pre_covid")
-  if (all(non_covid_year > covid_end)) return("post_covid")
-  if (any(non_covid_year < covid_start) && any(non_covid_year > covid_end)) return("non_covid_mixed_sample")
+  covid_start <- suppressWarnings(as.integer(cfg$covid_start_idx))
+  covid_end <- suppressWarnings(as.integer(cfg$covid_end_idx))
+  non_covid_qidx <- sample_quarter_index[
+    !is.na(sample_quarter_index) & !is.na(sample_covid) & sample_covid == 0
+  ]
+  if (length(non_covid_qidx) == 0L) return("non_covid_in_sample")
+  if (all(non_covid_qidx < covid_start)) return("pre_covid")
+  if (all(non_covid_qidx > covid_end)) return("post_covid")
+  if (any(non_covid_qidx < covid_start) && any(non_covid_qidx > covid_end)) return("non_covid_mixed_sample")
   "non_covid_in_sample"
 }
 
 build_interaction_effect_defs <- function(model, exposure, interaction_family, coef_terms) {
   d <- value_or(model$data, data.frame())
 
-  baseline_label <- infer_covid_baseline_label(d$year, d$covid_period)
+  baseline_label <- infer_covid_baseline_label(d$quarter_index, d$covid_period)
   covid_hits <- coef_terms[
     grepl(exposure, coef_terms, fixed = TRUE) &
       grepl("covid_period", coef_terms, fixed = TRUE)
@@ -103,9 +105,8 @@ build_interaction_effect_defs <- function(model, exposure, interaction_family, c
   list(
     effect_defs = effect_defs,
     effect_label_definition = sprintf(
-      "covid_period denotes realized sample observations within %s to %s; %s denotes realized non-COVID observations outside that window.",
-      min(cfg$covid_years),
-      max(cfg$covid_years),
+      "covid_period denotes realized sample observations within %s; %s denotes realized non-COVID observations outside that quarter window.",
+      cfg$covid_period_label,
       baseline_label
     )
   )

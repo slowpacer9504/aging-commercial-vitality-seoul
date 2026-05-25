@@ -540,7 +540,7 @@ main_corr_registry <- tibble::tibble(variable = main_corr_vars) |>
     ),
     model_scope = dplyr::case_when(
       .data$variable %in% cfg$spdm_main_exposure_vars ~ "TWFE/SPDM/GTWR focal exposure",
-      .data$variable %in% cfg$spdm_channel_vars ~ "SPDM channel mediator",
+      .data$variable %in% cfg$spdm_channel_vars ~ "optional SPDM channel mediator",
       .data$variable %in% setdiff(cfg$impact_aging_vars, c(cfg$spdm_main_exposure_vars, cfg$spdm_channel_vars)) ~ "supporting aging exposure",
       .data$variable %in% c(cfg$primary_outcomes, cfg$vitality_supplementary_outcomes) ~ "TWFE/SPDM/GTWR outcome",
       .data$variable %in% cfg$gtwr_lean_control_cols ~ "TWFE/SPDM control; GTWR lean and extended control",

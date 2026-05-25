@@ -6,13 +6,13 @@
 # Author    : Codex
 # Created   : 2026-04-01
 # Type      : reporting_sidecar
-# Inputs    : canonical ESDA/TWFE/SPDM outputs, canonical SPDM-channel outputs,
+# Inputs    : canonical ESDA/TWFE/SPDM outputs, optional SPDM-channel outputs,
 #             optional GTWR outputs
 # Outputs   : presentation_*.csv, presentation_*.png, presentation_manifest.csv
 # DependsOn : 02_Code/02_esda/02_run_esda.R,
 #             02_Code/03_models/01_run_twfe_main.R,
 #             02_Code/03_models/02_run_spdm_main.R,
-#             02_Code/03_models/03_run_spdm_channel_path.R
+#             02_Code/80_optional/spdm/07_run_spdm_channel_path.R
 #==============================================================================
 
 #==============================================================================
@@ -1085,7 +1085,7 @@ if (all(file.exists(spdm_channel_sources))) {
     artifact_type = "csv",
     status = "created",
     source_paths = spdm_channel_sources,
-    note = "canonical quarterly SPDM channel path summary; standalone social outcome excluded while composite index retains social vitality"
+    note = "optional quarterly SPDM channel path summary; standalone social outcome excluded while composite index retains social vitality"
   )
 
   spdm_channel_path_diagram_tbl <- channel_joined_tbl |>
@@ -1218,12 +1218,12 @@ if (all(file.exists(spdm_channel_sources))) {
       )
     ) +
     ggplot2::labs(
-      title = "SPDM Canonical Channel Path",
+      title = "SPDM Optional Channel Path",
       subtitle = "Resident aging -> floating aging -> vitality; standalone social outcome excluded, composite retained",
       x = NULL,
       y = "Estimated Total Effect",
       color = NULL,
-      caption = "a*b error bars use the primary inference stored by 03_run_spdm_channel_path: bootstrap when valid, delta-method fallback otherwise."
+      caption = "a*b error bars use the primary inference stored by 07_run_spdm_channel_path: bootstrap when valid, delta-method fallback otherwise."
     ) +
     ggplot2::theme_minimal(base_size = 11) +
     ggplot2::theme(legend.position = "top", panel.grid.minor = ggplot2::element_blank())
@@ -1235,7 +1235,7 @@ if (all(file.exists(spdm_channel_sources))) {
     artifact_type = "png",
     status = "created",
     source_paths = spdm_channel_sources,
-    note = "canonical quarterly SPDM channel path plot using primary 03_run_spdm_channel_path inference intervals"
+    note = "optional quarterly SPDM channel path plot using primary 07_run_spdm_channel_path inference intervals"
   )
 } else {
   mark_missing_artifact(
@@ -1243,28 +1243,28 @@ if (all(file.exists(spdm_channel_sources))) {
     artifact_path = cfg$paths$presentation_spdm_channel,
     artifact_type = "csv",
     source_paths = spdm_channel_sources,
-    note = "canonical SPDM channel path source table missing"
+    note = "optional SPDM channel path source table missing"
   )
   mark_missing_artifact(
     artifact_name = "presentation_spdm_channel_path_diagram_data",
     artifact_path = cfg$paths$presentation_spdm_channel_path_diagram_data,
     artifact_type = "csv",
     source_paths = spdm_channel_sources,
-    note = "canonical SPDM channel path source table missing"
+    note = "optional SPDM channel path source table missing"
   )
   mark_missing_artifact(
     artifact_name = "presentation_spdm_channel_path_diagram",
     artifact_path = cfg$paths$presentation_spdm_channel_path_diagram,
     artifact_type = "png",
     source_paths = spdm_channel_sources,
-    note = "canonical SPDM channel path source table missing"
+    note = "optional SPDM channel path source table missing"
   )
   mark_missing_artifact(
     artifact_name = "presentation_spdm_channel_plot",
     artifact_path = cfg$paths$presentation_spdm_channel_plot,
     artifact_type = "png",
     source_paths = spdm_channel_sources,
-    note = "canonical SPDM channel path source table missing"
+    note = "optional SPDM channel path source table missing"
   )
 }
 

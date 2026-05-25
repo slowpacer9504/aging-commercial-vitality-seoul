@@ -865,8 +865,12 @@ if (nrow(panel_tbl) == 0L) {
   stop("[ERROR] GTWR local beta panel has no successful quarterly local_beta rows.", call. = FALSE)
 }
 
-observed_yq <- sort(unique(stats::na.omit(panel_tbl$yq)))
-expected_yq <- as.character(cfg$quarter_sequence$yq)
+observed_yq <- panel_tbl |>
+  dplyr::distinct(yq, time_id) |>
+  dplyr::arrange(time_id) |>
+  dplyr::pull(yq) |>
+  as.character()
+expected_yq <- as.character(cfg$analysis_quarter_sequence$yq)
 if (!identical(observed_yq, expected_yq)) {
   stop(
     sprintf(
@@ -877,6 +881,7 @@ if (!identical(observed_yq, expected_yq)) {
     call. = FALSE
   )
 }
+expected_time_ids <- seq_along(expected_yq)
 
 main_meta <- main_tbl |>
   ensure_cols(c(
@@ -1053,7 +1058,7 @@ mean_trajectory_plot_path <- report_png_path("gtwr_level_mean_trajectories")
 trajectory_plot_path <- report_png_path("gtwr_level_representative_trajectories")
 
 mean_trajectory_plot <- mean_trajectories_tbl |>
-  ggplot2::ggplot(ggplot2::aes(x = year, y = mean_estimate, group = 1)) +
+  ggplot2::ggplot(ggplot2::aes(x = time_id, y = mean_estimate, group = 1)) +
   ggplot2::geom_hline(yintercept = 0, color = "grey70", linewidth = 0.25) +
   ggplot2::geom_ribbon(
     ggplot2::aes(ymin = p25_estimate, ymax = p75_estimate),
@@ -1063,7 +1068,7 @@ mean_trajectory_plot <- mean_trajectories_tbl |>
   ggplot2::geom_line(color = "#08519C", linewidth = 0.7) +
   ggplot2::geom_point(color = "#08519C", size = 1.5) +
   ggplot2::facet_wrap(~ outcome_label, scales = "free_y", ncol = 2) +
-  ggplot2::scale_x_continuous(breaks = expected_yq) +
+  ggplot2::scale_x_continuous(breaks = expected_time_ids, labels = expected_yq) +
   ggplot2::labs(
     title = sprintf("GTWR Mean Local Beta Trajectories (%s)", tag_selected),
     subtitle = "Annual mean across administrative districts; ribbon shows p25 to p75",
@@ -1083,12 +1088,12 @@ trajectory_plot <- trajectory_tbl |>
   dplyr::mutate(
     representative_label = factor(representative_label, levels = unique(representative_label))
   ) |>
-  ggplot2::ggplot(ggplot2::aes(x = year, y = estimate, color = representative_role, group = representative_label)) +
+  ggplot2::ggplot(ggplot2::aes(x = time_id, y = estimate, color = representative_role, group = representative_label)) +
   ggplot2::geom_hline(yintercept = 0, color = "grey70", linewidth = 0.25) +
   ggplot2::geom_line(linewidth = 0.6) +
   ggplot2::geom_point(size = 1.4) +
   ggplot2::facet_wrap(~ outcome_label, scales = "free_y", ncol = 2) +
-  ggplot2::scale_x_continuous(breaks = expected_yq) +
+  ggplot2::scale_x_continuous(breaks = expected_time_ids, labels = expected_yq) +
   ggplot2::scale_color_brewer(palette = "Dark2") +
   ggplot2::labs(
     title = sprintf("GTWR Representative Local Beta Trajectories (%s)", tag_selected),
