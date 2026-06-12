@@ -20,13 +20,9 @@
 # 0. Setup
 #==============================================================================
 
-# 이 스크립트는 여러 보조 데이터 source를 각각 전처리한 뒤,
-# 분기 단위 `aux_covariates`로 묶는 가장 큰 preprocessing branch다.
-# 흐름은 크게 네 단계다.
-# 1) source별 helper 준비
-# 2) source별 pre-aggregation record 생성
-# 3) 분기단위 aux_covariates assemble
-# 4) QC와 로그 저장
+# This is the largest auxiliary preprocessing branch: it prepares each raw
+# source separately, preserves reviewable pre-aggregation layers, assembles the
+# quarterly `aux_covariates` panel, and writes coverage/QC logs.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -47,8 +43,9 @@ q <- arrow::read_parquet(quarter_base_path) |>
   standardize_keys()
 assert_required_cols(q, c("adm_cd", "year", "quarter", "yq", "quarter_index"))
 
-# quarter_base가 가진 adm_cd universe는 유지하되, lag-support source는
-# 2018Q1부터 확장한다. active 출력은 다시 2019Q1~2025Q4로 자른다.
+# Keep the `adm_cd` universe from `quarter_base`, but extend the build calendar
+# back to the lag-support window. The active output is cut back to the analysis
+# window after assembly.
 active_quarter <- q |>
   dplyr::distinct(adm_cd, year, quarter, yq, quarter_index) |>
   dplyr::arrange(adm_cd, year, quarter)
@@ -182,13 +179,11 @@ apartment_geocode_qc_path <- if (!is.null(cfg$logs$apartment_geocode_qc)) {
 # 1. Auxiliary Source Builder Helpers
 #==============================================================================
 
-# helper 계층은 크게 네 묶음이다.
-# 1) raw 파일 읽기/이름 정리
-# 2) point/line/polygon을 adm_cd에 매핑
-# 3) geocoding과 cache/manual-fix 처리
-# 4) preagg record를 연단위 aux 변수로 집계
-# 특히 aux branch는 source별 데이터 구조가 크게 달라 한 번 만든 helper를
-# 재사용할 수 있게 계약을 분명히 적어 두는 것이 중요하다.
+# The helper layer is organized by contract rather than by source only:
+# canonical raw-file discovery, spatial mapping, geocoding/cache handling,
+# source-specific panel builders, and final preagg-to-panel aggregation.
+
+## 1-1. CSV Reading and Canonical Source Discovery
 build_readr_col_types <- function(path, locale) {
   hdr <- tryCatch(
     readr::read_csv(
@@ -251,9 +246,9 @@ read_csv_auto <- function(path, n_max = Inf) {
   )
 }
 
-# 아래 파일/메타 helper는 "어떤 raw를 정본으로 읽을 것인가"를 고정한다.
-# aux source는 sidecar, 검토용 export, 임시 사본이 섞이기 쉬워 broad globbing만 쓰면
-# 실행 시점마다 다른 파일이 집히는 문제가 생길 수 있다.
+# These file-selection helpers lock each source to its canonical raw input.
+# Auxiliary folders often contain sidecars, review exports, and temporary
+# copies, so broad globbing would make runs depend on incidental files.
 find_raw_subdir <- function(prefix) {
   dirs <- list.dirs(cfg$dir_raw, recursive = FALSE, full.names = TRUE)
   hit <- dirs[stringr::str_detect(basename(dirs), paste0("^", prefix, "_"))]
@@ -262,9 +257,9 @@ find_raw_subdir <- function(prefix) {
 }
 
 resolve_canonical_source_paths <- function(source_key) {
-  # source discovery를 broad scan에 맡기지 않고,
-  # config에 적힌 canonical basename 계약으로 강제한다.
-  # sidecar 파일이 추가돼도 조용히 잘못 집히지 않게 만드는 장치다.
+  # Enforce the canonical basename contract from config instead of relying on
+  # broad source discovery. This prevents new sidecar files from being selected
+  # silently as production inputs.
   contract <- cfg$aux_source_contracts[[source_key]]
   if (is.null(contract)) {
     stop(sprintf("[ERROR] Missing aux source contract for '%s'.", source_key), call. = FALSE)
@@ -333,6 +328,7 @@ log_canonical_source_selection <- function(source_key, paths) {
   )
 }
 
+## 1-2. Date, Identifier, and Numeric Normalization Helpers
 extract_year_from_path <- function(path) {
   ys <- stringr::str_extract_all(path, "(19|20)\\d{2}")[[1]]
   if (length(ys) == 0) return(NA_integer_)
@@ -496,6 +492,7 @@ fill_group_year_series <- function(df, group_col, value_col, years = years_targe
   out
 }
 
+## 1-3. Land Price Source Builders
 build_land_price_series <- function(boundary_dir) {
   land_dir <- file.path(boundary_dir, "02_Land_Price")
   if (!dir.exists(land_dir)) {
@@ -1081,6 +1078,7 @@ build_land_price_lpi_factor <- function(boundary_dir) {
   factor_adm
 }
 
+## 1-4. Spatial Mapping and Base Panel Helpers
 assign_point_ids_to_adm <- function(points_sf, id_col) {
   within <- suppressWarnings(
     sf::st_join(
@@ -1198,9 +1196,11 @@ build_base_year_values <- function(value_cols, fill = NA_real_) {
     dplyr::mutate(!!!vals)
 }
 
-# betweenness cache는 "정적 adm-level 결과 1행/동"이라는 계약을 강하게 검증한다.
-# 캐시 파일이 있더라도 spec_version, 반경, 가중방식, 집계방식이 다르면 재사용하지 않아
-# 옛 정의의 값이 조용히 섞이는 일을 막는다.
+## 1-5. Cache and Review-Layer Contracts
+
+# The betweenness cache must remain one static adm-level row per neighborhood.
+# Reuse is rejected when the spec version, radius, weighting, or aggregation
+# mode differs, preventing old definitions from being mixed into new runs.
 normalize_walk_betweenness_cache <- function(df, label) {
   required_cols <- c("adm_cd", "betweenness_centrality")
 
@@ -1326,8 +1326,9 @@ write_walk_betweenness_cache <- function(df) {
 load_cached_walk_betweenness <- function() {
   cache_path <- cfg$paths$walk_betweenness_cache
 
-  # FALSE 모드에서 cache가 없으면 과거 정의를 억지로 재활용하지 않고 명시적으로 NULL을 돌린다.
-  # 현재 betweenness는 사양이 바뀐 변수라, 잘못된 legacy 값보다 NA가 안전하다.
+  # When betweenness recomputation is disabled and no valid cache exists, return
+  # NULL explicitly. For this changing specification, NA is safer than forcing
+  # legacy values into the current panel.
   if (!file.exists(cache_path)) {
     append_log(
       cfg$logs$data_qc,
@@ -1392,8 +1393,8 @@ load_cached_walk_betweenness <- function() {
 }
 
 write_aux_source_preagg <- function(df, path, label) {
-  # `*_source_preagg`는 raw 복사본이 아니라,
-  # 지오코딩/직접매칭/유형분류까지 끝난 "집계 직전 record layer"다.
+  # `*_source_preagg` is a post-geocoding, post-direct-match, post-classification
+  # record layer, not a copy of raw input files.
   write_parquet_safe(df, path)
   append_log(
     cfg$logs$data_qc,
@@ -1412,16 +1413,16 @@ read_aux_source_preagg <- function(path, label) {
     stop(sprintf("[ERROR] %s source preagg not found: %s", label, path), call. = FALSE)
   }
 
-  # assemble 단계에서는 이 preagg를 다시 읽어 연단위 count로 집계한다.
-  # intermediate를 실제 first-class input으로 취급하려는 설계다.
+  # The assembly step reads these preagg files back and derives counts from
+  # them, making the intermediate files first-class production inputs.
   arrow::read_parquet(path) |>
     tibble::as_tibble() |>
     standardize_keys()
 }
 
 remove_obsolete_aux_intermediate_files <- function() {
-  # naming contract가 여러 차례 바뀌었기 때문에,
-  # 과거 intermediate를 남겨 두면 review helper와 사람이 쉽게 혼동한다.
+  # Intermediate naming changed several times; removing obsolete files prevents
+  # review helpers and manual checks from reading stale layers by mistake.
   obsolete_paths <- file.path(
     cfg$dir_intermediate,
     c(
@@ -1461,6 +1462,7 @@ remove_obsolete_aux_intermediate_files <- function() {
   invisible(NULL)
 }
 
+## 1-6. Text Normalization and Workplace Worker Source Helpers
 normalize_unicode_text <- function(x) {
   x <- as.character(x)
   if (requireNamespace("stringi", quietly = TRUE)) {
@@ -1747,6 +1749,7 @@ build_workplace_worker_year <- function(base_year) {
   list(year = out, qc = qc)
 }
 
+## 1-7. Point-Source Activity Windows and Transit Builders
 guess_point_crs <- function(x, y) {
   xx <- safe_num(x)
   yy <- safe_num(y)
@@ -1823,35 +1826,9 @@ build_permit_panel_count_by_type_from_mapped <- function(
     )
 }
 
-build_point_preagg_year_count <- function(df, year_col, count_col) {
-  # point source는 관측된 연도만 0/정수 count를 주고,
-  # source가 애초에 없는 연도는 NA로 둔다. "0"과 "미관측"을 구분하려는 규칙이다.
-  years_observed <- df |>
-    dplyr::transmute(year = as.integer(.data[[year_col]])) |>
-    dplyr::filter(is.finite(year)) |>
-    dplyr::distinct(year) |>
-    dplyr::pull(year)
-
-  out <- df |>
-    dplyr::transmute(
-      adm_cd = adm_cd,
-      year = as.integer(.data[[year_col]])
-    ) |>
-    dplyr::filter(!is.na(adm_cd), is.finite(year)) |>
-    dplyr::count(adm_cd, year, name = count_col)
-
-  base_year |>
-    dplyr::left_join(out, by = c("adm_cd", "year")) |>
-    dplyr::mutate(
-      has_source_year = year %in% years_observed,
-      !!count_col := dplyr::if_else(has_source_year, dplyr::coalesce(.data[[count_col]], 0L), NA_integer_)
-    ) |>
-    dplyr::select(-has_source_year)
-}
-
 build_point_preagg_quarter_count <- function(df, count_col) {
-  # 분기 source는 관측 또는 as-of 발행된 yq만 0/정수 count를 주고,
-  # source가 애초에 없는 분기는 NA로 둔다.
+  # Quarter sources report zero/integer counts only for observed or as-of
+  # published quarters. Quarters with no source coverage remain NA.
   yq_observed <- df |>
     dplyr::transmute(yq = as.character(yq)) |>
     dplyr::filter(!is.na(yq)) |>
@@ -1877,6 +1854,7 @@ build_point_preagg_quarter_count <- function(df, count_col) {
     dplyr::select(-has_source_yq)
 }
 
+## 1-8. Static Park and Mixed-Frequency Transit Sources
 build_park_area_static <- function() {
   park_dir <- file.path(cfg$dir_boundary, "03_Park")
   shp <- list.files(park_dir, pattern = "[.]shp$", full.names = TRUE)
@@ -1984,10 +1962,10 @@ read_bus_snapshot_file <- function(path) {
     )
 }
 
-build_bus_stop_panel <- function(bus_dir) {
-  # 버스 source는 혼합 주기다. 2019/2020/2025는 단일 snapshot을
-  # 해당 연도의 4개 분기 대표값으로 쓰고, 2021-2023 및 2024.01-04는
-  # 분기말 이전 최신 월별 snapshot을 사용한다.
+build_bus_stop_panel <- function() {
+  # Bus stops are mixed-frequency. Single annual snapshots represent all four
+  # quarters in their year, while monthly snapshots use the latest file
+  # available before each quarter end.
   bus_files <- resolve_canonical_source_paths("bus_stop")
   if (length(bus_files) == 0) {
     return(list(
@@ -2202,9 +2180,9 @@ assign_subway_open_rule <- function(df) {
   )
 }
 
-build_subway_station_panel <- function(subway_dir) {
-  # 지하철은 현재 station master를 읽은 뒤,
-  # 노선별/역별 개통일 규칙을 적용해 quarterly source panel로 확장한다.
+build_subway_station_panel <- function() {
+  # Subway starts from the current station master and expands it to quarters
+  # using line/station opening-date rules.
   subway_file <- resolve_canonical_source_paths("subway_station")
   if (length(subway_file) == 0) {
     return(list(
@@ -2297,30 +2275,10 @@ build_subway_station_panel <- function(subway_dir) {
 }
 
 build_transit_panel <- function() {
-  # transit은 bus와 subway를 분리 계산한 뒤 분기 단위로 다시 묶는다.
-  # raw/preagg는 별도로 남기고, 최종 aux에서는 adm_cd-yq panel을 사용한다.
-  bus_dir <- find_raw_subdir("07")
-  subway_dir <- find_raw_subdir("09")
-
-  bus_out <- if (is.na(bus_dir)) {
-    list(
-      raw = tibble::tibble(),
-      quarter = base_quarter |>
-        dplyr::mutate(bus_stop_count_aux = NA_real_)
-    )
-  } else {
-    build_bus_stop_panel(bus_dir)
-  }
-
-  subway_out <- if (is.na(subway_dir)) {
-    list(
-      raw = tibble::tibble(),
-      quarter = base_quarter |>
-        dplyr::mutate(subway_station_count_aux = NA_real_)
-    )
-  } else {
-    build_subway_station_panel(subway_dir)
-  }
+  # Transit keeps bus and subway preagg layers separate for review, then joins
+  # their quarterly adm_cd-yq panels for the final auxiliary source.
+  bus_out <- build_bus_stop_panel()
+  subway_out <- build_subway_station_panel()
 
   transit_out <- bus_out$quarter |>
     dplyr::left_join(subway_out$quarter, by = c("adm_cd", "year", "quarter", "yq", "quarter_index"))
@@ -2334,6 +2292,7 @@ build_transit_panel <- function() {
   )
 }
 
+## 1-9. Medical, Mall, and Senior Classification Constants
 medical_detail_step_cols <- c(
   "medical_clinic_count_aux",
   "medical_dental_clinic_count_aux",
@@ -2373,15 +2332,13 @@ build_medical_panel <- function() {
   med_dir <- find_raw_subdir("08")
   if (is.na(med_dir)) {
     return(list(
-      raw = tibble::tibble(),
-      year = build_base_year_values(c("hospital_count_aux", medical_detail_cols))
+      raw = tibble::tibble()
     ))
   }
   med_files <- resolve_canonical_source_paths("medical")
   if (length(med_files) == 0) {
     return(list(
-      raw = tibble::tibble(),
-      year = build_base_year_values(c("hospital_count_aux", medical_detail_cols))
+      raw = tibble::tibble()
     ))
   }
   log_canonical_source_selection("Medical", med_files)
@@ -2436,27 +2393,12 @@ build_medical_panel <- function() {
     id_col = ".record_id"
   )
 
-  med_detail <- build_permit_panel_count_by_type_from_mapped(
-    med_raw,
-    years = years_target,
-    open_col = "인허가일자",
-    close_col = "폐업일자",
-    type_col = "medical_type",
-    type_levels = medical_detail_step_cols
-  )
-
   list(
     raw = med_raw |>
       dplyr::mutate(
         medical_record_id = .record_id
       ) |>
-      dplyr::select(-.record_id),
-    year = med_detail |>
-      dplyr::mutate(
-        medical_public_health_count_aux = medical_public_health_center_count_aux + medical_public_health_subcenter_count_aux,
-        hospital_count_aux = rowSums(dplyr::pick(dplyr::all_of(medical_detail_step_cols)), na.rm = TRUE),
-        .before = 3
-      )
+      dplyr::select(-.record_id)
   )
 }
 
@@ -2464,15 +2406,13 @@ build_mall_panel <- function() {
   mall_dir <- find_raw_subdir("06")
   if (is.na(mall_dir)) {
     return(list(
-      raw = tibble::tibble(),
-      year = build_base_year_values(c("mall_count_aux", mall_detail_cols))
+      raw = tibble::tibble()
     ))
   }
   mall_files <- resolve_canonical_source_paths("mall")
   if (length(mall_files) == 0) {
     return(list(
-      raw = tibble::tibble(),
-      year = build_base_year_values(c("mall_count_aux", mall_detail_cols))
+      raw = tibble::tibble()
     ))
   }
   log_canonical_source_selection("Mall", mall_files)
@@ -2564,29 +2504,16 @@ build_mall_panel <- function() {
     id_col = ".record_id"
   )
 
-  mall_detail <- build_permit_panel_count_by_type_from_mapped(
-    mall_raw,
-    years = years_target,
-    open_col = "인허가일자",
-    close_col = "폐업일자",
-    type_col = "mall_type",
-    type_levels = mall_detail_cols
-  )
-
   list(
     raw = mall_raw |>
       dplyr::mutate(
         mall_record_id = .record_id
       ) |>
-      dplyr::select(-.record_id),
-    year = mall_detail |>
-      dplyr::mutate(
-        mall_count_aux = rowSums(dplyr::pick(dplyr::all_of(mall_detail_cols)), na.rm = TRUE),
-        .before = 3
-      )
+      dplyr::select(-.record_id)
   )
 }
 
+## 1-10. Address Normalization and General Geocoding Helpers
 clean_senior_address <- function(x) {
   out <- as.character(x)
   out <- stringr::str_replace_all(out, "\\(.*?\\)", "")
@@ -2597,9 +2524,9 @@ clean_senior_address <- function(x) {
   out
 }
 
-# senior geocoding 전처리는 주소를 여러 단계로 단순화해
-# "원문 보존"과 "지오코더 친화적 질의"를 분리한다.
-# 특히 괄호, 층/호수, 쉼표 뒤 설명문은 검색 실패를 유발하기 쉬워 순차적으로 제거한다.
+# Senior geocoding keeps the original address separate from progressively
+# simplified geocoder queries. Parentheses, floor/unit suffixes, and trailing
+# comma notes are removed in stages because they often cause search failures.
 clean_address_for_geocode <- function(x) {
   out <- clean_senior_address(x)
   ifelse(is.na(out), NA_character_, stringr::str_squish(out))
@@ -2724,8 +2651,9 @@ get_geocode_query_cache_latest <- function(cache_hist) {
     dplyr::select(-.ord)
 }
 
-# query cache는 질의문 단위의 히스토리를 남기되, 재사용 시에는 최신 성공/실패 상태 1건만 쓴다.
-# 이렇게 해야 동일 질의가 여러 실행에서 반복되어도 마지막 판단을 기준으로 deterministic하게 동작한다.
+# Query caches preserve per-query history, but reuse only the latest terminal
+# state. That keeps repeated runs deterministic when the same query appears in
+# multiple executions.
 geocode_kakao_query_single <- function(query_type, query_text, query_region = "", api_key, max_retry = 3L) {
   query_type <- tolower(as.character(query_type[[1]]))
   query_text <- stringr::str_squish(as.character(query_text[[1]]))
@@ -3281,6 +3209,7 @@ fill_missing_coords_with_geocode <- function(
   out
 }
 
+## 1-11. Apartment Registry Helpers
 parse_apartment_date <- function(x) {
   x_chr <- as.character(x)
   x_chr <- stringr::str_squish(x_chr)
@@ -3336,13 +3265,13 @@ apartment_adm_manual_fixes <- tibble::tibble(
     "도곡2차 I-Park"
   ),
   adm_cd_override = c(
-    "0011530720", # 고척1동
-    "0011305635", # 수유3동
-    "0011620585", # 낙성대동
-    "0011470600", # 신월5동
-    "0011680740", # 일원2동
-    "0011680655", # 도곡1동
-    "0011680655"  # 도곡1동
+    "0011530720", # Gocheok 1-dong
+    "0011305635", # Suyu 3-dong
+    "0011620585", # Nakseongdae-dong
+    "0011470600", # Sinwol 5-dong
+    "0011680740", # Irwon 2-dong
+    "0011680655", # Dogok 1-dong
+    "0011680655"  # Dogok 1-dong
   ),
   adm_cd_fix_note = c(
     "manual correction: coordinate missing; verified address maps to 고척1동",
@@ -3815,11 +3744,11 @@ build_apartment_registry_panel <- function() {
   )
 
   list(
-    raw = apt_final,
-    year = apt_year
+    raw = apt_final
   )
 }
 
+## 1-12. Senior Facility Geocoding and Direct-Match Helpers
 read_senior_manual_fix_tbl <- function(path) {
   empty <- tibble::tibble(
     facility_type = character(),
@@ -4239,9 +4168,9 @@ lookup_senior_geocode_queries <- function(
 }
 
 build_senior_geocode_candidates <- function(df) {
-  # senior는 주소 품질이 가장 불안정하므로 후보 주소를 여러 개 만든다.
-  # 원문 주소 -> 정규화 주소 순으로 stage를 부여해, 어떤 후보가 실제로
-  # 성공했는지 QC에서 추적할 수 있게 한다.
+  # Senior facility addresses are the least stable source, so each record gets
+  # multiple candidate queries. Stages move from raw to normalized addresses so
+  # QC can trace which candidate actually succeeded.
   if (nrow(df) == 0) {
     return(tibble::tibble(
       facility_id = integer(),
@@ -4355,11 +4284,12 @@ map_senior_points_to_adm <- function(df_geo, adm_polygons) {
 }
 
 build_senior_static <- function() {
-  # senior branch의 원칙은 세 가지다.
-  # 1) canonical source file만 허용
+  # The senior branch follows three rules:
+  # 1) allow only canonical source files
   # 2) multi-candidate geocoding + cache/manual/Naver fallback
-  # 3) 최종 집계는 adm direct match only
-  # 즉, geocode 성공만으로는 부족하고 행정동에 직접 붙은 시설만 count한다.
+  # 3) aggregate only records with a direct adm match
+  # Geocode success alone is not enough; the final count requires attachment to
+  # an administrative neighborhood.
   senior_value_cols <- c("senior_facility_count", senior_detail_cols)
   senior_dir <- find_raw_subdir("03")
   if (is.na(senior_dir)) {
@@ -4953,8 +4883,8 @@ build_senior_static <- function() {
 }
 
 build_senior_year_from_preagg <- function(df, years = years_target) {
-  # senior는 현재 정적 stock으로 해석한다.
-  # 그래서 preagg에서 adm별 typed count를 만든 뒤 모든 target year로 복제한다.
+  # Senior facilities are interpreted as a current static stock. The preagg
+  # layer is counted by adm/type and then replicated to all target years.
   if (nrow(df) == 0) {
     return(build_base_year_values(c("senior_facility_count", senior_detail_cols), fill = 0L))
   }
@@ -4986,16 +4916,15 @@ build_senior_year_from_preagg <- function(df, years = years_target) {
   expand_static_to_year(senior_static, years = years)
 }
 
+## 1-13. Physical Environment and Walk-Network Helpers
 build_physical_env_static <- function(park_static) {
-  # physical environment는 서로 성격이 다른 source를 묶는다.
-  # road/sidewalk shapefile -> 길이 합계
-  # walk network csv -> 교차점 밀도, betweenness
-  # DEM -> 평균 경사도
-  # 모두 행정동 단위의 정적 구조 변수로 저장한다.
+  # Physical environment combines heterogeneous static sources: road/sidewalk
+  # shapefiles for length, a walk-network CSV for intersection density and
+  # betweenness, and DEM rasters for average slope.
   line_length_by_adm <- function(shp_path, fallback_crs = NA_integer_) {
-    # line source는 순수 선형 shp와 polygon boundary가 섞여 들어올 수 있다.
-    # polygon이면 boundary를 선으로 바꾼 뒤 길이를 재고, intersection 실패 시에는
-    # st_join fallback으로라도 adm별 총연장을 확보한다.
+    # Line sources can arrive as true line geometries or polygon boundaries.
+    # Polygon sources are converted to boundaries, and spatial joins provide a
+    # fallback when exact intersection fails.
     if (!file.exists(shp_path)) {
       return(base_adm |>
         dplyr::mutate(len_km = NA_real_))
@@ -5170,9 +5099,9 @@ build_physical_env_static <- function(park_static) {
         is_overpass = dplyr::if_else(s_over == 1 & e_over == 1, 1, `육교`)
       )
 
-    # 교차점 밀도와 betweenness는 같은 raw를 쓰지만 계산 단위가 다르다.
-    # 교차점 밀도는 geometry에서 node degree를 읽고, betweenness는 raw node-id edge graph로 계산한다.
-    # topology는 node-id가 더 안정적이고, 행정동 집계는 geometry가 더 적합하기 때문이다.
+    # Intersection density and betweenness share the same raw network but use
+    # different calculation units: geometry for neighborhood assignment and raw
+    # node IDs for more stable graph topology.
     df_ped_links <- df_links_fixed |>
       dplyr::transmute(
         edge_row_id = dplyr::row_number(),
@@ -5266,9 +5195,10 @@ build_physical_env_static <- function(park_static) {
         betweenness_tbl <- base_adm |>
           dplyr::mutate(betweenness_centrality = NA_real_)
       } else {
-        # betweenness는 서울 전체 보행 그래프에서 계산하되,
-        # shortest path는 길이(len_m) 가중, cutoff는 800m로 제한한다.
-        # 즉 "도시 전체 전략 중심성"보다 근린 보행권 내 통과 잠재력에 더 가깝게 만든다.
+        # Betweenness is computed on the full Seoul pedestrian graph, but
+        # shortest paths are length-weighted and capped at the local walking
+        # radius. The measure is therefore closer to neighborhood pass-through
+        # potential than citywide strategic centrality.
         ped_graph <- igraph::graph_from_data_frame(
           d = graph_edges,
           directed = FALSE,
@@ -5434,6 +5364,7 @@ build_physical_env_static <- function(park_static) {
     )
 }
 
+## 1-14. Coverage Logging Helper
 log_coverage <- function(df, var_name) {
   if (!var_name %in% names(df)) return(invisible(NULL))
   cov_tbl <- df |>
@@ -5454,9 +5385,10 @@ log_coverage <- function(df, var_name) {
 #==============================================================================
 # 2. Build Each Auxiliary Source
 #==============================================================================
-# 이 섹션에서는 source별 builder를 실제로 실행해
-# preagg record 또는 연단위/static result를 만든다.
-# source별 산출물을 분리 보관해 두는 이유는 이후 검토와 재집계를 쉽게 하기 위해서다.
+
+# Execute source builders and keep source outputs separate until assembly. This
+# preserves reviewable records for address/coordinate-heavy sources while
+# allowing static and annual layers to be expanded only once.
 append_log(cfg$logs$data_qc, "- Building official land price (representative-point area-weighted aggregation)")
 land_price_obj <- build_land_price_series(cfg$dir_boundary)
 land_price_series <- land_price_obj$series
@@ -5568,9 +5500,7 @@ park_year <- expand_static_to_year(park_static, years_target)
 append_log(cfg$logs$data_qc, "- Building transit quarter-source panel (mixed-frequency bus snapshots + subway opening-date rules)")
 transit_out <- build_transit_panel()
 bus_raw <- transit_out$bus_raw
-bus_quarter <- transit_out$bus_quarter
 subway_raw <- transit_out$subway_raw
-subway_quarter <- transit_out$subway_quarter
 transit_quarter <- transit_out$transit_quarter
 
 bus_snapshot_meta <- if (nrow(bus_raw) == 0) {
@@ -5637,26 +5567,21 @@ append_log(
   )
 )
 
-append_log(cfg$logs$data_qc, "- Building medical year-source panel")
+append_log(cfg$logs$data_qc, "- Building medical source preagg records")
 medical_out <- build_medical_panel()
 medical_raw <- medical_out$raw
-hospital_year <- medical_out$year
 
-append_log(cfg$logs$data_qc, "- Building large-store year-source panel")
+append_log(cfg$logs$data_qc, "- Building large-store source preagg records")
 mall_out <- build_mall_panel()
 mall_raw <- mall_out$raw
-mall_year <- mall_out$year
 
-append_log(cfg$logs$data_qc, "- Building apartment registry year-source stock panel (point match + approval-year stock)")
+append_log(cfg$logs$data_qc, "- Building apartment registry source preagg records (point match + approval-year stock)")
 apartment_out <- build_apartment_registry_panel()
 apartment_raw <- apartment_out$raw
-apartment_year <- apartment_out$year
 
-append_log(cfg$logs$data_qc, "- Building senior-facility static counts (multi-candidate geocode + manual fixes + Naver fallback + direct adm match)")
+append_log(cfg$logs$data_qc, "- Building senior-facility source preagg records (multi-candidate geocode + manual fixes + Naver fallback + direct adm match)")
 senior_out <- build_senior_static()
 senior_raw <- senior_out$raw
-senior_static <- senior_out$static
-senior_year <- expand_static_to_year(senior_static, years_target)
 
 append_log(cfg$logs$data_qc, "- Building walk-environment variables")
 physical_static <- build_physical_env_static(park_static)
@@ -5667,8 +5592,9 @@ workplace_worker_out <- build_workplace_worker_year(base_year)
 workplace_worker_year <- workplace_worker_out$year
 write_csv_safe(workplace_worker_out$qc, cfg$paths$workplace_worker_population_qc)
 
-# record-level 검토가 필요한 source만 preagg 파일을 남긴다.
-# medical/mall/senior/bus/subway는 주소·좌표·직접매칭 검토 가치가 크기 때문이다.
+# Persist preagg files only for sources where record-level review matters:
+# address/coordinate matching, direct administrative attachment, or mixed
+# source precision.
 write_aux_source_preagg(medical_raw, cfg$paths$medical_source_preagg, "medical")
 write_aux_source_preagg(mall_raw, cfg$paths$mall_source_preagg, "mall")
 write_aux_source_preagg(apartment_raw, cfg$paths$apartment_registry_source_preagg, "apartment_registry")
@@ -5681,9 +5607,9 @@ remove_obsolete_aux_intermediate_files()
 # 3. Assemble Auxiliary Covariate Panel
 #==============================================================================
 
-# assemble 단계에서는 방금 저장한 preagg를 다시 읽어 aux 변수로 집계한다.
-# 이렇게 해야 intermediate가 실제 생산-소비 관계를 가지게 되고,
-# source raw를 다시 열지 않고도 집계 parity를 검증할 수 있다.
+# Assembly reads the newly written preagg files back before deriving auxiliary
+# variables. This makes the intermediate layer a real producer-consumer boundary
+# and lets QC verify aggregation parity without reopening raw sources.
 medical_source_preagg <- read_aux_source_preagg(cfg$paths$medical_source_preagg, "medical")
 mall_source_preagg <- read_aux_source_preagg(cfg$paths$mall_source_preagg, "mall")
 apartment_source_preagg <- read_aux_source_preagg(cfg$paths$apartment_registry_source_preagg, "apartment_registry")
@@ -5781,9 +5707,9 @@ transit_source_quarter <- bus_stop_source_quarter |>
     by = c("adm_cd", "year", "quarter", "yq", "quarter_index")
   )
 
-# `aux`는 아직 저장 전 객체이고, 여기서 모든 source의 as-of 결과를
-# adm_cd-yq 격자에 맞춰 하나로 합친다. 혼합주기 source는 source precision
-# 한계를 QC와 설계 문서에 남긴다.
+# `aux_lag_support` is the complete adm_cd-yq grid used for lag construction.
+# It combines static, annual, mixed-frequency, and quarterly sources at their
+# best available as-of precision.
 aux_lag_support <- base_quarter |>
   dplyr::left_join(
     land_price_quarter |>
@@ -5835,8 +5761,9 @@ validate_panel_keys(aux, c("adm_cd", "yq"))
 # 4. Save Output and Coverage Logs
 #==============================================================================
 
-# source별 preagg는 사람과 QC가 검토하고, active `aux_covariates`는 downstream
-# panel이 소비한다. lag-support 출력은 active panel의 4분기 시차 join에만 쓴다.
+# Source preagg files support human/QC review, the active `aux_covariates`
+# output feeds downstream panel joins, and the lag-support output exists only
+# for four-quarter lag construction.
 write_parquet_safe(workplace_worker_year, cfg$paths$workplace_worker_population)
 write_parquet_safe(aux_lag_support, cfg$paths$aux_covariates_lag_support)
 write_parquet_safe(aux, cfg$paths$aux_covariates)

@@ -17,6 +17,9 @@
 # 0. Setup
 #==============================================================================
 
+# W robustness reruns the main resident-only true SDM under every predefined W
+# while keeping outcomes, exposure, controls, impact calculation, and output
+# schema aligned with 02_run_spdm_main.R.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -26,13 +29,19 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_spdm_w_robustness", timestamp()))
 
+# The panel is mandatory; individual W files can fail per spec so the output
+# table still documents missing alternative weights.
 if (!file.exists(cfg$paths$panel_main)) {
   stop("[ERROR] Missing panel_main for SPDM W robustness", call. = FALSE)
 }
 
+# The SPDM view provides the same active analysis sample and lagged model
+# variables used by the main Queen model.
 panel <- read_panel_main_view("spdm")
 panel$adm_cd <- as.character(panel$adm_cd)
 
+# Robustness changes only W. Outcome, exposure, and controls stay inherited from
+# the active main SPDM contract.
 outcome_registry <- resolve_model_outcomes(
   panel,
   requested_outcomes = value_or(cfg$spdm_main_outcomes, c(
@@ -44,10 +53,12 @@ outcomes <- outcome_registry$outcome
 exposure_base <- if (!is.null(cfg$spdm_main_exposure_vars) && length(cfg$spdm_main_exposure_vars) > 0) {
   cfg$spdm_main_exposure_vars
 } else {
-  c("age60_resident_share")
+  c("lag4_age60_resident_share")
 }
 exposures <- intersect(exposure_base, names(panel))
 
+# Control screening mirrors the main SPDM path and rejects retired controls
+# before the W grid is fitted.
 control_candidates <- spdm_main_control_candidate_cols()
 control_screen <- resolve_outcome_control_screen(
   panel,
@@ -73,10 +84,14 @@ w_types <- unique(c(value_or(cfg$default_w, "queen"), value_or(cfg$alt_w, c("roo
 # 1. Helpers
 #==============================================================================
 
+# W names are resolved through the central path registry so no robustness script
+# invents spatial-weight filenames locally.
 resolve_w_path <- function(w_type) {
   cfg$paths[[paste0("w_", w_type)]]
 }
 
+# All requested specs publish a common schema; failed fits remain visible rather
+# than disappearing from downstream comparisons.
 finalize_outputs <- function(out_coef, out_imp, out_ctrl, out_diag) {
   list(
     coefs = out_coef |>
@@ -94,6 +109,8 @@ finalize_outputs <- function(out_coef, out_imp, out_ctrl, out_diag) {
   )
 }
 
+# A failed W/outcome/exposure combination still records requested and selected
+# controls so missing W files or non-estimable panels are auditable.
 build_fail_result <- function(spec_id,
                               outcome,
                               exposure,
@@ -177,6 +194,8 @@ build_fail_result <- function(spec_id,
   list(coefs = coefs_out, impacts = impacts_out, controls = controls_out, diagnostics = diag_out)
 }
 
+# Each W spec repeats the same prepare-fit-impact path as the main SPDM, with
+# only the listw object and w_type label changed.
 run_w_spec <- function(spec_id,
                        outcome,
                        exposure,
@@ -342,6 +361,8 @@ run_w_spec <- function(spec_id,
 # 2. Run W Robustness Grid
 #==============================================================================
 
+# Empty requested inputs write empty canonical outputs instead of leaving stale
+# W-robustness artifacts in place.
 if (length(outcomes) == 0L || length(exposures) == 0L) {
   finalized <- finalize_outputs(
     spdm_empty_coef_tbl(),
@@ -355,6 +376,8 @@ if (length(outcomes) == 0L || length(exposures) == 0L) {
   write_csv_safe(finalized$diagnostics, cfg$paths$spdm_w_robustness_diagnostics)
   append_log(cfg$logs$model_run, "- Skipped: missing SPDM W-robustness outcomes/exposures")
 } else {
+  # The grid crosses the documented W family with the active main outcome and
+  # resident-only exposure contract.
   spec_grid <- tidyr::crossing(w_type = w_types, outcome = outcomes, exposure = exposures) |>
     dplyr::left_join(outcome_registry, by = "outcome") |>
     dplyr::arrange(outcome_order, w_type, exposure) |>
@@ -375,6 +398,8 @@ if (length(outcomes) == 0L || length(exposures) == 0L) {
     }
   )
 
+  # Finalized tables preserve both coefficient diagnostics and impact-centered
+  # interpretation under every W choice.
   finalized <- finalize_outputs(
     dplyr::bind_rows(purrr::map(res, "coefs")),
     dplyr::bind_rows(purrr::map(res, "impacts")),

@@ -15,9 +15,9 @@
 # 1. TWFE Estimation Helpers
 #==============================================================================
 
-# 이 helper 파일은 모델 스크립트들이 공통으로 쓰는 최소 함수만 둔다.
-# 스펙 선택 로직은 각 스크립트에 남기고, 여기서는 “주어진 입력으로
-# 안전하게 추정/선별/정리하는 일”만 맡는다.
+# Keep this utility focused on shared estimation mechanics. Specification
+# selection stays in the calling scripts, while this file handles safe fitting,
+# screening, metadata, and export-ready model tidying for already chosen inputs.
 value_or <- function(x, default) {
   if (is.null(x) || length(x) == 0L) default else x
 }
@@ -221,20 +221,16 @@ annotate_outcomes <- function(df, include_robustness = TRUE) {
 }
 
 run_twfe <- function(data, outcome, exposure, controls = NULL, interaction = NULL) {
-  # 이 helper는 "이미 결정된 한 specification"을 실제 `feols` 호출로 옮긴다.
-  # 스펙 선택 자체는 호출 스크립트가 맡고, 여기서는
-  # 1) RHS 조립
-  # 2) complete-case 표본 제한
-  # 3) FE 회귀 실행
-  # 4) 실패 시 NULL 반환
-  # 까지만 처리한다.
+  # Translate one already selected specification into a guarded `feols` call:
+  # build the RHS, restrict to complete cases, fit the shared FE structure, and
+  # return NULL for specifications that cannot be estimated reliably.
   requested_controls <- unique(intersect(as.character(value_or(controls, character(0))), names(data)))
   retained_controls <- requested_controls
   initial_d <- build_twfe_sample(data, outcome, exposure, requested_controls, interaction)
   initial_nobs <- nrow(initial_d)
 
-  # usable row가 너무 적으면 무리하게 적합하지 않고 NULL을 반환해
-  # 호출 스크립트가 해당 스펙을 건너뛰게 한다.
+  # Skip under-supported specifications instead of fitting unstable models that
+  # downstream scripts might misread as valid estimates.
   if (initial_nobs < 50) return(NULL)
 
   dropped_terms <- character()
@@ -244,8 +240,8 @@ run_twfe <- function(data, outcome, exposure, controls = NULL, interaction = NUL
     d <- build_twfe_sample(data, outcome, exposure, retained_controls, interaction)
     if (nrow(d) < 50) return(NULL)
 
-    # 모든 메인 FE 회귀는 `adm_cd + yq` 고정효과를 공유한다.
-    # 따라서 helper 수준에서 FE 구조를 통일해 두면 스크립트별 drift를 줄일 수 있다.
+    # All main FE regressions share `adm_cd + yq`; centralizing the formula keeps
+    # model scripts from drifting away from the research design contract.
     fm <- build_twfe_formula(outcome, exposure, retained_controls, interaction)
 
     fit <- tryCatch(
@@ -276,7 +272,8 @@ run_twfe <- function(data, outcome, exposure, controls = NULL, interaction = NUL
 
     retained_controls <- setdiff(retained_controls, dropped_controls_iter)
     if (length(retained_controls) == 0L && length(dropped_controls_iter) > 0L) {
-      # 모든 control이 FE에서 떨어지면 control 없는 spec으로 한 번 더 재추정한다.
+      # If all controls are absorbed by fixed effects, retry once as the
+      # corresponding no-control specification.
       next
     }
   }
@@ -360,9 +357,8 @@ run_twfe_multi <- function(data, outcome, exposures, controls = NULL, interactio
 # 2. Control Screening
 #==============================================================================
 
-# control screening은 “이론적으로 필요한 후보” 중
-# 실제 데이터 지원이 충분한 변수만 추리는 단계다.
-# 분산이 거의 없거나 유효값이 너무 적으면 회귀를 불안정하게 만든다.
+# Control screening keeps theoretically relevant candidates only when the
+# observed panel has enough finite support and variation to identify them.
 select_usable_controls <- function(data,
                                    candidates,
                                    min_finite = 500L,
@@ -775,13 +771,13 @@ resolve_floating_overlap_spec_meta <- function(outcomes,
 # 3. Model Output Tidying
 #==============================================================================
 
-# 모델마다 다른 객체 클래스를 후속 csv export에 맞는
-# long tidy table로 일관되게 바꾼다.
+# Convert model objects into one long coefficient table for downstream CSV
+# export, diagnostics, and plotting.
 tidy_models <- function(models) {
   mods <- models[!vapply(models, is.null, logical(1))]
   if (length(mods) == 0) return(tibble::tibble())
-  # list 이름을 `model_name`으로 보존해야, 이후 csv/plot 단계에서
-  # 어떤 outcome/exposure/spec 조합에서 나온 계수인지 역추적할 수 있다.
+  # Preserve list names as `model_name` so exported rows remain traceable to the
+  # originating outcome, exposure, and specification.
   purrr::imap_dfr(mods, ~ {
     meta <- model_meta_tibble(.x)
     td <- broom::tidy(.x)

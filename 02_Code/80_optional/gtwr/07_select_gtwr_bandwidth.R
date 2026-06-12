@@ -22,6 +22,8 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 07_select_gtwr_bandwidth", timestamp()))
 
+# Bandwidth selection writes a diagnostic table plus cache entries, but does not
+# replace the fixed-bandwidth main GTWR contract by itself.
 empty_gtwr_bandwidth_selection_tbl <- function() {
   tibble::tibble(
     method = character(),
@@ -92,6 +94,8 @@ build_gtwr_bandwidth_selection_row <- function(outcome,
 }
 
 run_gtwr_bandwidth_selection_job <- function(job, panel_xy, bw_cache_dir) {
+  # Each job mirrors one main resident-only GTWR specification, then records
+  # whether `bw.gtwr` succeeded or fell back to the configured fixed bandwidth.
   rhs_vars <- unique(c(job$focal_var, job$selected_controls))
   vars <- unique(c("adm_cd", "year", "quarter", "yq", "quarter_index", "time_id", "x", "y", job$outcome, rhs_vars))
   d_fit <- panel_xy |>
@@ -182,6 +186,8 @@ run_gtwr_bandwidth_selection_job <- function(job, panel_xy, bw_cache_dir) {
   )
 }
 
+# Require explicit non-fixed bandwidth strategy so accidental default runs do not
+# spend time on a diagnostic that cannot estimate a bandwidth.
 if (!file.exists(cfg$paths$panel_main)) {
   stop("[ERROR] panel_main missing for GTWR bandwidth selection.", call. = FALSE)
 }
@@ -228,6 +234,8 @@ if (length(outcomes) == 0L || length(focal_vars) == 0L) {
   write_csv_safe(empty_gtwr_bandwidth_selection_tbl(), selection_path)
   append_log(cfg$logs$model_run, "- GTWR bandwidth selection skipped: missing quarterly outcomes or resident exposure")
 } else {
+  # Prepare the same panel support as the main sidecar and evaluate bandwidth for
+  # each outcome/exposure specification.
   panel_xy <- prepare_gtwr_points(panel)
   bw_cache_dir <- cfg$get_gtwr_main_bw_cache_dir(control_set)
   ensure_dirs(bw_cache_dir)

@@ -20,9 +20,8 @@
 # 0. Setup
 #==============================================================================
 
-# 메인 회귀는 별도 slim panel 파일이 아니라 `panel_main`의
-# method-specific view만 읽는다. 결과적으로 데이터 정본은 하나이고,
-# 모델 단계는 필요한 열만 선별해 사용하는 구조다.
+# Main TWFE reads only the method-specific view of panel_main, keeping one
+# authoritative panel while letting the model layer select the required columns.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -45,9 +44,9 @@ build_model_name <- function(outcome, exposure, spec) {
 # 1. Resolve Estimation Inputs
 #==============================================================================
 
-# outcome, exposure, control은 문서 계약에서 정한 후보군 중
-# 실제 panel에 존재하고 유한값이 충분한 변수만 남긴다.
-# 이렇게 해야 스펙 drift나 부분 재실행 후에도 회귀가 안전하게 돈다.
+# Outcomes, exposures, and controls start from the documented active contract
+# and are then screened against the live panel to avoid stale specs after
+# partial rebuilds.
 outcome_registry <- resolve_model_outcomes(
   panel,
   requested_outcomes = value_or(cfg$twfe_main_outcomes, c(
@@ -59,7 +58,7 @@ outcomes <- outcome_registry$outcome
 exposure_base <- if (!is.null(cfg$twfe_main_exposure_vars) && length(cfg$twfe_main_exposure_vars) > 0) {
   cfg$twfe_main_exposure_vars
 } else {
-  c("age60_resident_share")
+  c("lag4_age60_resident_share")
 }
 exposures <- intersect(exposure_base, names(panel))
 exposures <- exposures[vapply(exposures, function(v) sum(is.finite(panel[[v]])) > 100, logical(1))]
@@ -68,7 +67,8 @@ control_candidates <- value_or(cfg$twfe_main_control_cols, c(
   "lag4_ln_resident_pop", "lag4_ln_land_price_adjusted", "lag4_transit_accessibility",
   "lag4_ln_workplace_worker_pop"
 ))
-# 후보 control을 넓게 제시한 뒤 usable screening을 적용한다.
+# Candidate controls are screened outcome by outcome because collinearity and
+# finite coverage can differ across vitality outcomes.
 control_screen <- resolve_outcome_control_screen(
   panel,
   outcomes = outcomes,
@@ -76,6 +76,7 @@ control_screen <- resolve_outcome_control_screen(
   min_finite = 500L,
   fe_aware = TRUE
 )
+assert_twfe_main_controls_current(control_screen, context = "01_run_twfe_main")
 control_contracts <- resolve_outcome_control_contracts(control_screen, outcomes = outcomes)
 controls_by_outcome <- stats::setNames(
   lapply(control_contracts, `[[`, "usable_controls"),
@@ -91,8 +92,9 @@ write_csv_safe(control_screen, cfg$paths$twfe_main_controls_used)
 # 2. Estimate TWFE and Export Summaries
 #==============================================================================
 
-# 메인 TWFE는 기준선 역할만 맡으므로 m1~m2까지만 적합한다.
-# 상호작용(m3, m4)은 02_run_twfe_interaction_models.R에서 별도로 다룬다.
+# Main TWFE is the baseline and residual-diagnostic layer, so it estimates only
+# the no-control and selected-control specifications; interaction families stay
+# in optional TWFE sidecars.
 available_specs <- c("m1", "m2")
 spec_registry <- tidyr::crossing(
   outcome = outcomes,
@@ -115,8 +117,8 @@ spec_registry <- tidyr::crossing(
 mods <- list()
 for (y in outcomes) {
   for (x in exposures) {
-    # 동일 조합에 대해 사양만 바꾸는 m1~m2 구조라,
-    # 결과 이름도 `outcome__exposure__m#` 패턴으로 고정한다.
+    # Model IDs keep the outcome-exposure-spec contract stable across tables,
+    # diagnostics, plots, and residual Moran outputs.
     key <- paste(y, x, sep = "__")
 
     m1 <- run_twfe(panel, y, x, controls = NULL)
@@ -161,8 +163,8 @@ write_csv_safe(model_diag, cfg$paths$twfe_main_diagnostics)
 # 3. Plot Main Exposure Coefficients
 #==============================================================================
 
-# 그림은 핵심 age60 노출변수의 계수만 남겨,
-# 결과 방향성과 신뢰구간을 빠르게 비교하는 요약 시각화다.
+# Coefficient plots are compact reporting surfaces for the main lagged aging
+# exposure, split between primary outcomes and supplementary vitality indices.
 exposure_pattern <- paste0("^(", paste(exposure_base, collapse = "|"), ")$")
 plot_twfe_coef <- function(plot_df, out_path) {
   if (nrow(plot_df) == 0) {
@@ -202,9 +204,8 @@ plot_twfe_coef(
 # 4. Residual Spatial Dependence Check
 #==============================================================================
 
-# TWFE 자체는 공간모형이 아니므로, 추정 뒤 잔차에 공간자기상관이
-# 남는지 lightweight diagnostic을 한 번 더 본다.
-# 여기서 강한 잔차 Moran이 남으면 SPDM 결과 해석 중요도가 커진다.
+# TWFE is non-spatial by design, so residual Moran diagnostics document whether
+# spatial dependence remains after adm_cd and yq fixed effects.
 m2_registry <- spec_registry |>
   dplyr::filter(spec == "m2")
 
@@ -369,6 +370,8 @@ run_residual_moran_by_yq <- function(model_name, model_obj, lw) {
   })
 }
 
+# Residual Moran is evaluated only on final fixest estimation rows, then aligned
+# to the Queen W by adm_cd for each quarter.
 if (file.exists(cfg$paths$w_queen)) {
   lw <- readRDS(cfg$paths$w_queen)
   moran_by_yq <- purrr::pmap_dfr(m2_registry, function(outcome, exposure, spec, outcome_group, outcome_order, model_name, interaction_var, requested_controls) {
@@ -388,6 +391,8 @@ moran_by_yq <- moran_by_yq |>
   dplyr::arrange(outcome_order, exposure, model_name, yq)
 write_csv_safe(moran_by_yq, cfg$paths$twfe_main_residual_moran_by_yq)
 
+# The headline residual Moran table keeps the latest successful quarter per
+# model, while the summary table records the full tested-quarter distribution.
 moran_tbl <- moran_by_yq |>
   dplyr::filter(status == "success") |>
   dplyr::group_by(model_name, outcome, exposure, outcome_group, outcome_order) |>

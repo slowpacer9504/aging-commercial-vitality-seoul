@@ -19,6 +19,8 @@
 # 0. Setup
 #==============================================================================
 
+# QC validates the active quarterly contract only; optional sidecars are checked
+# for schema drift when present but do not determine required run success.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -31,6 +33,8 @@ append_log(cfg$logs$data_qc, sprintf("\n## [%s] 01_validate_method_dataset_align
 # 1. Helpers
 #==============================================================================
 
+# Rows use a uniform PASS/FAIL schema so the final QC table is easy to scan and
+# machine-check.
 add_row <- function(check_id, method, pass, detail) {
   tibble::tibble(
     check_id = check_id,
@@ -57,6 +61,8 @@ describe_optional_absence <- function(path) {
   sprintf("not_run_appendix: %s missing", basename(path))
 }
 
+# Optional CSV checks are excluded from required quarterly success by default,
+# but still guard schema and old annual/lead-lag naming if opt-in testing is on.
 scan_forbidden_patterns <- function(df, patterns) {
   if (nrow(df) == 0L || length(patterns) == 0L) return(character())
   char_cols <- names(df)[vapply(df, function(x) is.character(x) || is.factor(x), logical(1))]
@@ -115,6 +121,7 @@ check_optional_csv_schema <- function(check_id,
 
 expected_main_outcomes <- sort(unique(c(cfg$primary_outcomes, cfg$vitality_supplementary_outcomes)))
 expected_main_exposure <- as.character(value_or(cfg$lagged_main_exposure_vars, "lag4_age60_resident_share")[[1L]])
+expected_gtwr_focal <- as.character(value_or(cfg$gtwr_main_exposure_vars, expected_main_exposure)[[1L]])
 w_robustness_expected <- sort(unique(c(cfg$default_w, cfg$alt_w)))
 expected_robustness_axes <- sort(c("outcome_definition", "sample_window", "w_moran"))
 optional_required_test_enabled <- FALSE
@@ -125,6 +132,8 @@ rows <- list()
 # 2. Shared Data Contract
 #==============================================================================
 
+# Shared data checks prove the active panel exists, keeps the canonical
+# adm_cd-yq key, and preserves all method-specific panel views.
 shared_paths <- cfg$active_output_contract$shared_data
 rows[[length(rows) + 1L]] <- add_row(
   "A01",
@@ -212,6 +221,8 @@ for (view_name in c("esda", "twfe", "spdm", "gtwr")) {
 # 3. ESDA Contract
 #==============================================================================
 
+# ESDA must publish both tabular spatial diagnostics and map artifacts from
+# panel_main under the latest-quarter and quarterly-sequence contract.
 esda_paths <- cfg$active_output_contract$esda
 rows[[length(rows) + 1L]] <- add_row("E01", "esda", all(file.exists(esda_paths)), describe_presence(esda_paths))
 
@@ -282,6 +293,8 @@ rows[[length(rows) + 1L]] <- add_row(
 # 4. TWFE Contract
 #==============================================================================
 
+# TWFE checks focus on the selected-control m2 baseline and residual Moran
+# diagnostic, both under the lagged main resident-aging exposure.
 twfe_paths <- cfg$active_output_contract$twfe
 rows[[length(rows) + 1L]] <- add_row("T01", "twfe", all(file.exists(twfe_paths)), describe_presence(twfe_paths))
 
@@ -333,6 +346,8 @@ rows[[length(rows) + 1L]] <- add_row("T03", "twfe", pass, detail)
 # 5. SPDM Contract
 #==============================================================================
 
+# Main SPDM checks require the Queen true SDM and direct/indirect/total impact
+# rows for every active main outcome.
 spdm_paths <- cfg$active_output_contract$spdm
 rows[[length(rows) + 1L]] <- add_row("S01", "spdm_main", all(file.exists(spdm_paths)), describe_presence(spdm_paths))
 
@@ -397,6 +412,8 @@ rows[[length(rows) + 1L]] <- add_row("S03", "spdm_main", pass, detail)
 # 6. SPDM W-Robustness Contract
 #==============================================================================
 
+# W robustness must cover the same outcome-exposure grid under Queen, Rook,
+# kNN6, and kNN8.
 spdm_w_paths <- cfg$active_output_contract$spdm_w_robustness
 rows[[length(rows) + 1L]] <- add_row(
   "W01",
@@ -438,6 +455,8 @@ rows[[length(rows) + 1L]] <- add_row("W02", "spdm_w_robustness", pass, detail)
 # 7. Robustness Contract
 #==============================================================================
 
+# Robustness must cover the registered sensitivity axes: outcome definition,
+# sample window, and latest-quarter W-Moran diagnostics.
 robustness_paths <- cfg$active_output_contract$robustness
 rows[[length(rows) + 1L]] <- add_row(
   "R01",
@@ -470,6 +489,9 @@ rows[[length(rows) + 1L]] <- add_row("R02", "robustness", pass, detail)
 # 8. Optional GTWR Sidecar Contract
 #==============================================================================
 
+# GTWR is optional, but when opt-in testing is enabled its raw outputs must use
+# the configured lagged resident-only focal variable and quarterly latest_yq
+# schema.
 gtwr_control_set <- cfg$gtwr_control_set_token(cfg$gtwr_control_set)
 
 gtwr_raw_paths <- c(
@@ -502,7 +524,7 @@ if (!isTRUE(optional_required_test_enabled)) {
     )
     expected_outcomes <- sort(unique(cfg$gtwr_main_outcomes))
     gtwr_focus_tbl <- gtwr_main_tbl |>
-      dplyr::filter(focal_var == "age60_resident_share", control_set == .env$gtwr_control_set)
+      dplyr::filter(focal_var == .env$expected_gtwr_focal, control_set == .env$gtwr_control_set)
     observed_outcomes <- gtwr_focus_tbl |>
       dplyr::pull(outcome) |>
       unique() |>
@@ -535,6 +557,9 @@ if (!isTRUE(optional_required_test_enabled)) {
 # 9. Manual Appendix Contract (Excluded From Required Quarterly Test Plan)
 #==============================================================================
 
+# Manual appendix checks are intentionally PASS when absent in the required
+# quarterly test plan; when present, they must keep quarterly yq schema and avoid
+# retired annual/legacy suffixes.
 rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "X01",
   "appendix_twfe_channel",
@@ -556,6 +581,18 @@ rows[[length(rows) + 1L]] <- check_optional_csv_schema(
   "appendix_twfe_age_mix",
   cfg$paths$twfe_age_mix_experiment_diagnostics,
   required_cols = c("model_family", "domain", "same_domain_total_control", "status"),
+  extra_detail = function(df) sprintf("rows=%d", nrow(df))
+)
+
+rows[[length(rows) + 1L]] <- check_optional_csv_schema(
+  "X04",
+  "appendix_spdm_channel_path",
+  cfg$paths$spdm_channel_path_effects,
+  required_cols = c(
+    "outcome", "exposure", "mediator", "effect_scale",
+    "c_total_estimate", "c_prime_estimate", "indirect_effect",
+    "inference_method", "sample_min_yq", "sample_max_yq", "status"
+  ),
   extra_detail = function(df) sprintf("rows=%d", nrow(df))
 )
 

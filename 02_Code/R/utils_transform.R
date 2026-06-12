@@ -18,17 +18,14 @@
 safe_log1p <- function(x) {
   # Negative counts are clipped at zero because the target variables in this
   # project are inherently non-negative and log1p is used for scale control.
-  # count/amount 계열은 이론적으로 음수가 아니므로, 로그 변환 전
-  # 안전하게 0 이하를 막는다.
-  # numeric이 아니면 그대로 반환하는 이유는, 호출부에서 `across()`로
-  # 여러 열을 한 번에 넘겨도 문자형 식별자가 깨지지 않게 하기 위해서다.
+  # Non-numeric inputs pass through unchanged so grouped `across()` calls do not
+  # corrupt identifier columns.
   if (!is.numeric(x)) return(x)
   log1p(pmax(x, 0))
 }
 
 winsorize_vec <- function(x, probs = c(0.01, 0.99)) {
-  # 극단치의 영향을 줄이기 위한 보조 helper다.
-  # 분위수 계산은 `na.rm = TRUE`로 수행하되, 원래 결측은 유지한다.
+  # Trim extreme numeric values while preserving original missing values.
   if (!is.numeric(x)) return(x)
   qs <- stats::quantile(x, probs = probs, na.rm = TRUE, type = 7)
   pmin(pmax(x, qs[[1]]), qs[[2]])

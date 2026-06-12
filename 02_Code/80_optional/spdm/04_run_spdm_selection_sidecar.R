@@ -605,7 +605,7 @@ outcome_registry <- resolve_model_outcomes(
   include_robustness = FALSE
 )
 outcomes <- outcome_registry$outcome
-exposures <- intersect(value_or(cfg$spdm_main_exposure_vars, c("age60_resident_share")), names(panel))
+exposures <- intersect(value_or(cfg$spdm_main_exposure_vars, c("lag4_age60_resident_share")), names(panel))
 w_type_main <- as.character(value_or(cfg$default_w, "queen"))
 
 test_names <- c("slm_lml", "slm_lme", "slm_rlml", "slm_rlme", "rw_rho", "common_factor_wald_full_rhs")

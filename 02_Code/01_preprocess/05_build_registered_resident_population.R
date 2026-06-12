@@ -17,6 +17,14 @@
 # DependsOn : 02_build_seoul_quarter_base.R
 #==============================================================================
 
+#==============================================================================
+# 0. Setup
+#==============================================================================
+
+# Registered resident population is the canonical resident-stock source for the
+# main exposure and resident-scale controls. It keeps monthly stock precision,
+# harmonizes source dong names to the 2020 boundary, and publishes both active
+# and lag-support quarterly layers.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -48,6 +56,9 @@ if (length(raw_files) == 0L) {
 # 1. Helpers
 #==============================================================================
 
+# The helper layer separates name normalization, 2020-boundary harmonization,
+# pre-2020 split allocation, and raw CSV parsing so the boundary contract is
+# auditable before quarterly aggregation.
 normalize_adm_name <- function(x) {
   x |>
     as.character() |>
@@ -360,6 +371,9 @@ build_boundary_lookup <- function() {
 # 2. Read, Harmonize, and Map to 2020 adm_cd
 #==============================================================================
 
+# Raw MOIS rows are first normalized at the source-name level, then matched to
+# the project boundary lookup. Unmatched rows fail early because resident
+# exposure coverage cannot be optional in the canonical panel.
 registered_long <- purrr::map_dfr(raw_files, read_one_registered_file) |>
   dplyr::filter(.data$year >= cfg$lag_support_start, .data$year <= cfg$short_end)
 
@@ -402,6 +416,8 @@ if (nrow(unmatched) > 0L) {
 # 3. Monthly and Annual Resident Population Variables
 #==============================================================================
 
+# Monthly age-band stocks are aggregated to quarterly means for population
+# counts and denominator-weighted quarterly shares for age composition.
 age_0_19 <- c("0 - 4세", "5 - 9세", "10 - 14세", "15 - 19세")
 age20 <- c("20 - 24세", "25 - 29세")
 age30 <- c("30 - 34세", "35 - 39세")
@@ -559,6 +575,8 @@ quarter_base_keys <- arrow::read_parquet(cfg$paths$quarter_base, col_select = ti
   dplyr::arrange(.data$adm_cd, .data$year, .data$quarter)
 validate_panel_keys(quarter_base_keys, c("adm_cd", "yq"))
 
+# Lag support extends the same quarterly resident contract backward so 06 can
+# build canonical four-quarter lags without weakening the active panel window.
 lag_support_calendar <- tibble::as_tibble(cfg$lag_support_quarter_sequence) |>
   dplyr::mutate(
     year = as.integer(.data$year),
@@ -618,6 +636,8 @@ if (nrow(missing_support_core) > 0L) {
 # 4. QC and Save
 #==============================================================================
 
+# QC records active coverage, lag-support coverage, age-band total consistency,
+# and boundary proxy usage before publishing the canonical resident layers.
 qc_yq <- registered_panel |>
   dplyr::group_by(.data$yq) |>
   dplyr::summarise(

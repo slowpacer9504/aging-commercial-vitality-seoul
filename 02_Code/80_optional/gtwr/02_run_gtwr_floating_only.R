@@ -25,6 +25,8 @@ load_project_packages()
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", timestamp()))
 
 {
+  # Validate optional GTWR dependencies before reading the main panel or opening
+  # caches, because this sidecar is not part of the default pipeline.
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for GTWR floating-only sidecar.", call. = FALSE)
   }
@@ -67,6 +69,8 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", ti
   controls_path <- cfg$get_gtwr_floating_controls_used_path(control_set)
   frozen_path <- cfg$get_gtwr_floating_frozen_spec_path(control_set)
 
+  # Publish empty contract tables when the current panel cannot support the
+  # floating-only exposure family.
   if (length(outcomes) == 0L || length(focal_vars) == 0L) {
     write_csv_safe(empty_gtwr_main_tbl(), summary_path)
     write_csv_safe(empty_gtwr_local_tbl(), local_path)
@@ -75,6 +79,8 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", ti
     write_csv_safe(empty_gtwr_frozen_spec_tbl(), frozen_path)
     append_log(cfg$logs$model_run, "- GTWR floating-only quarterly sidecar skipped: missing quarterly outcomes or floating exposure")
   } else {
+    # Build the GTWR spec grid and use per-spec caches so long optional runs can
+    # resume without recomputing successful model fits.
     panel_xy <- prepare_gtwr_points(panel)
     cache_dir <- cfg$get_gtwr_floating_spec_cache_dir(control_set)
     ensure_dirs(cache_dir)
@@ -163,6 +169,8 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", ti
       )
     })
 
+    # Collect cached/fresh payloads into the same summary, local, panel, control,
+    # and frozen-spec outputs used by the resident-only GTWR sidecar.
     summary_tbl <- dplyr::bind_rows(purrr::map(spec_results, "summary")) |>
       annotate_outcomes(include_robustness = FALSE) |>
       dplyr::arrange(.data$outcome_order, .data$focal_var)

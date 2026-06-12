@@ -20,9 +20,9 @@
 # 0. Setup
 #==============================================================================
 
-# 이 sidecar는 메인 TWFE를 대체하지 않는다.
-# panel_main은 그대로 두고, 행안부 주민등록인구 연령대별 분기 평균 stock을
-# 청년(20-30), 중년(40-50), 노년(60+) 로그 인구수로 묶어 appendix FE 비교표를 만든다.
+# This appendix sidecar does not replace the main TWFE specification. It keeps
+# `panel_main` unchanged and compares youth, middle-age, and older resident log
+# population stocks from the registered-resident source.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -86,8 +86,8 @@ build_model_name <- function(model_family, outcome) {
 # 2. Resolve Inputs and Build Domain-Specific Age-Mix Panels
 #==============================================================================
 
-# 청년(20-30), 중년(40-50), 노년(60+) 주민등록인구 로그값을 모두 노출로 쓴다.
-# lag4 총 주민등록인구 로그 통제는 규모 보정 control로 유지한다.
+# Use all grouped resident log-population exposures together while retaining the
+# lagged total resident scale control from the main TWFE contract.
 outcome_registry <- resolve_model_outcomes(
   panel,
   requested_outcomes = value_or(cfg$twfe_age_mix_outcomes, cfg$twfe_main_outcomes),
@@ -221,8 +221,8 @@ write_csv_safe(control_screen_expanded, cfg$paths$twfe_age_mix_experiment_contro
 # 3. Estimate Domain-Specific M2 Models
 #==============================================================================
 
-# 청년, 중년, 노년 주민등록 로그 인구수를 함께 넣는다.
-# `lag4_ln_resident_pop`은 lagged resident scale control로 유지한다.
+# Estimate domain-specific M2 models with the grouped resident log-population
+# exposures and the lagged resident scale control.
 spec_registry <- family_contracts |>
   dplyr::left_join(
     family_qc |>

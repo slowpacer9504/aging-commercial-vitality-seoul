@@ -15,6 +15,9 @@
 # 0. Setup
 #==============================================================================
 
+# Active robustness checks stay on the TWFE contract: the same panel view,
+# lagged resident-aging exposure, outcome registry, and screened controls are
+# reused while only the sensitivity axis changes.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -27,6 +30,8 @@ panel <- read_panel_main_view("twfe") |>
   dplyr::mutate(adm_cd = as.character(adm_cd)) |>
   dplyr::arrange(adm_cd, yq)
 
+# Labels are presentation helpers only; analytic ordering still comes from the
+# project outcome registry.
 label_outcome <- function(x) {
   dplyr::case_when(
     x == "vitality_sub_economic" ~ "Economic Vitality",
@@ -61,10 +66,24 @@ robustness_outcomes <- resolve_model_outcomes(
   include_robustness = TRUE
 )$outcome
 
+# Outcome-definition checks compare the base vitality composite with registered
+# robustness composites, not arbitrary ad hoc outcomes.
 outcome_definition_outcomes <- intersect(
   c(cfg$vitality_supplementary_outcomes, cfg$vitality_robustness_outcomes),
   names(panel)
 )
+
+# Use the same lagged main exposure as active TWFE. Older contemporaneous
+# age60_resident_share checks are intentionally not retained here.
+main_exposure_candidates <- unique(as.character(value_or(cfg$twfe_main_exposure_vars, "lag4_age60_resident_share")))
+main_exposure <- intersect(main_exposure_candidates, names(panel))
+if (length(main_exposure) == 0L) {
+  stop(
+    sprintf("[ERROR] Main TWFE exposure missing for robustness: %s", collapse_chr(main_exposure_candidates)),
+    call. = FALSE
+  )
+}
+main_exposure <- main_exposure[[1]]
 
 if (length(robustness_outcomes) == 0L) {
   append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_robustness", timestamp()))
@@ -77,6 +96,8 @@ if (length(robustness_outcomes) == 0L) {
 
   control_candidates <- value_or(cfg$twfe_main_control_cols, cfg$lagged_main_control_cols)
 
+  # Controls inherit the main TWFE contract, then pass FE-aware finite-coverage
+  # screening for the robustness outcome set.
   control_screen <- resolve_outcome_control_screen(
     panel,
     outcomes = robustness_outcomes,
@@ -84,6 +105,7 @@ if (length(robustness_outcomes) == 0L) {
     min_finite = 100L,
     fe_aware = TRUE
   )
+  assert_twfe_main_controls_current(control_screen, context = "02_run_robustness")
   control_contracts <- resolve_outcome_control_contracts(control_screen, outcomes = robustness_outcomes)
   ctrl_by_outcome <- stats::setNames(
     lapply(control_contracts, `[[`, "usable_controls"),
@@ -142,9 +164,11 @@ if (length(robustness_outcomes) == 0L) {
         status = value_or(status, "success"),
         message = as.character(message),
         .before = 1
-      )
+    )
   }
 
+  # This wrapper keeps every sensitivity family on the same TWFE fitting and
+  # output-extraction path.
   run_spec_once <- function(data, outcome, exposure, spec_axis, spec_label) {
     controls_y <- ctrl_by_outcome[[outcome]]
     model <- run_twfe(data, outcome, exposure, controls = controls_y)
@@ -163,6 +187,8 @@ if (length(robustness_outcomes) == 0L) {
   # 2. Outcome Definition Sensitivity
   #============================================================================
 
+  # Outcome-definition sensitivity swaps vitality composites while keeping the
+  # main lagged resident-aging exposure and current control contract fixed.
   res_outcome_definition <- if (length(outcome_definition_outcomes) == 0L) {
     tibble::tibble()
   } else {
@@ -170,7 +196,7 @@ if (length(robustness_outcomes) == 0L) {
       run_spec_once(
         panel,
         outcome = outcome,
-        exposure = "age60_resident_share",
+        exposure = main_exposure,
         spec_axis = "outcome_definition",
         spec_label = outcome
       )
@@ -182,6 +208,8 @@ if (length(robustness_outcomes) == 0L) {
   # 3. W Sensitivity via Latest-Quarter Moran's I
   #============================================================================
 
+  # W-Moran sensitivity is descriptive and latest-quarter only; it checks
+  # whether alternative W choices change global clustering diagnostics.
   latest_yq <- panel |>
     dplyr::filter(!is.na(yq), nzchar(yq)) |>
     dplyr::arrange(
@@ -270,6 +298,8 @@ if (length(robustness_outcomes) == 0L) {
   # 4. Sample-Window Sensitivity
   #============================================================================
 
+  # Sample-window sensitivity compares the full active analysis window with the
+  # pre-2025 window under the same TWFE formula.
   windows <- list(
     full = panel,
     pre2025 = panel |> dplyr::filter(year < 2025L)
@@ -280,7 +310,7 @@ if (length(robustness_outcomes) == 0L) {
       run_spec_once(
         data,
         outcome = outcome,
-        exposure = "age60_resident_share",
+        exposure = main_exposure,
         spec_axis = "sample_window",
         spec_label = window_name
       )
@@ -292,6 +322,8 @@ if (length(robustness_outcomes) == 0L) {
   # 5. Save Summary and Comparison Plot
   #============================================================================
 
+  # The single robustness table combines model-coefficient sensitivity and
+  # latest-quarter W-Moran diagnostics with an explicit spec_axis.
   res <- dplyr::bind_rows(
     res_outcome_definition,
     res_w,
@@ -307,6 +339,8 @@ if (length(robustness_outcomes) == 0L) {
 
   write_csv_safe(res, cfg$paths$robustness_summary)
 
+  # The comparison plot is limited to coefficient-based checks; W-Moran rows are
+  # tabular diagnostics and are not plotted as coefficient estimates.
   plot_df <- res |>
     dplyr::filter(
       spec_axis %in% c("outcome_definition", "sample_window"),

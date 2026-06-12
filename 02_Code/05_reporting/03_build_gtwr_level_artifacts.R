@@ -143,17 +143,18 @@ if (nrow(gtwr_sources_tbl) == 0L) {
 tag_selected <- NA_character_
 source_paths <- character()
 
-clear_existing_gtwr_level_artifacts <- function() {
+clear_existing_gtwr_level_artifacts <- function(control_sets = gtwr_sources_tbl$control_set) {
+  control_sets <- vapply(control_sets, cfg$gtwr_control_set_token, character(1))
   existing <- list.files(
     cfg$dir_report,
-    pattern = "^gtwr_level_.*(lean|extended).*[.](csv|png)$",
+    pattern = sprintf("^gtwr_level_.*(%s).*[.](csv|png)$", paste(control_sets, collapse = "|")),
     full.names = TRUE
   )
   if (length(existing) > 0L) unlink(existing)
   invisible(existing)
 }
 
-clear_existing_gtwr_level_artifacts()
+clear_existing_gtwr_level_artifacts(gtwr_sources_tbl$control_set)
 
 report_csv_path <- function(stem) {
   file.path(cfg$dir_report, sprintf("%s_%s.csv", stem, tag_selected))
@@ -374,11 +375,11 @@ register_artifact <- function(artifact_name,
   artifact_rows[[length(artifact_rows) + 1L]] <<- tibble::tibble(
     artifact_name = artifact_name,
     artifact_path = artifact_path,
-	  artifact_type = artifact_type,
-	  status = "created",
-	  control_set = control_set_selected,
-	  input_tables_dir = input_tables_dir,
-	  source_paths = paste(source_paths, collapse = ";"),
+    artifact_type = artifact_type,
+    status = "created",
+    control_set = control_set_selected,
+    input_tables_dir = input_tables_dir,
+    source_paths = paste(source_paths, collapse = ";"),
     note = note
   )
 }
@@ -392,6 +393,20 @@ make_outcome_label <- function(x) {
     x == "vitality_index_base" ~ "Composite Vitality Index",
     TRUE ~ x
   )
+}
+
+ordered_outcome_labels <- function() {
+  c(
+    "Economic Vitality",
+    "Social Vitality",
+    "Temporal Vitality",
+    "Stability",
+    "Composite Vitality Index"
+  )
+}
+
+order_outcome_labels <- function(x) {
+  factor(x, levels = ordered_outcome_labels())
 }
 
 make_outcome_label_sentence <- function(x) {
@@ -882,6 +897,12 @@ if (!identical(observed_yq, expected_yq)) {
   )
 }
 expected_time_ids <- seq_along(expected_yq)
+quarter_axis_tick_idx <- which(
+  grepl("Q4$", expected_yq) | seq_along(expected_yq) %in% c(1L, length(expected_yq))
+)
+quarter_axis_tick_idx <- sort(unique(quarter_axis_tick_idx))
+quarter_axis_breaks <- expected_time_ids[quarter_axis_tick_idx]
+quarter_axis_labels <- expected_yq[quarter_axis_tick_idx]
 
 main_meta <- main_tbl |>
   ensure_cols(c(
@@ -1058,6 +1079,7 @@ mean_trajectory_plot_path <- report_png_path("gtwr_level_mean_trajectories")
 trajectory_plot_path <- report_png_path("gtwr_level_representative_trajectories")
 
 mean_trajectory_plot <- mean_trajectories_tbl |>
+  dplyr::mutate(outcome_label = order_outcome_labels(outcome_label)) |>
   ggplot2::ggplot(ggplot2::aes(x = time_id, y = mean_estimate, group = 1)) +
   ggplot2::geom_hline(yintercept = 0, color = "grey70", linewidth = 0.25) +
   ggplot2::geom_ribbon(
@@ -1068,15 +1090,20 @@ mean_trajectory_plot <- mean_trajectories_tbl |>
   ggplot2::geom_line(color = "#08519C", linewidth = 0.7) +
   ggplot2::geom_point(color = "#08519C", size = 1.5) +
   ggplot2::facet_wrap(~ outcome_label, scales = "free_y", ncol = 2) +
-  ggplot2::scale_x_continuous(breaks = expected_time_ids, labels = expected_yq) +
+  ggplot2::scale_x_continuous(
+    breaks = quarter_axis_breaks,
+    labels = quarter_axis_labels,
+    expand = ggplot2::expansion(mult = c(0.01, 0.02))
+  ) +
   ggplot2::labs(
     title = sprintf("GTWR Mean Local Beta Trajectories (%s)", tag_selected),
-    subtitle = "Annual mean across administrative districts; ribbon shows p25 to p75",
-    x = "Year",
+    subtitle = "Quarterly mean across administrative districts; ribbon shows p25 to p75",
+    x = "Quarter",
     y = "Mean local beta"
   ) +
   ggplot2::theme_minimal(base_size = 10) +
   ggplot2::theme(
+    axis.text.x = ggplot2::element_text(size = 8),
     panel.grid.minor = ggplot2::element_blank(),
     strip.text = ggplot2::element_text(face = "bold")
   )
@@ -1086,6 +1113,7 @@ register_artifact("gtwr_level_mean_trajectories_plot", mean_trajectory_plot_path
 
 trajectory_plot <- trajectory_tbl |>
   dplyr::mutate(
+    outcome_label = order_outcome_labels(outcome_label),
     representative_label = factor(representative_label, levels = unique(representative_label))
   ) |>
   ggplot2::ggplot(ggplot2::aes(x = time_id, y = estimate, color = representative_role, group = representative_label)) +
@@ -1093,17 +1121,22 @@ trajectory_plot <- trajectory_tbl |>
   ggplot2::geom_line(linewidth = 0.6) +
   ggplot2::geom_point(size = 1.4) +
   ggplot2::facet_wrap(~ outcome_label, scales = "free_y", ncol = 2) +
-  ggplot2::scale_x_continuous(breaks = expected_time_ids, labels = expected_yq) +
+  ggplot2::scale_x_continuous(
+    breaks = quarter_axis_breaks,
+    labels = quarter_axis_labels,
+    expand = ggplot2::expansion(mult = c(0.01, 0.02))
+  ) +
   ggplot2::scale_color_brewer(palette = "Dark2") +
   ggplot2::labs(
     title = sprintf("GTWR Representative Local Beta Trajectories (%s)", tag_selected),
     subtitle = "Representative districts selected from latest level and latest-minus-earliest extremes",
-    x = "Year",
+    x = "Quarter",
     y = "Local beta",
     color = "Representative role"
   ) +
   ggplot2::theme_minimal(base_size = 10) +
   ggplot2::theme(
+    axis.text.x = ggplot2::element_text(size = 8),
     panel.grid.minor = ggplot2::element_blank(),
     strip.text = ggplot2::element_text(face = "bold")
   )
@@ -1260,12 +1293,12 @@ write_csv_safe(manifest_tbl, manifest_path)
 
 append_log(
   cfg$logs$model_run,
-	  paste0(
-	    "- GTWR quarterly level artifacts created: control_set=", control_set_selected,
-	    ", tables=", sum(manifest_tbl$artifact_type == "csv"),
-	    ", plots=", sum(manifest_tbl$artifact_type == "png"),
-	    ", manifest=", basename(manifest_path)
-	  )
+    paste0(
+      "- GTWR quarterly level artifacts created: control_set=", control_set_selected,
+      ", tables=", sum(manifest_tbl$artifact_type == "csv"),
+      ", plots=", sum(manifest_tbl$artifact_type == "png"),
+      ", manifest=", basename(manifest_path)
+    )
 )
 
   manifest_tbl

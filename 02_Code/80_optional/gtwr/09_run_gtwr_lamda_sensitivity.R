@@ -24,6 +24,8 @@ load_project_packages()
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 09_run_gtwr_lamda_sensitivity", timestamp()))
 
 {
+  # Lamda sensitivity holds the main GTWR bandwidth rule fixed and perturbs the
+  # spatiotemporal distance parameter around the baseline local-beta surface.
   cfg$gtwr_bandwidth_strategy <- "fixed"
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for GTWR lamda sensitivity.", call. = FALSE)
@@ -81,6 +83,8 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 09_run_gtwr_lamda_sensitivity"
     write_csv_safe(empty_gtwr_lamda_sensitivity_tbl(), lamda_sensitivity_path)
     append_log(cfg$logs$model_run, "- GTWR lamda sensitivity skipped: no baseline main specs match current config")
   } else {
+    # Refit non-baseline lamda values and append a baseline reuse row so every
+    # outcome/exposure has a complete comparison family.
     panel_xy <- prepare_gtwr_points(panel)
     spec_grid <- tidyr::crossing(
       outcome = outcomes,

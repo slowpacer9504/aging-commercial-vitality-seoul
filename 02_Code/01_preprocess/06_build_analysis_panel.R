@@ -24,9 +24,10 @@
 # 0. Setup
 #==============================================================================
 
-# 이 스크립트는 active quarterly shared panel handoff를 만든다.
-# 1) panel_merged_base: quarter base + aux를 붙인 직후 상태
-# 2) panel_main_pre_vitality: 공통 contemporaneous 파생변수를 반영한 상태
+# This script creates the active shared quarterly handoff:
+# 1) `panel_merged_base` captures the post-join provenance checkpoint.
+# 2) `panel_main_pre_vitality` adds shared contemporaneous transforms before
+#    the final vitality-index publication step.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -125,12 +126,6 @@ has_value <- function(x) {
   } else {
     !is.na(x) & trimws(as.character(x)) != ""
   }
-}
-
-mean_or_na <- function(x) {
-  x_num <- suppressWarnings(as.numeric(x))
-  if (length(x_num) == 0L || all(is.na(x_num))) return(NA_real_)
-  mean(x_num, na.rm = TRUE)
 }
 
 pooled_z <- function(x, reference = NULL) {

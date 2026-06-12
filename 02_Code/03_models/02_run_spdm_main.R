@@ -16,6 +16,9 @@
 # 0. Setup
 #==============================================================================
 
+# Main SPDM is the active global spatial-panel model: resident-only exposure,
+# Queen W, direct WX construction, and direct/indirect/total effects as the
+# primary interpretation surface.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -25,13 +28,20 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_spdm_main", timestamp()))
 
+# The canonical SPDM stage requires the shared panel and the published Queen W
+# from the active spatial-weights builder.
 if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {
   stop("[ERROR] Missing panel or W", call. = FALSE)
 }
 
+# The SPDM panel view carries the active analysis window and model-approved
+# lagged variables; local W alignment still uses character adm_cd keys.
 panel <- read_panel_main_view("spdm")
 panel$adm_cd <- as.character(panel$adm_cd)
 
+# Main outcomes and exposures are resolved from config first, then intersected
+# with the live panel so partial rebuilds produce auditable failures instead of
+# silent specification drift.
 outcome_registry <- resolve_model_outcomes(
   panel,
   requested_outcomes = value_or(cfg$spdm_main_outcomes, c(
@@ -42,13 +52,13 @@ outcome_registry <- resolve_model_outcomes(
 outcomes <- outcome_registry$outcome
 exposure_base <- if (!is.null(cfg$spdm_main_exposure_vars) && length(cfg$spdm_main_exposure_vars) > 0) {
   cfg$spdm_main_exposure_vars
-} else if (!is.null(cfg$impact_aging_vars) && length(cfg$impact_aging_vars) > 0) {
-  cfg$impact_aging_vars
 } else {
-  c("age60_resident_share")
+  c("lag4_age60_resident_share")
 }
 exposures <- intersect(exposure_base, names(panel))
 
+# SPDM uses the current lagged main-control contract and explicitly rejects
+# retired or outcome-overlapping controls before model fitting.
 control_candidates <- spdm_main_control_candidate_cols()
 control_screen <- resolve_outcome_control_screen(
   panel,
@@ -74,6 +84,8 @@ w_type_main <- as.character(value_or(cfg$default_w, "queen"))
 # 1. Helpers
 #==============================================================================
 
+# Final outputs are annotated and sorted once so successful and failed specs
+# share the same schema and outcome ordering.
 finalize_spdm_outputs <- function(out_coef, out_imp, out_ctrl, out_diag) {
   list(
     coefs = out_coef |>
@@ -91,6 +103,8 @@ finalize_spdm_outputs <- function(out_coef, out_imp, out_ctrl, out_diag) {
   )
 }
 
+# Failed specs still publish coefficient, impact, control, and diagnostic rows.
+# This preserves the full requested spec grid for QC and downstream reporting.
 build_main_fail_result <- function(spec_id,
                                    outcome,
                                    exposure,
@@ -179,6 +193,9 @@ build_main_fail_result <- function(spec_id,
   )
 }
 
+# A successful main spec prepares a balanced Queen-aligned panel, fits the true
+# SDM, extracts model-based coefficient diagnostics, and computes matrix impacts
+# for the focal resident-aging exposure.
 run_main_spec <- function(spec_id,
                           outcome,
                           exposure,
@@ -318,6 +335,8 @@ run_main_spec <- function(spec_id,
 # 2. Run Main Queen SPDM and Save Outputs
 #==============================================================================
 
+# Empty active inputs still produce empty canonical tables rather than leaving
+# stale model outputs from an earlier run.
 if (length(outcomes) == 0L || length(exposures) == 0L) {
   finalized <- finalize_spdm_outputs(
     spdm_empty_coef_tbl(),
@@ -331,6 +350,8 @@ if (length(outcomes) == 0L || length(exposures) == 0L) {
   write_csv_safe(finalized$diagnostics, cfg$paths$spdm_main_diagnostics)
   append_log(cfg$logs$model_run, "- Skipped: missing SPDM outcomes/exposures")
 } else {
+  # region.id is the required bridge between listw ordering and adm_cd panel
+  # rows. Without it, fitting is skipped with explicit empty outputs.
   lw <- readRDS(cfg$paths$w_queen)
   w_ids <- attr(lw$neighbours, "region.id")
 
@@ -349,6 +370,8 @@ if (length(outcomes) == 0L || length(exposures) == 0L) {
   } else {
     w_ids <- as.character(w_ids)
 
+    # The active SPDM spec grid is the documented outcome set crossed with the
+    # resident-only lagged main exposure under Queen W.
     spec_grid <- tidyr::crossing(outcome = outcomes, exposure = exposures) |>
       dplyr::left_join(outcome_registry, by = "outcome") |>
       dplyr::arrange(outcome_order, exposure) |>
@@ -371,6 +394,8 @@ if (length(outcomes) == 0L || length(exposures) == 0L) {
       }
     )
 
+    # Bound outputs from all specs are finalized together so reporting sees one
+    # coherent table per artifact even when individual models fail.
     finalized <- finalize_spdm_outputs(
       dplyr::bind_rows(purrr::map(res, "coefs")),
       dplyr::bind_rows(purrr::map(res, "impacts")),

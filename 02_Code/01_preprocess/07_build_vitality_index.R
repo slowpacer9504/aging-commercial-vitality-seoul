@@ -17,9 +17,9 @@
 # 0. Setup
 #==============================================================================
 
-# 이 단계는 panel engineering을 거의 하지 않는다.
-# panel_main_pre_vitality를 입력으로 받아 활력지수만 계산하고,
-# 최종 shared canonical panel_main을 발행하는 것이 전부다.
+# This step should not re-engineer the shared panel. It reads
+# `panel_main_pre_vitality`, adds only approved vitality-index columns, and
+# publishes the final canonical `panel_main`.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -37,13 +37,13 @@ assert_has_cols <- function(df, cols, label) {
   invisible(TRUE)
 }
 
-# 이 파일의 helper는 "panel engineering"보다 "publication contract 검증"에 초점이 있다.
-# 06단계는 새로운 활력지수 열만 더해야 하므로, 입력 panel과 출력 panel의 동일성을
-# 엄격히 확인해 downstream 모델 입력 계약이 깨지지 않게 한다.
+# Helpers focus on publication-contract validation rather than panel
+# engineering. The final panel may add vitality columns, but common
+# pre-vitality columns must remain byte-for-byte unchanged.
 validate_panel_extension <- function(pre_df, final_df, added_cols) {
   # publication contract:
-  # final panel_main은 pre-vitality panel의 공통 열을 바꾸지 않고,
-  # 허용된 vitality 열만 추가해야 한다.
+  # `panel_main` must preserve all pre-vitality columns and add only approved
+  # vitality columns.
   added_cols <- unique(added_cols)
   missing_pre <- setdiff(names(pre_df), names(final_df))
   unexpected <- setdiff(names(final_df), c(names(pre_df), added_cols))
@@ -80,8 +80,8 @@ validate_panel_extension <- function(pre_df, final_df, added_cols) {
 }
 
 validate_panel_main_views <- function(df, specs) {
-  # 방법별 별도 panel 파일을 없앴기 때문에,
-  # panel_main 하나가 모든 downstream view 요구 열을 갖는지 확인한다.
+  # Separate method-specific panel files were removed, so the single
+  # `panel_main` must satisfy every downstream view contract.
   miss <- purrr::imap(specs, function(cols, view_name) {
     missing <- setdiff(cols, names(df))
     if (length(missing) == 0) return(NULL)
@@ -161,8 +161,9 @@ count_invalid_transformed <- function(df, source_spec, component_name) {
 # 1. Define and Validate Vitality Components
 #==============================================================================
 
-# 활력지수는 개별 outcome을 대체하는 1순위 종속변수가 아니라,
-# 여러 활력 차원을 묶어 보는 보조 composite이므로 구성요소와 QC를 먼저 명시한다.
+# Vitality indices are supplementary composites, not replacements for the
+# individual outcome dimensions. Define components and QC gates before any
+# standardization so failures remain source-specific.
 required_vars <- c(
   "ln_sales_count",
   "ln_total_sales",
@@ -194,9 +195,9 @@ component_spec <- tibble::tribble(
   "operating_months_rel_seoul",  "operating_months_rel_seoul", "stability",  "none",               "as_is"
 )
 
-# comp는 지수 계산 전용 작업 테이블이다.
-# panel_main_pre 전체를 직접 mutate하지 않고 필요한 구성요소만 떼어내 계산하면,
-# 변환 규칙과 QC 대상을 한눈에 확인하기 쉽고 publication contract도 단순해진다.
+# `comp` is an index-building work table. Keeping it separate from
+# `panel_main_pre` makes transformation rules auditable and keeps the final
+# publication contract simple.
 comp <- panel_main_pre |>
   dplyr::select(dplyr::all_of(time_cols), dplyr::all_of(required_vars)) |>
   dplyr::mutate(
@@ -254,8 +255,9 @@ vitality_qc <- component_spec |>
   ) |>
   dplyr::ungroup()
 
-# 개별 component는 finite 수, 고유값 수, 표준편차, 변환 후 invalid 발생 여부를 동시에 본다.
-# 이 중 하나라도 깨지면 composite index는 계산되더라도 해석이 불안정해지므로 즉시 중단한다.
+# Component QC checks finite coverage, variation, standard deviation, and
+# transform validity together. Any failure blocks composite construction because
+# the resulting index would be unstable even if numerically computable.
 bad_vars <- vitality_qc |>
   dplyr::filter(
     finite_n < 100L |
@@ -290,9 +292,9 @@ if (nrow(bad_vars) > 0) {
 # 2. Standardize and Build Indices
 #==============================================================================
 
-# base index는 동일가중 z-score 평균,
-# PCA index는 방향성 비교를 위한 대안 지수다.
-# 둘 다 complete-case에서만 계산해 결측 규칙을 단순하게 유지한다.
+# The base index is an equal-weight z-score mean, while entropy and PCA are
+# robustness composites. All are computed on complete cases to keep missingness
+# rules explicit.
 zvars <- paste0(vars, "_z")
 for (i in seq_along(vars)) {
   v <- vars[[i]]
@@ -301,9 +303,8 @@ for (i in seq_along(vars)) {
   v_mean <- mean(comp[[v]][v_finite], na.rm = TRUE)
   v_sd <- stats::sd(comp[[v]][v_finite], na.rm = TRUE)
   comp[[z]] <- NA_real_
-  # z-score는 active analysis period의 pooled 평균/표준편차를 기준으로 계산한다.
-  # 동별 시계열 표준화가 아니라 분석 표본 전체 분포 표준화이므로,
-  # 구성요소 간 스케일만 맞추고 시간변동 자체는 유지된다.
+  # Z-scores use the pooled active analysis-period distribution. This scales
+  # components without removing within-neighborhood temporal variation.
   comp[[z]][v_finite] <- (comp[[v]][v_finite] - v_mean) / v_sd
 }
 
@@ -647,8 +648,8 @@ if (!is.finite(pc1_corr)) {
   )
   stop("[ERROR] vitality PCA sign alignment failed: non-finite correlation", call. = FALSE)
 }
-# PCA 부호는 임의적이므로, base index와 양의 상관을 갖도록 sign을 맞춘다.
-# 이렇게 해야 base와 PCA를 비교할 때 "방향만 뒤집힌 같은 축" 때문에 해석이 흔들리지 않는다.
+# PCA signs are arbitrary, so align PC1 to have positive correlation with the
+# base index before saving it as an interpretable robustness composite.
 if (pc1_corr < 0) pc1 <- -pc1
 comp$vitality_index_pca[complete_idx] <- pc1
 if (sum(is.finite(comp$vitality_index_pca)) < 100L) {
@@ -679,8 +680,8 @@ if (sum(is.finite(comp$vitality_index_pca)) < 100L) {
 # 3. Build Final Shared Panel
 #==============================================================================
 
-# final panel_main은 pre-vitality panel에 vitality-only 열만 추가한 결과여야 한다.
-# 공통 열이 바뀌면 downstream 모델 입력 계약이 깨지므로 즉시 중단한다.
+# Final `panel_main` must be the pre-vitality panel plus vitality-only columns.
+# Any mutation of common columns would break downstream model inputs.
 vitality_cols <- c(
   "vitality_sub_economic", "vitality_sub_social", "vitality_sub_temporal",
   "vitality_sub_stability", "vitality_index_base", "vitality_index_entropy", "vitality_index_pca"
@@ -703,9 +704,8 @@ validate_panel_main_views(panel_main, panel_main_view_specs_quarterly)
 # 4. Persist Outputs
 #==============================================================================
 
-# vitality_components는 검토/QC/provenance용 companion 파일이다.
-# 실제 모델은 panel_main을 읽지만, 지수 생성 과정을 확인할 때는
-# 이 companion이 더 직접적인 설명 자료가 된다.
+# `vitality_components` is a QC/provenance companion. Downstream models read
+# `panel_main`, while this file explains how the index scores were built.
 write_csv_safe(
   dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
     dplyr::left_join(dplyr::bind_rows(z_qc, stability_axis_z_qc, sub_z_qc), by = "component") |>

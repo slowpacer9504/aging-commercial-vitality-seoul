@@ -1,8 +1,8 @@
 #==============================================================================
 # Script    : 05_run_gwr_delta.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
-# Purpose   : Emit a quarterly GWR-delta appendix bundle using the fixed
-#             2019Q1-2021Q4 vs 2023Q1-2025Q4 comparison window metadata.
+# Purpose   : Emit a deferred quarterly GWR-delta appendix bundle using the
+#             active 2019Q4-2025Q4 analysis horizon metadata.
 # Author    : Codex
 # Created   : 2026-04-22
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
@@ -24,6 +24,8 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 05_run_gwr_delta", timestamp()))
 
+# Deferred GWR-delta outputs preserve the appendix contract even when local
+# early-late estimation is intentionally inactive.
 empty_gwr_delta_main_tbl <- function() {
   tibble::tibble(
     gwr_family = character(),
@@ -36,6 +38,14 @@ empty_gwr_delta_main_tbl <- function() {
     early_end_year = integer(),
     late_start_year = integer(),
     late_end_year = integer(),
+    sample_min_yq = character(),
+    sample_max_yq = character(),
+    early_start_yq = character(),
+    early_end_yq = character(),
+    late_start_yq = character(),
+    late_end_yq = character(),
+    early_n_quarter = integer(),
+    late_n_quarter = integer(),
     window_scope = character(),
     window_n_year = integer(),
     n_locations = integer(),
@@ -78,6 +88,14 @@ empty_gwr_delta_local_tbl <- function() {
     early_end_year = integer(),
     late_start_year = integer(),
     late_end_year = integer(),
+    sample_min_yq = character(),
+    sample_max_yq = character(),
+    early_start_yq = character(),
+    early_end_yq = character(),
+    late_start_yq = character(),
+    late_end_yq = character(),
+    early_n_quarter = integer(),
+    late_n_quarter = integer(),
     window_scope = character(),
     window_n_year = integer(),
     bandwidth = numeric(),
@@ -101,22 +119,92 @@ empty_controls_tbl <- function() {
     selection_status = character(),
     window_scope = character(),
     window_n_year = integer(),
+    sample_min_yq = character(),
+    sample_max_yq = character(),
+    early_start_yq = character(),
+    early_end_yq = character(),
+    late_start_yq = character(),
+    late_end_yq = character(),
+    early_n_quarter = integer(),
+    late_n_quarter = integer(),
     status = character(),
     message = character()
   )
 }
 
-build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control_candidates) {
+resolve_gwr_delta_window_meta <- function() {
+  # Derive early and late windows from the active quarterly analysis sequence so
+  # appendix metadata cannot drift back to annual timing.
+  q_seq <- cfg$analysis_quarter_sequence
+  if (is.null(q_seq) || nrow(q_seq) == 0L || !"yq" %in% names(q_seq) || !"year" %in% names(q_seq)) {
+    stop("[ERROR] cfg$analysis_quarter_sequence is required for GWR delta metadata.", call. = FALSE)
+  }
+
+  q_seq <- q_seq |>
+    dplyr::mutate(
+      year = suppressWarnings(as.integer(.data$year)),
+      quarter_index = if ("quarter_index" %in% names(q_seq)) {
+        suppressWarnings(as.integer(.data$quarter_index))
+      } else {
+        dplyr::row_number()
+      },
+      yq = as.character(.data$yq)
+    ) |>
+    dplyr::filter(!is.na(.data$year), !is.na(.data$quarter_index), !is.na(.data$yq), nzchar(.data$yq)) |>
+    dplyr::arrange(.data$quarter_index)
+
+  if (nrow(q_seq) == 0L) {
+    stop("[ERROR] Active analysis quarter sequence is empty for GWR delta metadata.", call. = FALSE)
+  }
+
+  window_n_year <- suppressWarnings(as.integer(cfg$gwr_delta_window_years[[1L]]))
+  if (length(window_n_year) == 0L || !is.finite(window_n_year) || window_n_year < 1L) {
+    window_n_year <- 3L
+  }
+
+  analysis_years <- sort(unique(q_seq$year))
+  early_years <- utils::head(analysis_years, min(window_n_year, length(analysis_years)))
+  late_years <- utils::tail(analysis_years, min(window_n_year, length(analysis_years)))
+  early_q <- q_seq |>
+    dplyr::filter(.data$year %in% early_years) |>
+    dplyr::arrange(.data$quarter_index)
+  late_q <- q_seq |>
+    dplyr::filter(.data$year %in% late_years) |>
+    dplyr::arrange(.data$quarter_index)
+
+  list(
+    sample_min_yq = q_seq$yq[[1L]],
+    sample_max_yq = q_seq$yq[[nrow(q_seq)]],
+    early_start_year = early_years[[1L]],
+    early_end_year = early_years[[length(early_years)]],
+    late_start_year = late_years[[1L]],
+    late_end_year = late_years[[length(late_years)]],
+    early_start_yq = early_q$yq[[1L]],
+    early_end_yq = early_q$yq[[nrow(early_q)]],
+    late_start_yq = late_q$yq[[1L]],
+    late_end_yq = late_q$yq[[nrow(late_q)]],
+    early_n_quarter = nrow(early_q),
+    late_n_quarter = nrow(late_q),
+    early_yq = early_q$yq,
+    late_yq = late_q$yq,
+    window_n_year = window_n_year,
+    window_scope = "active_analysis_early_late_deferred"
+  )
+}
+
+build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control_candidates, window_meta) {
+  # Emit one metadata-rich deferred row per outcome/exposure pair, including
+  # support counts for the active horizon and early/late windows.
   purrr::map2_dfr(outcomes, focal_vars[rep(1L, length(outcomes))], function(outcome, focal_var) {
-    vars <- unique(c("adm_cd", "year", outcome, focal_var, control_candidates))
+    vars <- unique(c("adm_cd", "year", "yq", outcome, focal_var, control_candidates))
     d_fit <- panel |>
       dplyr::select(dplyr::all_of(intersect(vars, names(panel)))) |>
       tidyr::drop_na()
 
     message <- if (nrow(d_fit) < 400L || dplyr::n_distinct(d_fit$adm_cd) < 30L) {
-      "quarterly_gwr_delta_deferred: insufficient quarterly support for 3Y vs 3Y local comparison"
+      "quarterly_gwr_delta_deferred: insufficient active-horizon support for early-late local comparison"
     } else {
-      "quarterly_gwr_delta_deferred: appendix local delta estimation is not activated; quarterly comparison window metadata preserved"
+      "quarterly_gwr_delta_deferred: appendix local delta estimation is not activated; active-horizon metadata preserved"
     }
 
     empty_gwr_delta_main_tbl() |>
@@ -127,16 +215,30 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
         focal_var = focal_var,
         exposure = focal_var,
         estimate_type = "late_window_minus_early_window",
-        early_start_year = 2019L,
-        early_end_year = 2021L,
-        late_start_year = 2023L,
-        late_end_year = 2025L,
-        window_scope = "quarterly_3y_vs_3y_mean",
-        window_n_year = 3L,
+        early_start_year = window_meta$early_start_year,
+        early_end_year = window_meta$early_end_year,
+        late_start_year = window_meta$late_start_year,
+        late_end_year = window_meta$late_end_year,
+        sample_min_yq = window_meta$sample_min_yq,
+        sample_max_yq = window_meta$sample_max_yq,
+        early_start_yq = window_meta$early_start_yq,
+        early_end_yq = window_meta$early_end_yq,
+        late_start_yq = window_meta$late_start_yq,
+        late_end_yq = window_meta$late_end_yq,
+        early_n_quarter = window_meta$early_n_quarter,
+        late_n_quarter = window_meta$late_n_quarter,
+        window_scope = window_meta$window_scope,
+        window_n_year = window_meta$window_n_year,
         n_locations = dplyr::n_distinct(d_fit$adm_cd),
         n_valid = 0L,
-        n_early = dplyr::n_distinct(d_fit$adm_cd),
-        n_late = dplyr::n_distinct(d_fit$adm_cd),
+        n_early = d_fit |>
+          dplyr::filter(.data$yq %in% window_meta$early_yq) |>
+          dplyr::pull(.data$adm_cd) |>
+          dplyr::n_distinct(),
+        n_late = d_fit |>
+          dplyr::filter(.data$yq %in% window_meta$late_yq) |>
+          dplyr::pull(.data$adm_cd) |>
+          dplyr::n_distinct(),
         kernel = as.character(cfg$gwr_delta_kernel[[1]]),
         adaptive = isTRUE(cfg$gwr_delta_adaptive),
         bw_obs_n = nrow(d_fit),
@@ -147,12 +249,15 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
 }
 
 {
+  # Read the current GWR-delta view and publish resident/floating deferred
+  # bundles plus a controls trace for appendix review.
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for quarterly GWR delta appendix.", call. = FALSE)
   }
 
   panel <- read_panel_main_view("gwr_delta") |>
     dplyr::mutate(adm_cd = as.character(adm_cd))
+  window_meta <- resolve_gwr_delta_window_meta()
   outcomes <- intersect(cfg$gwr_delta_outcomes, names(panel))
   resident_focals <- intersect(cfg$gwr_delta_main_exposure_vars, names(panel))
   floating_focals <- intersect(cfg$gwr_delta_floating_exposure_vars, names(panel))
@@ -164,12 +269,12 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
   )
 
   main_tbl <- if (length(outcomes) > 0L && length(resident_focals) > 0L) {
-    build_deferred_rows(panel, outcomes, resident_focals, gwr_family = "resident", control_candidates = control_candidates)
+    build_deferred_rows(panel, outcomes, resident_focals, gwr_family = "resident", control_candidates = control_candidates, window_meta = window_meta)
   } else {
     empty_gwr_delta_main_tbl()
   }
   floating_tbl <- if (length(outcomes) > 0L && length(floating_focals) > 0L) {
-    build_deferred_rows(panel, outcomes, floating_focals, gwr_family = "floating", control_candidates = control_candidates)
+    build_deferred_rows(panel, outcomes, floating_focals, gwr_family = "floating", control_candidates = control_candidates, window_meta = window_meta)
   } else {
     empty_gwr_delta_main_tbl()
   }
@@ -188,6 +293,14 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
           selection_status = "quarterly_deferred",
           window_scope,
           window_n_year,
+          sample_min_yq,
+          sample_max_yq,
+          early_start_yq,
+          early_end_yq,
+          late_start_yq,
+          late_end_yq,
+          early_n_quarter,
+          late_n_quarter,
           status,
           message
         )
@@ -205,6 +318,14 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
           selection_status = "quarterly_deferred",
           window_scope,
           window_n_year,
+          sample_min_yq,
+          sample_max_yq,
+          early_start_yq,
+          early_end_yq,
+          late_start_yq,
+          late_end_yq,
+          early_n_quarter,
+          late_n_quarter,
           status,
           message
         )

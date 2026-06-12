@@ -18,6 +18,9 @@
 # 0. Setup
 #==============================================================================
 
+# This source is an annual low-frequency stability layer. The script either
+# reuses a validated quarterly publication or fetches the raw Golmok JSON,
+# preserves all parsed levels, and publishes the dong-level values as adm_cd-yq.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -36,6 +39,8 @@ if (!file.exists(cfg$paths$quarter_base)) {
 # 1. Helpers
 #==============================================================================
 
+# Helpers isolate three contracts: forgiving JSON/table parsing, annual block
+# expansion from the Golmok response shape, and final adm_cd-yq QC.
 to_num <- function(x) {
   x <- as.character(x)
   x[x %in% c("", "-", "NA", "NaN", "null", "NULL")] <- NA_character_
@@ -220,6 +225,9 @@ write_qc <- function(survival_dong, request_manifest, source_mode) {
 # 2. Reuse Existing Output When Allowed
 #==============================================================================
 
+# Reuse is allowed only for an existing quarterly layer with canonical keys.
+# This avoids unnecessary endpoint calls while still refreshing QC evidence for
+# the current run.
 skip_survival_build <- FALSE
 if (file.exists(cfg$paths$golmok_survival_rate) && !isTRUE(cfg$golmok_survival_force_rebuild)) {
   survival_reused <- arrow::read_parquet(cfg$paths$golmok_survival_rate) |>
@@ -255,6 +263,9 @@ if (file.exists(cfg$paths$golmok_survival_rate) && !isTRUE(cfg$golmok_survival_f
 #==============================================================================
 
 if (!isTRUE(skip_survival_build)) {
+  # Each requested base year returns a three-year block. After preserving the
+  # all-level parsed layer, only dong-level rows are padded to canonical adm_cd
+  # and repeated to the quarterly panel by year.
   requests <- purrr::map(cfg$golmok_survival_base_years, fetch_survival_rate)
   request_manifest <- dplyr::bind_rows(purrr::map(requests, "manifest"))
   survival_all <- dplyr::bind_rows(purrr::map(requests, "data")) |>

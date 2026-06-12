@@ -8,15 +8,19 @@
 # Type      : reporting
 # Inputs    : panel_main.parquet
 # Outputs   : descriptive_statistics.csv, data_coverage.csv,
-#             mean_ln_sales_trend.png
+#             main_variable_correlation_*.csv, mean_ln_sales_trend.png,
+#             optional appendix summary/ranking tables when enabled
 # DependsOn : 02_Code/03_models/01_run_twfe_main.R,
-#             02_Code/03_models/02_run_spdm_main.R
+#             02_Code/03_models/02_run_spdm_main.R,
+#             02_Code/04_robustness/02_run_robustness.R
 #==============================================================================
 
 #==============================================================================
 # 0. Setup
 #==============================================================================
 
+# Reporting reads the shared panel in the active analysis window and publishes
+# descriptive, correlation, coverage, trend, and opt-in appendix artifacts.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -29,6 +33,14 @@ panel <- arrow::read_parquet(cfg$paths$panel_main) |>
   tibble::as_tibble() |>
   filter_analysis_window()
 
+
+#==============================================================================
+# 1. Shared Reporting Helpers
+#==============================================================================
+
+# Optional appendix outputs are removed unless their current source artifacts are
+# explicitly present and opt-in reporting is enabled, preventing stale tables
+# from masquerading as current results.
 unlink_if_exists <- function(path) {
   if (is.character(path) && length(path) == 1L && file.exists(path)) {
     unlink(path)
@@ -53,6 +65,8 @@ clear_stale_appendix_outputs <- function() {
   invisible(NULL)
 }
 
+# Table builders use explicit schema padding so optional source files with
+# missing columns still produce stable downstream output schemas.
 ensure_cols <- function(df, cols, fill = NA) {
   for (col in setdiff(cols, names(df))) {
     df[[col]] <- fill
@@ -65,6 +79,8 @@ safe_numeric_quantile <- function(x, prob) {
   as.numeric(stats::quantile(x, probs = prob, na.rm = TRUE, names = FALSE, type = 7))
 }
 
+# Descriptive summaries report both distributional moments and panel coverage
+# for each registered variable.
 summarise_descriptive_variable <- function(data, variable, label, role, order) {
   x <- suppressWarnings(as.numeric(data[[variable]]))
   finite <- is.finite(x)
@@ -123,6 +139,8 @@ safe_cor_test_p <- function(x, y, method = "pearson") {
   as.numeric(out)
 }
 
+# Main-variable correlation outputs include the coefficient matrix, pairwise N
+# matrix, and long pair table used for appendix diagnostics.
 build_main_variable_correlation_outputs <- function(data,
                                                     registry,
                                                     method = "pearson",
@@ -208,6 +226,7 @@ build_main_variable_correlation_outputs <- function(data,
   list(matrix = matrix_tbl, n_matrix = n_matrix_tbl, pairs = pairs_tbl)
 }
 
+# Administrative names are cached for optional local-rank appendix tables.
 adm_name_lookup <- local({
   cache <- NULL
   function() {
@@ -229,6 +248,8 @@ adm_name_lookup <- local({
   }
 })
 
+# GTWR/GWR appendix helpers derive latest-quarter and latest-minus-earliest
+# summaries only from optional sidecar outputs that already exist.
 build_gtwr_rankings <- function(local_tbl, group_cols = character()) {
   local_tbl <- ensure_cols(
     local_tbl,
@@ -279,17 +300,17 @@ build_gtwr_latest_local <- function(local_tbl) {
       estimate = dplyr::coalesce(
         suppressWarnings(as.numeric(.data$latest_estimate)),
         dplyr::if_else(.data$estimate_type == "latest", suppressWarnings(as.numeric(.data$estimate)), NA_real_)
-	      ),
-	      estimate_type = "latest",
-	      status = dplyr::case_when(
-	        .data$status == "success" & !is.finite(.data$estimate) ~ "missing_latest_estimate",
-	        TRUE ~ .data$status
-	      ),
-	      message = dplyr::case_when(
-	        .data$status == "missing_latest_estimate" ~ "actual_gtwr_estimated_but_latest_quarter_coefficient_missing",
-	        TRUE ~ .data$message
-	      ),
-	      collinearity_warn_flag = dplyr::coalesce(.data$collinearity_warn_latest, FALSE),
+      ),
+      estimate_type = "latest",
+      status = dplyr::case_when(
+        .data$status == "success" & !is.finite(.data$estimate) ~ "missing_latest_estimate",
+        TRUE ~ .data$status
+      ),
+      message = dplyr::case_when(
+        .data$status == "missing_latest_estimate" ~ "actual_gtwr_estimated_but_latest_quarter_coefficient_missing",
+        TRUE ~ .data$message
+      ),
+      collinearity_warn_flag = dplyr::coalesce(.data$collinearity_warn_latest, FALSE),
       collinearity_warn_stage = dplyr::case_when(
         .data$collinearity_warn_flag ~ "latest",
         TRUE ~ NA_character_
@@ -437,9 +458,11 @@ build_gwr_delta_rankings <- function(local_tbl) {
 
 
 #==============================================================================
-# 1. Build Descriptive Statistics
+# 2. Build Descriptive Statistics
 #==============================================================================
 
+# Descriptive statistics cover active aging exposures, vitality outcomes,
+# supplementary components, and current model controls present in panel_main.
 desc_var_registry <- tibble::tribble(
   ~variable,                         ~label,                                      ~role,
   "age60_resident_share",            "Age 60+ resident share",                    "aging_exposure",
@@ -507,9 +530,11 @@ if (length(desc_vars_missing) > 0L) {
 
 
 #==============================================================================
-# 2. Build Main-Analysis Variable Correlation Tables
+# 3. Build Main-Analysis Variable Correlation Tables
 #==============================================================================
 
+# Correlation diagnostics focus on variables that can appear in TWFE, SPDM,
+# GTWR, or optional channel interpretation, not every raw panel column.
 main_corr_vars <- unique(c(
   cfg$spdm_main_exposure_vars,
   cfg$spdm_channel_vars,
@@ -569,9 +594,10 @@ if (nrow(main_corr_registry) > 0L) {
 
 
 #==============================================================================
-# 3. Summarize Quarterly Coverage
+# 4. Summarize Quarterly Coverage
 #==============================================================================
 
+# Coverage is a compact active-window check for the reporting sample.
 cov_tbl <- panel |>
   dplyr::count(yq, name = "n_rows") |>
   dplyr::arrange(yq)
@@ -579,9 +605,10 @@ write_csv_safe(cov_tbl, cfg$paths$data_coverage)
 
 
 #==============================================================================
-# 4. Export Quarterly Time-Series Figure
+# 5. Export Quarterly Time-Series Figure
 #==============================================================================
 
+# The sales trend figure is descriptive context for the active quarterly panel.
 if ("ln_total_sales" %in% names(panel)) {
   ts <- panel |>
     dplyr::mutate(yq = as.character(yq)) |>
@@ -601,9 +628,11 @@ if ("ln_total_sales" %in% names(panel)) {
 
 
 #==============================================================================
-# 4. Build Optional Appendix Tables
+# 6. Build Optional Appendix Tables
 #==============================================================================
 
+# Optional appendix tables are opt-in by environment/config and only materialize
+# when their upstream sidecar outputs already exist.
 clear_stale_appendix_outputs()
 build_optional_appendix_tables <- isTRUE(value_or(cfg$build_optional_appendix_tables, FALSE))
 

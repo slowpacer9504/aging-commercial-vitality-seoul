@@ -10,6 +10,12 @@
 # DependsOn : ggplot2, dplyr, tibble
 #==============================================================================
 
+#==============================================================================
+# 1. Break and Label Helpers
+#==============================================================================
+
+# Keep map classes stable by normalizing break endpoints to the observed data
+# range, including degenerate or all-missing cross-sections.
 format_choropleth_number <- function(x, digits = 3L) {
   if (!is.finite(x)) return(NA_character_)
   trimws(formatC(x, digits = digits, format = "fg", flag = "#"))
@@ -79,6 +85,12 @@ build_choropleth_labels <- function(breaks, style = c("range", "quantile"), digi
   ranges
 }
 
+#==============================================================================
+# 2. Classification and Map Saving
+#==============================================================================
+
+# Classify numeric values into labeled map bins, then save a consistent
+# choropleth image and return its break metadata for review tables.
 classify_choropleth_values <- function(x, breaks, style = c("range", "quantile"), digits = 3L, missing_label = "Missing") {
   style <- match.arg(style)
   vals <- suppressWarnings(as.numeric(x))

@@ -148,7 +148,7 @@ active shared panel에는 `year`, `quarter`, `yq`, `quarter_index`를 남긴다.
 
 - resident-only main exposure를 기본으로 사용한다.
 - true SDM 계약은 `W y`, `X`, `W X`를 모두 포함한다.
-- `splm::spml()` 호출에서 Durbin placeholder에 의존하지 말고, `W age60_resident_share`와 `W controls`를 직접 생성한다.
+- `splm::spml()` 호출에서 Durbin placeholder에 의존하지 말고, `W lag4_age60_resident_share`와 `W controls`를 직접 생성한다.
 - coefficient table보다 direct / indirect / total effect 표를 중심으로 저장한다.
 - direct / indirect / total effect는 SDM impact matrix로 계산한다.
 - alternative W는 별도 robustness family에서 처리한다.

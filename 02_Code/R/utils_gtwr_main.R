@@ -11,6 +11,12 @@
 # DependsOn : config.R, utils_io.R, utils_model.R, utils_spatial.R
 #==============================================================================
 
+#==============================================================================
+# 1. Control Contract Helpers
+#==============================================================================
+
+# Normalize optional GTWR control-set inputs and guard sidecars against retired
+# controls or stale control traces from older runs.
 normalize_control_set_main <- function(x) {
   control_set <- tolower(trimws(as.character(x[[1]])))
   if (!control_set %in% c("lean", "extended")) "lean" else control_set
@@ -184,6 +190,12 @@ standardize_gtwr_controls_used_tbl <- function(tbl) {
   dplyr::select(tbl, dplyr::all_of(cols))
 }
 
+#==============================================================================
+# 2. Grid Parsing and Output Schemas
+#==============================================================================
+
+# Parse numeric sensitivity grids and define empty output schemas so main,
+# local, frozen-spec, and sensitivity writers share one column contract.
 parse_gtwr_numeric_grid <- function(x, default) {
   vals <- suppressWarnings(as.numeric(split_gtwr_tokens(x)))
   vals <- vals[is.finite(vals) & vals >= 0]
@@ -223,20 +235,20 @@ empty_gtwr_main_tbl <- function() {
     sd_beta = numeric(),
     p25_beta = numeric(),
     p50_beta = numeric(),
-	    p75_beta = numeric(),
-	    share_positive = numeric(),
-	    st_bw = numeric(),
-	    global_lm_r2 = numeric(),
-	    global_lm_r2_adj = numeric(),
-	    gtw_aic = numeric(),
-	    gtw_aicc = numeric(),
-	    gtw_enp = numeric(),
-	    gtw_edf = numeric(),
-	    collinearity_warn_n = integer(),
-	    collinearity_warn_share = numeric(),
-	    latest_missing_n = integer(),
-	    latest_coverage_share = numeric(),
-	    max_local_cn_gtwr = numeric(),
+      p75_beta = numeric(),
+      share_positive = numeric(),
+      st_bw = numeric(),
+      global_lm_r2 = numeric(),
+      global_lm_r2_adj = numeric(),
+      gtw_aic = numeric(),
+      gtw_aicc = numeric(),
+      gtw_enp = numeric(),
+      gtw_edf = numeric(),
+      collinearity_warn_n = integer(),
+      collinearity_warn_share = numeric(),
+      latest_missing_n = integer(),
+      latest_coverage_share = numeric(),
+      max_local_cn_gtwr = numeric(),
     control_set = character(),
     fit_scope = character(),
     recent_period_n = integer(),
@@ -280,8 +292,8 @@ empty_gtwr_local_tbl <- function() {
     location_n = integer(),
     bw_obs_n = integer(),
     bw_source = character(),
-	    local_cn_gtwr_earliest = numeric(),
-	    local_cn_gtwr_latest = numeric(),
+      local_cn_gtwr_earliest = numeric(),
+      local_cn_gtwr_latest = numeric(),
     collinearity_warn_earliest = logical(),
     collinearity_warn_latest = logical(),
     collinearity_warn_flag = logical(),
@@ -540,17 +552,17 @@ build_gtwr_deferred_controls_row <- function(outcome,
       base_n_units = as.integer(n_units),
       selected_n_obs = as.integer(n_obs_fit),
       selected_n_units = as.integer(n_units),
-	      retention_ratio = 1,
-	      retention_floor = 1,
-	      selection_status = "quarterly_not_estimated",
-	      selection_strategy = gtwr_control_selection_label(),
+        retention_ratio = 1,
+        retention_floor = 1,
+        selection_status = "quarterly_not_estimated",
+        selection_strategy = gtwr_control_selection_label(),
       fit_scope = fit_scope,
       recent_period_n = as.integer(n_periods),
       location_frac = 1,
       location_n = as.integer(n_units),
       bw_obs_n = suppressWarnings(as.integer(selected_st_bw)),
       bw_source = bandwidth_origin,
-	      control_origin = gtwr_control_origin_label(),
+        control_origin = gtwr_control_origin_label(),
       bandwidth_origin = bandwidth_origin,
       frozen_spec_status = "not_estimated",
       frozen_spec_reason = message,
@@ -559,6 +571,12 @@ build_gtwr_deferred_controls_row <- function(outcome,
     )
 }
 
+#==============================================================================
+# 3. Geometry, Periods, and Local Diagnostics
+#==============================================================================
+
+# Attach administrative-dong coordinates, build the spatiotemporal distance
+# matrix, and summarize local diagnostics on the same support used by GTWR fits.
 prepare_gtwr_points <- function(panel) {
   boundary <- load_commercial_boundary(cfg$dir_boundary, cfg$target_crs)
   boundary_pts <- sf::st_point_on_surface(sf::st_geometry(boundary))
@@ -753,11 +771,11 @@ local_cn_for_window <- function(d_fit, rhs_vars, st_bw, st_dmat, threshold) {
       )
     }
 
-	    tibble::tibble(
-	      adm_cd = d_fit$adm_cd[target_idx],
-	      !!paste0("local_cn_gtwr_", suffix) := cn,
-	      !!paste0("collinearity_warn_", suffix) := is.finite(cn) & cn >= threshold
-	    )
+      tibble::tibble(
+        adm_cd = d_fit$adm_cd[target_idx],
+        !!paste0("local_cn_gtwr_", suffix) := cn,
+        !!paste0("collinearity_warn_", suffix) := is.finite(cn) & cn >= threshold
+      )
   }
 
   dplyr::full_join(
@@ -774,45 +792,45 @@ pick_period_value <- function(x, period_id, target_period_id) {
 }
 
 extract_gtwr_diagnostics <- function(model) {
-	  lm_r2 <- NA_real_
-	  lm_r2_adj <- NA_real_
-	  gtw_aic <- NA_real_
-	  gtw_aicc <- NA_real_
-	  gtw_enp <- NA_real_
-	  gtw_edf <- NA_real_
+    lm_r2 <- NA_real_
+    lm_r2_adj <- NA_real_
+    gtw_aic <- NA_real_
+    gtw_aicc <- NA_real_
+    gtw_enp <- NA_real_
+    gtw_edf <- NA_real_
 
-	  lm_obj <- model$lm
-	  if (!is.null(lm_obj)) {
-	    sm <- tryCatch(summary(lm_obj), error = function(e) NULL)
-	    if (!is.null(sm)) {
-	      lm_r2 <- suppressWarnings(as.numeric(value_or(sm$r.squared, NA_real_)[[1]]))
-	      lm_r2_adj <- suppressWarnings(as.numeric(value_or(sm$adj.r.squared, NA_real_)[[1]]))
-	    }
-	  }
+    lm_obj <- model$lm
+    if (!is.null(lm_obj)) {
+      sm <- tryCatch(summary(lm_obj), error = function(e) NULL)
+      if (!is.null(sm)) {
+        lm_r2 <- suppressWarnings(as.numeric(value_or(sm$r.squared, NA_real_)[[1]]))
+        lm_r2_adj <- suppressWarnings(as.numeric(value_or(sm$adj.r.squared, NA_real_)[[1]]))
+      }
+    }
 
-	  diag_obj <- model$GTW.diagnostic
-	  if (!is.null(diag_obj)) {
-	    diag_vec <- suppressWarnings(unlist(diag_obj))
-	    find_diag <- function(pattern) {
-	      idx <- grep(pattern, names(diag_vec), ignore.case = TRUE)
-	      if (length(idx) == 0L) return(NA_real_)
-	      suppressWarnings(as.numeric(diag_vec[[idx[[1]]]]))
-	    }
-	    gtw_aicc <- find_diag("aicc")
-	    gtw_aic <- find_diag("^aic$|\\baic\\b")
-	    gtw_enp <- find_diag("enp")
-	    gtw_edf <- find_diag("edf")
-	  }
+    diag_obj <- model$GTW.diagnostic
+    if (!is.null(diag_obj)) {
+      diag_vec <- suppressWarnings(unlist(diag_obj))
+      find_diag <- function(pattern) {
+        idx <- grep(pattern, names(diag_vec), ignore.case = TRUE)
+        if (length(idx) == 0L) return(NA_real_)
+        suppressWarnings(as.numeric(diag_vec[[idx[[1]]]]))
+      }
+      gtw_aicc <- find_diag("aicc")
+      gtw_aic <- find_diag("^aic$|\\baic\\b")
+      gtw_enp <- find_diag("enp")
+      gtw_edf <- find_diag("edf")
+    }
 
-	  tibble::tibble(
-	    global_lm_r2 = if (is.finite(lm_r2)) lm_r2 else NA_real_,
-	    global_lm_r2_adj = if (is.finite(lm_r2_adj)) lm_r2_adj else NA_real_,
-	    gtw_aic = if (is.finite(gtw_aic)) gtw_aic else NA_real_,
-	    gtw_aicc = if (is.finite(gtw_aicc)) gtw_aicc else NA_real_,
-	    gtw_enp = if (is.finite(gtw_enp)) gtw_enp else NA_real_,
-	    gtw_edf = if (is.finite(gtw_edf)) gtw_edf else NA_real_
-	  )
-	}
+    tibble::tibble(
+      global_lm_r2 = if (is.finite(lm_r2)) lm_r2 else NA_real_,
+      global_lm_r2_adj = if (is.finite(lm_r2_adj)) lm_r2_adj else NA_real_,
+      gtw_aic = if (is.finite(gtw_aic)) gtw_aic else NA_real_,
+      gtw_aicc = if (is.finite(gtw_aicc)) gtw_aicc else NA_real_,
+      gtw_enp = if (is.finite(gtw_enp)) gtw_enp else NA_real_,
+      gtw_edf = if (is.finite(gtw_edf)) gtw_edf else NA_real_
+    )
+  }
 
 summarise_numeric <- function(x) {
   vals <- suppressWarnings(as.numeric(x))
@@ -840,6 +858,13 @@ summarise_numeric <- function(x) {
   )
 }
 
+#==============================================================================
+# 4. Frozen Specs and Cache Payloads
+#==============================================================================
+
+# Frozen specs and cache signatures keep expensive GTWR runs reproducible across
+# reruns while invalidating stale payloads when panel, controls, bandwidth rules,
+# or kernel parameters change.
 build_frozen_spec_row <- function(outcome,
                                   focal_var,
                                   control_set,
@@ -926,20 +951,20 @@ build_gtwr_bandwidth_signature <- function(outcome,
                                            lamda = cfg$gtwr_lamda,
                                            ksi = cfg$gtwr_ksi,
                                            cache_context = "main") {
-	  paste(
-	    c(
-	      "quarterly_gtwr_main_bandwidth_cache_v3_st_dmat",
+    paste(
+      c(
+        "quarterly_gtwr_main_bandwidth_cache_v3_st_dmat",
       paste("cache_context", cache_context, sep = "="),
-	      paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
-	      paste("outcome", outcome, sep = "="),
-	      paste("focal_var", focal_var, sep = "="),
-	      paste("control_set", as.character(control_set), sep = "="),
-	      paste("controls", paste(selected_controls, collapse = ";"), sep = "="),
-	      paste("bw_strategy", as.character(cfg$gtwr_bandwidth_strategy), sep = "="),
-	      paste("bandwidth_scope", as.character(bandwidth_scope), sep = "="),
-		      paste("bandwidth_periods", paste(as.character(bandwidth_periods), collapse = ";"), sep = "="),
-		      paste("anchor_yq", as.character(value_or(cfg$gtwr_bw_anchor_yq, NA_character_)), sep = "="),
-	      paste("approach", as.character(cfg$gtwr_bw_approach), sep = "="),
+        paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
+        paste("outcome", outcome, sep = "="),
+        paste("focal_var", focal_var, sep = "="),
+        paste("control_set", as.character(control_set), sep = "="),
+        paste("controls", paste(selected_controls, collapse = ";"), sep = "="),
+        paste("bw_strategy", as.character(cfg$gtwr_bandwidth_strategy), sep = "="),
+        paste("bandwidth_scope", as.character(bandwidth_scope), sep = "="),
+          paste("bandwidth_periods", paste(as.character(bandwidth_periods), collapse = ";"), sep = "="),
+          paste("anchor_yq", as.character(value_or(cfg$gtwr_bw_anchor_yq, NA_character_)), sep = "="),
+        paste("approach", as.character(cfg$gtwr_bw_approach), sep = "="),
       paste("kernel", as.character(cfg$gtwr_kernel), sep = "="),
       paste("adaptive", as.character(isTRUE(cfg$gtwr_adaptive)), sep = "="),
       paste("lamda", as.character(lamda), sep = "="),
@@ -1164,6 +1189,12 @@ write_gtwr_bandwidth_sensitivity_cache <- function(path, signature, payload) {
   invisible(path)
 }
 
+#==============================================================================
+# 5. Bandwidth Resolution and Job Dispatch
+#==============================================================================
+
+# Resolve fixed or cached `bw.gtwr` choices and dispatch actual GTWR jobs without
+# changing the payload contract returned to caller scripts.
 clamp_gtwr_st_bw <- function(st_bw, n_obs_fit, rhs_vars) {
   st_bw <- suppressWarnings(as.integer(round(as.numeric(st_bw[[1]]))))
   if (!is.finite(st_bw)) st_bw <- suppressWarnings(as.integer(cfg$gtwr_st_bw))
@@ -1177,46 +1208,46 @@ resolve_fixed_gtwr_st_bw <- function(n_obs_fit, rhs_vars) {
 }
 
 resolve_gtwr_st_bw <- function(d_fit,
-	                               formula_obj,
-	                               rhs_vars,
-	                               outcome,
-	                               focal_var,
-	                               selected_controls,
-	                               control_set,
+                                 formula_obj,
+                                 rhs_vars,
+                                 outcome,
+                                 focal_var,
+                                 selected_controls,
+                                 control_set,
                                st_dmat = NULL,
                                lamda = cfg$gtwr_lamda,
                                ksi = cfg$gtwr_ksi,
                                cache_context = "main",
                                bw_cache_dir = NULL) {
-	  n_obs_fit <- nrow(d_fit)
-	  fallback_st_bw <- resolve_fixed_gtwr_st_bw(n_obs_fit, rhs_vars)
-	  strategy <- as.character(cfg$gtwr_bandwidth_strategy[[1]])
-	  if (identical(strategy, "fixed")) {
-	    return(list(st_bw = fallback_st_bw, bw_source = "fixed_env_or_default", bw_raw = NA_real_, bw_obs_n = NA_integer_))
-	  }
+    n_obs_fit <- nrow(d_fit)
+    fallback_st_bw <- resolve_fixed_gtwr_st_bw(n_obs_fit, rhs_vars)
+    strategy <- as.character(cfg$gtwr_bandwidth_strategy[[1]])
+    if (identical(strategy, "fixed")) {
+      return(list(st_bw = fallback_st_bw, bw_source = "fixed_env_or_default", bw_raw = NA_real_, bw_obs_n = NA_integer_))
+    }
 
-	  if (identical(strategy, "anchor_quarter_bw_gtwr")) {
-	    anchor_yq <- as.character(value_or(cfg$gtwr_bw_anchor_yq, NA_character_)[[1]])
-	    bw_idx <- which(as.character(d_fit$yq) == anchor_yq)
-	    d_bw <- d_fit[bw_idx, , drop = FALSE]
-	    st_dmat_bw <- if (!is.null(st_dmat) && length(bw_idx) > 0L) st_dmat[bw_idx, bw_idx, drop = FALSE] else NULL
-	    bandwidth_scope <- sprintf("anchor_quarter_%s", anchor_yq)
-	    bandwidth_periods <- anchor_yq
-	  } else {
-	    d_bw <- d_fit
-	    st_dmat_bw <- st_dmat
-	    bandwidth_scope <- "full_panel"
-	    bandwidth_periods <- sort(unique(as.character(d_fit$yq)))
-	  }
-	  min_bw_obs <- max(30L, length(rhs_vars) + 3L)
-	  if (nrow(d_bw) < min_bw_obs) {
-	    return(list(
-	      st_bw = fallback_st_bw,
-	      bw_source = sprintf("fixed_fallback_%s_insufficient", bandwidth_scope),
-	      bw_raw = NA_real_,
-	      bw_obs_n = nrow(d_bw)
-	    ))
-	  }
+    if (identical(strategy, "anchor_quarter_bw_gtwr")) {
+      anchor_yq <- as.character(value_or(cfg$gtwr_bw_anchor_yq, NA_character_)[[1]])
+      bw_idx <- which(as.character(d_fit$yq) == anchor_yq)
+      d_bw <- d_fit[bw_idx, , drop = FALSE]
+      st_dmat_bw <- if (!is.null(st_dmat) && length(bw_idx) > 0L) st_dmat[bw_idx, bw_idx, drop = FALSE] else NULL
+      bandwidth_scope <- sprintf("anchor_quarter_%s", anchor_yq)
+      bandwidth_periods <- anchor_yq
+    } else {
+      d_bw <- d_fit
+      st_dmat_bw <- st_dmat
+      bandwidth_scope <- "full_panel"
+      bandwidth_periods <- sort(unique(as.character(d_fit$yq)))
+    }
+    min_bw_obs <- max(30L, length(rhs_vars) + 3L)
+    if (nrow(d_bw) < min_bw_obs) {
+      return(list(
+        st_bw = fallback_st_bw,
+        bw_source = sprintf("fixed_fallback_%s_insufficient", bandwidth_scope),
+        bw_raw = NA_real_,
+        bw_obs_n = nrow(d_bw)
+      ))
+    }
 
   cache_dir <- if (is.null(bw_cache_dir)) {
     cfg$get_gtwr_main_bw_cache_dir(control_set)
@@ -1226,29 +1257,29 @@ resolve_gtwr_st_bw <- function(d_fit,
   ensure_dirs(cache_dir)
   signature <- build_gtwr_bandwidth_signature(
     outcome = outcome,
-	    focal_var = focal_var,
-	    selected_controls = selected_controls,
-	    control_set = control_set,
-	    bandwidth_scope = bandwidth_scope,
-	    bandwidth_periods = bandwidth_periods,
+      focal_var = focal_var,
+      selected_controls = selected_controls,
+      control_set = control_set,
+      bandwidth_scope = bandwidth_scope,
+      bandwidth_periods = bandwidth_periods,
     lamda = lamda,
     ksi = ksi,
     cache_context = cache_context
-	  )
-	  cache_path <- get_gtwr_bandwidth_cache_path(cache_dir, outcome, focal_var, cache_context = cache_context)
-	  cached <- if (!isTRUE(cfg$gtwr_refresh_bw_cache)) read_gtwr_bandwidth_cache(cache_path, signature) else NULL
-	  if (!is.null(cached)) {
-	    return(list(
-	      st_bw = suppressWarnings(as.numeric(cached$st_bw[[1]])),
-	      bw_source = sprintf("bw.gtwr_%s_cache", bandwidth_scope),
-	      bw_raw = suppressWarnings(as.numeric(cached$bw_raw[[1]])),
-	      bw_obs_n = if ("n_bandwidth_obs" %in% names(cached)) {
-	        suppressWarnings(as.integer(cached$n_bandwidth_obs[[1]]))
-	      } else {
-	        NA_integer_
-	      }
-	    ))
-	  }
+    )
+    cache_path <- get_gtwr_bandwidth_cache_path(cache_dir, outcome, focal_var, cache_context = cache_context)
+    cached <- if (!isTRUE(cfg$gtwr_refresh_bw_cache)) read_gtwr_bandwidth_cache(cache_path, signature) else NULL
+    if (!is.null(cached)) {
+      return(list(
+        st_bw = suppressWarnings(as.numeric(cached$st_bw[[1]])),
+        bw_source = sprintf("bw.gtwr_%s_cache", bandwidth_scope),
+        bw_raw = suppressWarnings(as.numeric(cached$bw_raw[[1]])),
+        bw_obs_n = if ("n_bandwidth_obs" %in% names(cached)) {
+          suppressWarnings(as.integer(cached$n_bandwidth_obs[[1]]))
+        } else {
+          NA_integer_
+        }
+      ))
+    }
 
   coords <- as.matrix(d_bw[, c("x", "y")])
   spdf_bw <- sp::SpatialPointsDataFrame(
@@ -1260,12 +1291,12 @@ resolve_gtwr_st_bw <- function(d_fit,
     formula = formula_obj,
     data = spdf_bw,
     obs.tv = d_bw$time_id,
-	    approach = cfg$gtwr_bw_approach,
-	    kernel = cfg$gtwr_kernel,
-	    adaptive = isTRUE(cfg$gtwr_adaptive),
-	    lamda = lamda,
-	    ksi = ksi,
-	    verbose = FALSE
+      approach = cfg$gtwr_bw_approach,
+      kernel = cfg$gtwr_kernel,
+      adaptive = isTRUE(cfg$gtwr_adaptive),
+      lamda = lamda,
+      ksi = ksi,
+      verbose = FALSE
   )
   if (!is.null(st_dmat_bw) && is.matrix(st_dmat_bw) && all(dim(st_dmat_bw) == nrow(d_bw))) {
     bw_args$st.dMat <- st_dmat_bw
@@ -1275,14 +1306,14 @@ resolve_gtwr_st_bw <- function(d_fit,
     error = function(e) e
   )
 
-	  if (inherits(bw_raw, "error") || !is.finite(suppressWarnings(as.numeric(bw_raw[[1]])))) {
-	    return(list(
-	      st_bw = fallback_st_bw,
-	      bw_source = sprintf("fixed_fallback_bw.gtwr_%s_error", bandwidth_scope),
-	      bw_raw = NA_real_,
-	      bw_obs_n = nrow(d_bw)
-	    ))
-	  }
+    if (inherits(bw_raw, "error") || !is.finite(suppressWarnings(as.numeric(bw_raw[[1]])))) {
+      return(list(
+        st_bw = fallback_st_bw,
+        bw_source = sprintf("fixed_fallback_bw.gtwr_%s_error", bandwidth_scope),
+        bw_raw = NA_real_,
+        bw_obs_n = nrow(d_bw)
+      ))
+    }
 
   bw_raw_num <- suppressWarnings(as.numeric(bw_raw[[1]]))
   if (isTRUE(cfg$gtwr_adaptive)) {
@@ -1294,30 +1325,30 @@ resolve_gtwr_st_bw <- function(d_fit,
   write_gtwr_bandwidth_cache(
     cache_path,
     signature,
-	    list(
-	      st_bw = st_bw,
-	      bw_raw = bw_raw_num,
-	      bw_source = sprintf("bw.gtwr_%s_search", bandwidth_scope),
-		      bandwidth_strategy = strategy,
-		      bandwidth_scope = bandwidth_scope,
-		      bandwidth_periods = bandwidth_periods,
-	      approach = cfg$gtwr_bw_approach,
+      list(
+        st_bw = st_bw,
+        bw_raw = bw_raw_num,
+        bw_source = sprintf("bw.gtwr_%s_search", bandwidth_scope),
+          bandwidth_strategy = strategy,
+          bandwidth_scope = bandwidth_scope,
+          bandwidth_periods = bandwidth_periods,
+        approach = cfg$gtwr_bw_approach,
       lamda = lamda,
       ksi = ksi,
       cache_context = cache_context,
-	      n_bandwidth_obs = nrow(d_bw),
-	      n_fit_obs = n_obs_fit,
-	      rhs_vars = rhs_vars
-	    )
+        n_bandwidth_obs = nrow(d_bw),
+        n_fit_obs = n_obs_fit,
+        rhs_vars = rhs_vars
+      )
   )
 
-	  list(
-	    st_bw = st_bw,
-	    bw_source = sprintf("bw.gtwr_%s_search", bandwidth_scope),
-	    bw_raw = bw_raw_num,
-	    bw_obs_n = nrow(d_bw)
-	  )
-	}
+    list(
+      st_bw = st_bw,
+      bw_source = sprintf("bw.gtwr_%s_search", bandwidth_scope),
+      bw_raw = bw_raw_num,
+      bw_obs_n = nrow(d_bw)
+    )
+  }
 
 resolve_gtwr_worker_count <- function(n_jobs) {
   if (n_jobs <= 0L) return(0L)
@@ -1358,6 +1389,12 @@ run_gtwr_pending_jobs <- function(jobs, workers, panel_xy) {
   lapply(jobs, run_gtwr_spec_cache_job, panel_xy = panel_xy)
 }
 
+#==============================================================================
+# 6. Sensitivity Output Builders
+#==============================================================================
+
+# Sensitivity builders reuse baseline main GTWR rows when possible and otherwise
+# write comparable deferred rows for lamda/ksi and bandwidth perturbations.
 build_gtwr_lamda_sensitivity_deferred_row <- function(outcome,
                                                        focal_var,
                                                        control_set,
@@ -1700,6 +1737,12 @@ build_gtwr_bandwidth_sensitivity_row_from_payload <- function(payload,
     dplyr::select(dplyr::all_of(names(empty_gtwr_bandwidth_sensitivity_tbl())))
 }
 
+#==============================================================================
+# 7. Lamda/Ksi Sensitivity Estimation
+#==============================================================================
+
+# Estimate optional lamda/ksi perturbations on the same resident-only GTWR
+# contract and summarize their latest-quarter local betas against the main run.
 run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
                                             outcome,
                                             focal_var,
@@ -2019,6 +2062,12 @@ run_gtwr_lamda_sensitivity_pending_jobs <- function(jobs, workers) {
   lapply(jobs, run_gtwr_lamda_sensitivity_cache_job)
 }
 
+#==============================================================================
+# 8. Main Resident-Only GTWR Estimation
+#==============================================================================
+
+# Fit the optional resident-only GTWR sidecar, returning summary, local latest
+# betas, full beta panel, controls trace, and frozen specification records.
 run_actual_gtwr_spec <- function(panel_xy,
                                  outcome,
                                  focal_var,
@@ -2317,22 +2366,22 @@ run_actual_gtwr_spec <- function(panel_xy,
       earliest_estimate = pick_period_value(estimate, time_id, .env$period_meta$earliest_period_id),
       latest_estimate = pick_period_value(estimate, time_id, .env$period_meta$latest_period_id),
       .groups = "drop"
-	    ) |>
-	    dplyr::mutate(
-	      estimate = .data$latest_estimate,
-	      estimate_type = "latest",
-	      earliest_yq = as.character(sample_min_yq),
-	      latest_yq = as.character(sample_max_yq),
-	      window_scope = "quarterly_full_window",
-	      status = dplyr::case_when(
-	        is.finite(.data$latest_estimate) ~ "success",
-	        TRUE ~ "missing_latest_estimate"
-	      ),
-	      message = dplyr::case_when(
-	        .data$status == "success" ~ "actual_gtwr_estimated",
-	        TRUE ~ "actual_gtwr_estimated_but_latest_quarter_coefficient_missing"
-	      ),
-	      n_obs = as.integer(n_obs_fit),
+      ) |>
+      dplyr::mutate(
+        estimate = .data$latest_estimate,
+        estimate_type = "latest",
+        earliest_yq = as.character(sample_min_yq),
+        latest_yq = as.character(sample_max_yq),
+        window_scope = "quarterly_full_window",
+        status = dplyr::case_when(
+          is.finite(.data$latest_estimate) ~ "success",
+          TRUE ~ "missing_latest_estimate"
+        ),
+        message = dplyr::case_when(
+          .data$status == "success" ~ "actual_gtwr_estimated",
+          TRUE ~ "actual_gtwr_estimated_but_latest_quarter_coefficient_missing"
+        ),
+        n_obs = as.integer(n_obs_fit),
       n_eff = as.integer(st_bw),
       target_yq = as.character(sample_max_yq),
       method = "GWmodel::gtwr",
@@ -2346,40 +2395,40 @@ run_actual_gtwr_spec <- function(panel_xy,
     ) |>
     dplyr::left_join(cn_tbl, by = "adm_cd") |>
     dplyr::mutate(
-	      collinearity_warn_earliest = dplyr::coalesce(.data$collinearity_warn_earliest, FALSE),
-	      collinearity_warn_latest = dplyr::coalesce(.data$collinearity_warn_latest, FALSE),
-	      collinearity_warn_flag = .data$status == "success" & .data$collinearity_warn_latest,
-	      collinearity_warn_stage = dplyr::case_when(
-	        .data$status == "success" & .data$collinearity_warn_latest ~ "latest",
-	        TRUE ~ NA_character_
-	      ),
-	      collinearity_warn_metric = "gtwr_spatiotemporal_local_cn_gwmodel_style",
-	      collinearity_warn_threshold = cfg$gtwr_local_cn_warn_threshold,
-	      collinearity_diag_status = dplyr::case_when(
-	        is.null(.env$st_dmat) ~ "not_computed_st_dmat_error",
-	        TRUE ~ "computed_gtwr_spatiotemporal"
-	      ),
-	      collinearity_diag_message = dplyr::case_when(
-	        is.null(.env$st_dmat) ~ "GTWR local CN not computed because spatiotemporal distance matrix construction failed",
-	        TRUE ~ "local_cn_gtwr mirrors GWmodel::gwr.collin.diagno local_CN using GTWR spatiotemporal weights"
-	      )
-	    ) |>
+        collinearity_warn_earliest = dplyr::coalesce(.data$collinearity_warn_earliest, FALSE),
+        collinearity_warn_latest = dplyr::coalesce(.data$collinearity_warn_latest, FALSE),
+        collinearity_warn_flag = .data$status == "success" & .data$collinearity_warn_latest,
+        collinearity_warn_stage = dplyr::case_when(
+          .data$status == "success" & .data$collinearity_warn_latest ~ "latest",
+          TRUE ~ NA_character_
+        ),
+        collinearity_warn_metric = "gtwr_spatiotemporal_local_cn_gwmodel_style",
+        collinearity_warn_threshold = cfg$gtwr_local_cn_warn_threshold,
+        collinearity_diag_status = dplyr::case_when(
+          is.null(.env$st_dmat) ~ "not_computed_st_dmat_error",
+          TRUE ~ "computed_gtwr_spatiotemporal"
+        ),
+        collinearity_diag_message = dplyr::case_when(
+          is.null(.env$st_dmat) ~ "GTWR local CN not computed because spatiotemporal distance matrix construction failed",
+          TRUE ~ "local_cn_gtwr mirrors GWmodel::gwr.collin.diagno local_CN using GTWR spatiotemporal weights"
+        )
+      ) |>
     dplyr::select(dplyr::all_of(names(empty_gtwr_local_tbl())))
 
-	  success_local <- local_tbl |>
-	    dplyr::filter(.data$status == "success", is.finite(.data$estimate))
-	  beta_stats <- summarise_numeric(success_local$estimate)
-	  diag_tbl <- extract_gtwr_diagnostics(fit)
-	  warn_vals <- local_tbl$collinearity_warn_flag
-	  cn_vals <- local_tbl$local_cn_gtwr_latest
-	  warn_n <- sum(warn_vals %in% TRUE, na.rm = TRUE)
-	  warn_denom <- sum(local_tbl$status == "success" & !is.na(warn_vals))
-	  latest_missing_n <- sum(!is.finite(local_tbl$latest_estimate))
-	  latest_coverage_share <- if (nrow(local_tbl) > 0L) {
-	    mean(is.finite(local_tbl$latest_estimate))
-	  } else {
-	    NA_real_
-	  }
+    success_local <- local_tbl |>
+      dplyr::filter(.data$status == "success", is.finite(.data$estimate))
+    beta_stats <- summarise_numeric(success_local$estimate)
+    diag_tbl <- extract_gtwr_diagnostics(fit)
+    warn_vals <- local_tbl$collinearity_warn_flag
+    cn_vals <- local_tbl$local_cn_gtwr_latest
+    warn_n <- sum(warn_vals %in% TRUE, na.rm = TRUE)
+    warn_denom <- sum(local_tbl$status == "success" & !is.na(warn_vals))
+    latest_missing_n <- sum(!is.finite(local_tbl$latest_estimate))
+    latest_coverage_share <- if (nrow(local_tbl) > 0L) {
+      mean(is.finite(local_tbl$latest_estimate))
+    } else {
+      NA_real_
+    }
 
   summary_tbl <- empty_gtwr_main_tbl() |>
     dplyr::add_row(
@@ -2401,17 +2450,17 @@ run_actual_gtwr_spec <- function(panel_xy,
       p75_beta = beta_stats$p75_beta,
       share_positive = beta_stats$share_positive,
       st_bw = as.numeric(st_bw),
-	      global_lm_r2 = diag_tbl$global_lm_r2[[1]],
-	      global_lm_r2_adj = diag_tbl$global_lm_r2_adj[[1]],
-	      gtw_aic = diag_tbl$gtw_aic[[1]],
-	      gtw_aicc = diag_tbl$gtw_aicc[[1]],
-	      gtw_enp = diag_tbl$gtw_enp[[1]],
-	      gtw_edf = diag_tbl$gtw_edf[[1]],
-	      collinearity_warn_n = as.integer(warn_n),
-	      collinearity_warn_share = if (warn_denom > 0L) warn_n / warn_denom else NA_real_,
-	      latest_missing_n = as.integer(latest_missing_n),
-	      latest_coverage_share = latest_coverage_share,
-	      max_local_cn_gtwr = if (any(is.finite(cn_vals))) max(cn_vals[is.finite(cn_vals)]) else NA_real_,
+        global_lm_r2 = diag_tbl$global_lm_r2[[1]],
+        global_lm_r2_adj = diag_tbl$global_lm_r2_adj[[1]],
+        gtw_aic = diag_tbl$gtw_aic[[1]],
+        gtw_aicc = diag_tbl$gtw_aicc[[1]],
+        gtw_enp = diag_tbl$gtw_enp[[1]],
+        gtw_edf = diag_tbl$gtw_edf[[1]],
+        collinearity_warn_n = as.integer(warn_n),
+        collinearity_warn_share = if (warn_denom > 0L) warn_n / warn_denom else NA_real_,
+        latest_missing_n = as.integer(latest_missing_n),
+        latest_coverage_share = latest_coverage_share,
+        max_local_cn_gtwr = if (any(is.finite(cn_vals))) max(cn_vals[is.finite(cn_vals)]) else NA_real_,
       control_set = control_set,
       fit_scope = "quarterly_actual",
       recent_period_n = as.integer(n_periods),
@@ -2573,6 +2622,12 @@ run_actual_gtwr_spec_safe <- function(panel_xy,
   )
 }
 
+#==============================================================================
+# 9. Bandwidth Sensitivity Estimation
+#==============================================================================
+
+# Refit the main GTWR payload under fixed bandwidth alternatives and convert each
+# run into a comparable sensitivity row.
 run_gtwr_bandwidth_sensitivity_spec_safe <- function(panel_xy,
                                                      outcome,
                                                      focal_var,

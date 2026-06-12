@@ -1,4 +1,4 @@
- #==============================================================================
+#==============================================================================
 # Script    : config.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Define shared paths, analysis constants, and runtime toggles for
@@ -17,21 +17,17 @@
 
 # Keep all global settings in a dedicated environment so that sourced scripts
 # share one contract without polluting the global workspace.
-# 이 파일은 프로젝트 전체 스크립트가 공통으로 참조하는 설정 계약이다.
-# 경로, 핵심 상수, 입력 파일명, 산출물 파일명, QC 로그 경로를 한 곳에
-# 모아두면, 스크립트마다 같은 값을 따로 적지 않아도 되고 구조 drift도
-# 줄일 수 있다.
+# Paths, constants, input filenames, output filenames, and log paths are all
+# centralized here to reduce cross-script structural drift.
 cfg <- new.env(parent = emptyenv())
 
-# 아래 환경변수들은 "코드를 수정하지 않고 실행 모드만 바꿀 수 있는"
-# 최소 런타임 스위치다. 다만 값이 비정상적이면 즉시 기본값으로 되돌린다.
+# Runtime switches allow execution-mode changes without editing code. Invalid
+# values are normalized back to safe defaults.
 cfg$output_tag <- trimws(Sys.getenv("CFG_OUTPUT_TAG", unset = ""))
 
 cfg$tag_path <- function(path) {
-  # 실험용 실행에서 파일명을 통째로 바꾸지 않고 suffix만 붙여
-  # 버전을 분기하고 싶을 때 사용하는 helper다.
-  # 디렉터리는 유지하고 basename만 바꾸는 이유는, downstream helper와
-  # review inventory가 기존 폴더 구조를 그대로 인식하게 하기 위해서다.
+  # Add only a basename suffix for experimental runs so downstream helpers and
+  # review inventories still recognize the directory contract.
   if (!nzchar(cfg$output_tag)) return(path)
 
   ext <- tools::file_ext(path)
@@ -54,8 +50,8 @@ cfg$tag_path <- function(path) {
 # 1. Project Paths
 #==============================================================================
 
-# 분석 프로젝트의 디렉터리 체계를 코드로 고정한다. 이후 스크립트는
-# raw/processed/output/docs의 위치를 이 registry를 통해서만 본다.
+# The project directory layout is defined once; downstream scripts should use
+# this registry rather than hard-coding raw/processed/output/docs paths.
 cfg$project_root <- normalizePath(here::here(), winslash = "/", mustWork = TRUE)
 
 cfg$dir_raw <- file.path(cfg$project_root, "01_Data", "01_Raw_Data")
@@ -114,9 +110,8 @@ cfg$dir_golmok_survival_json <- file.path(cfg$dir_intermediate, "golmok_survival
 
 # These values encode the non-negotiable design decisions from the research
 # plan, procedure, and codebook so that downstream scripts stay aligned.
-# 여기 값들은 사실상 "연구 설계의 코드 표현"이다. 예를 들어 기준 경계,
-# 공간가중치 후보, ESDA 난수 시드 같은 결정은 스크립트마다 달라지면
-# 안 되므로 중앙화한다.
+# Boundary year, W choices, seeds, and horizon settings are centralized because
+# they are research-design decisions, not script-local preferences.
 cfg$target_crs <- 5179L
 cfg$boundary_year <- 2020L
 cfg$default_w <- "queen"
@@ -214,9 +209,8 @@ cfg$golmok_survival_cookie <- trimws(Sys.getenv("GOLMOK_COOKIE", unset = ""))
 # Main short-run aging variables are registered here as the shared variable
 # family. Individual model scripts may use a subset of this family as their
 # canonical main exposure contract.
-# 단기 영향분석의 age60 변수군은 여기서 공통 registry로 관리한다.
-# 다만 TWFE/SPDM 메인 모형은 이 family의 부분집합만 canonical exposure로
-# 사용할 수 있다.
+# TWFE/SPDM main models narrow this broader age60 registry to the configured
+# lagged resident-only exposure contract.
 cfg$impact_aging_vars <- c("age60_resident_share", "age60_floating_share", "age60_sales_share")
 cfg$resident_age_support_vars <- c(
   "age20_resident_share", "age30_resident_share", "age40_resident_share",
@@ -408,11 +402,9 @@ twfe_control_cols <- c(
 )
 
 cfg$panel_main_view_specs <- list(
-  # 지금은 method별 parquet를 따로 저장하지 않는다. 대신 최종
-  # `panel_main.parquet` 하나에서 분석 목적별로 필요한 열만 읽는다.
-  # 이 list가 그 목적별 최소 열 목록이다.
-  # 즉 여기 정의가 바뀌면 ESDA/TWFE/SPDM/GTWR 입력 계약도 함께 바뀌므로,
-  # 코드북과 QC가 이 값을 같이 참조해야 한다.
+  # Method-specific parquet files are no longer published. Each method reads
+  # the columns it needs from panel_main.parquet, so this list is the minimum
+  # input contract shared by codebook, readers, and QC.
   esda = unique(c(
     "adm_cd", "year", "quarter", "yq", "quarter_index",
     cfg$impact_aging_vars,
@@ -463,9 +455,8 @@ cfg$panel_main_view_specs <- list(
 
 # Non-senior auxiliary inputs are pinned to canonical basenames so sidecar
 # files or alternate dumps cannot silently change the preprocessing inputs.
-# raw 폴더 안에는 sidecar 파일, 설명용 파일, 구버전 파일이 섞일 수
-# 있다. broad scan으로 "첫 번째 csv"를 잡으면 입력이 조용히 바뀔 수
-# 있으므로, auxiliary raw source는 basename 계약으로 고정한다.
+# Raw folders can contain sidecars, readme files, and old dumps; basename
+# contracts prevent broad scans from silently selecting the wrong source.
 cfg$aux_source_contracts <- list(
   bus_stop = list(
     dir_prefix = "07",
@@ -567,8 +558,6 @@ cfg$gtwr_lamda_sensitivity_grid <- trimws(Sys.getenv("GTWR_LAMDA_SENSITIVITY_GRI
 cfg$gtwr_refresh_lamda_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_LAMDA_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_bandwidth_sensitivity_grid <- trimws(Sys.getenv("GTWR_BANDWIDTH_SENSITIVITY_GRID", unset = "240,360,480,600,720"))
 cfg$gtwr_refresh_bandwidth_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BANDWIDTH_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
-cfg$gtwr_write_legacy_alias <- FALSE
-cfg$gwr_delta_write_legacy_alias <- FALSE
 cfg$gtwr_experiment_bw_approaches <- trimws(Sys.getenv("GTWR_EXPERIMENT_BW_APPROACHES", unset = "CV"))
 cfg$gtwr_experiment_lamda_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_LAMDA_GRID", unset = "0.05"))
 cfg$gtwr_experiment_ksi_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_KSI_GRID", unset = "0"))
@@ -581,8 +570,8 @@ cfg$gtwr_experiment_topn_raw <- suppressWarnings(as.integer(Sys.getenv("GTWR_EXP
 if (!is.finite(cfg$gtwr_experiment_topn_raw) || cfg$gtwr_experiment_topn_raw < 1L) cfg$gtwr_experiment_topn_raw <- 1L
 
 cfg$run_walk_env_betweenness <- FALSE  # TRUE | FALSE
-# walk betweenness는 계산비용이 커서 기본값은 FALSE로 두고,
-# 새 사양(local800_len_v1) 캐시가 있을 때만 재사용하는 구조다.
+# Walk betweenness is expensive, so the default is disabled and the current
+# specification is reused only through the local800_len_v1 cache contract.
 cfg$walk_betweenness_radius_m <- 800L
 cfg$walk_betweenness_weight_mode <- "length"
 cfg$walk_betweenness_agg_mode <- "overlap_length_weighted_mean"
@@ -595,13 +584,11 @@ cfg$walk_betweenness_spec_version <- "local800_len_v1"
 
 # Centralizing file contracts here reduces drift across scripts and simplifies
 # QC checks that need to validate expected outputs.
-# 데이터셋 파일명은 내부 파이프라인의 API 역할을 한다. 예를 들어
-# `panel_main_pre_vitality`는 05의 출력이자 06의 입력이고,
-# `panel_main`은 최종 canonical panel이다. 그래서 경로 계약도
-# 중앙화해 둔다.
+# Dataset filenames are the internal pipeline API: upstream outputs and
+# downstream inputs meet through these names.
 cfg$paths <- list(
-  # 이 list의 각 항목은 "파일 경로"이면서 동시에 "파이프라인 계약 이름"이다.
-  # 새 산출물을 추가할 때는 개별 스크립트가 아니라 이 registry부터 갱신한다.
+  # Each item is both a file path and a named pipeline contract. New artifacts
+  # should be registered here before individual scripts reference them.
   seoul_raw_integrated_long = file.path(cfg$dir_intermediate, "seoul_raw_integrated_long.parquet"),
   seoul_raw_integrated_wide = file.path(cfg$dir_intermediate, "seoul_raw_integrated_wide.parquet"),
   seoul_raw_review = file.path(cfg$dir_intermediate, "seoul_raw_review.parquet"),
@@ -1103,19 +1090,18 @@ cfg$obsolete_panel_paths <- file.path(
   cfg$dir_panel,
   c("panel_main_core.parquet", "panel_esda.parquet", "panel_twfe.parquet", "panel_spdm.parquet", "panel_gtwr.parquet")
 )
-# 예전 산출물 이름은 cleanup 대상으로 따로 보존한다. 이렇게 해야
-# 오래된 파일이 helper inventory나 QC를 혼동시키지 않는다.
+# Retired panel filenames remain listed only as cleanup targets so old files do
+# not confuse helper inventories or QC.
 
 
 #==============================================================================
 # 6. Log Path Registry
 #==============================================================================
 
-# 이 프로젝트는 데이터셋뿐 아니라 QC와 provenance 로그도 산출물의
-# 일부로 본다. 그래서 로그 경로도 paths처럼 중앙 registry로 관리한다.
+# QC and provenance logs are treated as outputs, so their paths are centralized
+# alongside dataset contracts.
 cfg$logs <- list(
-  # 로그도 분석 산출물의 일부로 취급하므로, tag 적용 여부와 저장 위치를
-  # 데이터셋 경로와 같은 수준으로 명시적으로 관리한다.
+  # Logs follow the same tag and location discipline as data artifacts.
   data_qc = cfg$tag_path(file.path(cfg$dir_logs, "data_qc_log.md")),
   model_run = file.path(cfg$dir_logs, "model_run_log.md"),
   missing_data = cfg$tag_path(file.path(cfg$dir_logs, "missing_data_log.csv")),
@@ -1148,7 +1134,7 @@ cfg$logs <- list(
 # 7. Required Directories
 #==============================================================================
 
-# 실행 전에 필요한 디렉터리를 한 번에 보장하기 위한 목록이다.
+# Directories required before any pipeline step writes outputs.
 cfg$required_dirs <- c(
   cfg$dir_intermediate, cfg$dir_analysis, cfg$dir_panel,
   cfg$dir_golmok_survival_json,

@@ -114,6 +114,7 @@ presentation_outcome_levels <- function(reverse = FALSE) {
 
 label_variable <- function(x) {
   dplyr::case_when(
+    x == "lag4_age60_resident_share" ~ "Lag-4 Age 60+ Resident Share",
     x == "age60_resident_share" ~ "Age 60+ Resident Share",
     x == "vitality_index_base" ~ "Composite Vitality Index",
     x == "ln_total_sales" ~ "Log Total Sales",
@@ -584,13 +585,17 @@ if (file.exists(bv_lisa_map_source)) {
 
 twfe_main_source <- cfg$paths$twfe_main_models
 twfe_residual_source <- cfg$paths$twfe_main_residual_moran_summary
+twfe_presentation_exposures <- unique(as.character(value_or(
+  cfg$twfe_main_exposure_vars,
+  "lag4_age60_resident_share"
+)))
 
 if (file.exists(twfe_main_source) && file.exists(twfe_residual_source)) {
   twfe_main_tbl <- readr::read_csv(twfe_main_source, show_col_types = FALSE)
   twfe_resid_tbl <- readr::read_csv(twfe_residual_source, show_col_types = FALSE)
 
   presentation_twfe_tbl <- twfe_main_tbl |>
-    dplyr::filter(grepl("__m2$", model_name), term == exposure, exposure == "age60_resident_share") |>
+    dplyr::filter(grepl("__m2$", model_name), term == exposure, exposure %in% twfe_presentation_exposures) |>
     dplyr::select(outcome, outcome_order, estimate, p.value, nobs) |>
     dplyr::distinct() |>
     dplyr::left_join(
@@ -623,7 +628,7 @@ if (file.exists(twfe_main_source) && file.exists(twfe_residual_source)) {
   )
 
   twfe_plot_tbl <- twfe_main_tbl |>
-    dplyr::filter(grepl("__m2$", model_name), term == exposure, exposure == "age60_resident_share") |>
+    dplyr::filter(grepl("__m2$", model_name), term == exposure, exposure %in% twfe_presentation_exposures) |>
     dplyr::select(outcome, estimate, std.error) |>
     dplyr::distinct() |>
     dplyr::mutate(
@@ -1274,6 +1279,10 @@ if (all(file.exists(spdm_channel_sources))) {
 #==============================================================================
 
 gtwr_resolution <- resolve_gtwr_presentation_source()
+gtwr_presentation_focals <- unique(as.character(value_or(
+  cfg$gtwr_main_exposure_vars,
+  "lag4_age60_resident_share"
+)))
 
 if (!is.na(gtwr_resolution$source_control_set)) {
   gtwr_summary_tbl <- read_gtwr_presentation_summary(gtwr_resolution) |>
@@ -1282,7 +1291,7 @@ if (!is.na(gtwr_resolution$source_control_set)) {
       period_n = suppressWarnings(as.integer(recent_period_n)),
       comparison_window = paste(.data$earliest_yq, .data$latest_yq, sep = " ~ ")
     ) |>
-    dplyr::filter(focal_var == "age60_resident_share") |>
+    dplyr::filter(focal_var %in% gtwr_presentation_focals) |>
     dplyr::mutate(outcome_order_presentation = match(outcome, cfg$gtwr_main_outcomes)) |>
     dplyr::arrange(outcome_order_presentation, outcome)
 
@@ -1304,10 +1313,10 @@ if (!is.na(gtwr_resolution$source_control_set)) {
       note = "manual appendix not run: resolved GTWR source exists but no resident age60 rows were found"
     )
   } else if (any(gtwr_summary_tbl$status == "success")) {
-	    gtwr_success_tbl <- gtwr_summary_tbl |>
-	      dplyr::filter(status == "success") |>
-	      ensure_cols(c("global_lm_r2", "global_gw_r2", "max_local_cn_gtwr")) |>
-	      dplyr::mutate(global_lm_r2 = dplyr::coalesce(.data$global_lm_r2, .data$global_gw_r2))
+      gtwr_success_tbl <- gtwr_summary_tbl |>
+        dplyr::filter(status == "success") |>
+        ensure_cols(c("global_lm_r2", "global_gw_r2", "max_local_cn_gtwr")) |>
+        dplyr::mutate(global_lm_r2 = dplyr::coalesce(.data$global_lm_r2, .data$global_gw_r2))
 
     presentation_gtwr_tbl <- gtwr_success_tbl |>
       dplyr::transmute(
@@ -1317,9 +1326,9 @@ if (!is.na(gtwr_resolution$source_control_set)) {
         `25th Percentile` = fmt_num(p25_beta),
         `Median Beta` = fmt_num(p50_beta),
         `75th Percentile` = fmt_num(p75_beta),
-	        `Share Positive` = fmt_pct(share_positive),
-	        `Global LM R2` = fmt_num(global_lm_r2),
-	        `Max GTWR Local CN` = fmt_num(max_local_cn_gtwr),
+          `Share Positive` = fmt_pct(share_positive),
+          `Global LM R2` = fmt_num(global_lm_r2),
+          `Max GTWR Local CN` = fmt_num(max_local_cn_gtwr),
         `Comparison Window` = comparison_window,
         window_scope = window_scope,
         fit_scope = fit_scope,

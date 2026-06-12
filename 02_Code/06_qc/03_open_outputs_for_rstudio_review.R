@@ -15,9 +15,8 @@
 # 0. Setup
 #==============================================================================
 
-# 이 파일은 분석용 스크립트가 아니라 RStudio review helper다.
-# 생성된 산출물을 topic별로 찾아보고, 필요할 때만 메모리로 불러와
-# 육안 검토를 쉽게 하도록 돕는다.
+# This is an RStudio review helper, not an analysis-producing script. It indexes
+# generated outputs by topic and loads objects only when the user selects them.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -34,13 +33,13 @@ browser_exts <- c("html", "htm", "png", "jpg", "jpeg", "pdf")
 r_object_exts <- c("rds")
 
 `%||%` <- function(x, y) {
-  # inventory 메타데이터에서 NULL/empty/전부 NA를 같은 "없음"으로 다루기 위한 helper다.
+  # Treat NULL, empty values, and all-NA metadata as the same missing case.
   if (is.null(x) || length(x) == 0L || all(is.na(x))) y else x
 }
 
 safe_view <- function(x, title = NULL) {
-  # 이 함수는 interactive session에서만 `View()`를 시도한다.
-  # 터미널/배치 세션에서는 조용히 건너뛰어 helper 파일이 오작동하지 않게 한다.
+  # Attempt `View()` only in interactive sessions; terminal and batch runs skip
+  # the viewer so sourcing this helper remains harmless.
   if (!interactive()) return(invisible(FALSE))
 
   view_fun <- if (exists("View", mode = "function", inherits = TRUE)) {
@@ -85,11 +84,10 @@ safe_view <- function(x, title = NULL) {
 # 1. Inventory Helpers
 #==============================================================================
 
-# inventory 단계에서는 파일을 아직 읽지 않는다.
-# 먼저 경로, 확장자, topic, 기본 object name만 정리한 뒤,
-# 사용자가 선택한 파일만 실제로 load한다.
+# The inventory step does not read file contents. It records paths, extensions,
+# topics, and default object names so selected files can be loaded later.
 classify_output_type <- function(ext) {
-  # 확장자 분류는 inventory의 첫 단계다. 이후 topic 분류와 reader 선택도 이 값을 기반으로 한다.
+  # Extension classes drive later topic labels and reader selection.
   ext <- tolower(ext)
   dplyr::case_when(
     ext %in% tabular_exts ~ "tabular",
@@ -118,8 +116,7 @@ classify_output_topic <- function(root, rel_project_path, output_type) {
 }
 
 safe_object_name <- function(path) {
-  # file basename을 R 객체명으로 바로 쓸 수 없기 때문에,
-  # 문자 정리와 중복 회피를 위한 기본 이름을 생성한다.
+  # Build a syntactic default R object name from each file basename.
   nm <- tools::file_path_sans_ext(basename(path))
   nm <- gsub("[^A-Za-z0-9]+", "_", nm)
   nm <- gsub("^_+|_+$", "", nm)
@@ -130,8 +127,8 @@ safe_object_name <- function(path) {
 }
 
 build_output_inventory <- function() {
-  # `01_Data/03_Processed_Data`와 `03_Output`를 모두 훑어
-  # 현재 세션에서 review 가능한 산출물 전체 목록을 만든다.
+  # Index all reviewable outputs under processed data and output roots for the
+  # current session.
   rows <- purrr::imap_dfr(output_roots, function(root_path, root_name) {
     paths <- list.files(root_path, recursive = TRUE, full.names = TRUE, all.files = FALSE)
     paths <- paths[file.exists(paths)]
@@ -227,12 +224,11 @@ topic_output_inventory <- output_inventory |>
 # 2. Loading and Preview Helpers
 #==============================================================================
 
-# resolve/load/preview helper는
-# “inventory에서 하나를 찾기 -> 확장자별 reader로 읽기 -> preview”
-# 흐름을 공통화한 것이다.
+# Resolve, load, and preview helpers share the same flow: find one inventory row,
+# read it with the extension-specific reader, then optionally preview it.
 resolve_output <- function(target, inventory = output_inventory) {
-  # 사용자는 output_id, file_name, 상대경로, 절대경로 중 아무 형태로든 대상을 지정할 수 있다.
-  # 그래서 정확 일치 -> 부분 문자열 검색 순으로 fallback한다.
+  # Accept output_id, file name, relative path, or absolute path; exact matching
+  # is tried before substring fallback.
   if (missing(target) || length(target) != 1L) {
     stop("[ERROR] target must be a single output_id, file name, or relative path.", call. = FALSE)
   }
@@ -280,8 +276,8 @@ read_text_output <- function(path) {
 }
 
 read_output_object <- function(path) {
-  # parquet/csv/rds/text만 직접 로드한다.
-  # html/png/pdf 같은 browser 자산은 `browse_output()`으로 여는 구조다.
+  # Load only parquet, csv, rds, and text objects directly; browser assets are
+  # opened through `browse_output()`.
   ext <- tolower(tools::file_ext(path))
 
   if (ext == "parquet") {
@@ -379,8 +375,8 @@ preview_loaded_object <- function(obj, title = NULL, n = 20L, view = interactive
 # 3. Public Interactive Helpers
 #==============================================================================
 
-# 아래 함수들은 RStudio Environment와 콘솔에서 바로 쓰는 public API다.
-# project 내부 QC/review workflow를 간단한 함수 호출로 표준화한다.
+# Public helpers are designed for direct use from the RStudio Environment and
+# console, standardizing the project review workflow behind simple calls.
 list_outputs <- function(pattern = NULL, types = NULL, roots = NULL) {
   out <- output_inventory
   if (!is.null(pattern) && nzchar(pattern)) {
@@ -471,8 +467,8 @@ load_tabular_outputs_by_topic <- function(
   assign_grouped_name = "loaded_outputs",
   assign_topic_lists = TRUE
 ) {
-  # grouped loader는 `loaded_outputs$panel`, `loaded_outputs$qc`처럼
-  # 주제별 nested list를 만들어 대화형 탐색을 단순화한다.
+  # Grouped loading creates topic-specific nested lists such as
+  # `loaded_outputs$panel` and `loaded_outputs$qc` for interactive exploration.
   hits <- tabular_output_inventory |>
     dplyr::filter(size_mb <= max_size_mb) |>
     dplyr::arrange(output_topic, root, rel_root_path)
@@ -539,8 +535,8 @@ output_review_help <- function() {
 # 4. Interactive Startup Behavior
 #==============================================================================
 
-# interactive 세션에서는 source 직후 helper 안내문을 출력하고,
-# inventory와 grouped loaded object를 바로 만들어 review 시작점을 제공한다.
+# In interactive sessions, print the helper guide after sourcing and create the
+# initial inventory/grouped objects as the review starting point.
 output_review_help()
 
 if (interactive() && nrow(output_inventory) > 0) {

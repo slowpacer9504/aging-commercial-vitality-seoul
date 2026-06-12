@@ -53,7 +53,7 @@ outcomes <- outcome_registry$outcome
 exposure_base <- if (!is.null(cfg$twfe_main_exposure_vars) && length(cfg$twfe_main_exposure_vars) > 0) {
   cfg$twfe_main_exposure_vars
 } else {
-  c("age60_resident_share")
+  c("lag4_age60_resident_share")
 }
 exposures <- intersect(exposure_base, names(panel))
 exposures <- exposures[vapply(exposures, function(v) sum(is.finite(panel[[v]])) > 100, logical(1))]

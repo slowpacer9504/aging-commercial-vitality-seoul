@@ -24,6 +24,8 @@ load_project_packages()
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_bandwidth_sensitivity", timestamp()))
 
 {
+  # This sidecar treats bandwidth values as fixed perturbations around the main
+  # GTWR run, so baseline summary/local outputs must already exist.
   cfg$gtwr_bandwidth_strategy <- "fixed"
   if (!file.exists(cfg$paths$panel_main)) {
     stop("[ERROR] panel_main missing for GTWR bandwidth sensitivity.", call. = FALSE)
@@ -81,6 +83,8 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_bandwidth_sensitiv
     write_csv_safe(empty_gtwr_bandwidth_sensitivity_tbl(), bandwidth_sensitivity_path)
     append_log(cfg$logs$model_run, "- GTWR bandwidth sensitivity skipped: no baseline main specs match current config")
   } else {
+    # Refit only non-baseline bandwidths and prepend the baseline row so the
+    # output table can be plotted or reviewed as one complete sensitivity grid.
     panel_xy <- prepare_gtwr_points(panel)
     spec_grid <- tidyr::crossing(
       outcome = outcomes,

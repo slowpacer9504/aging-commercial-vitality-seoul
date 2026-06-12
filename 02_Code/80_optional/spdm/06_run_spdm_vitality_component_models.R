@@ -44,10 +44,8 @@ outcome_registry <- resolve_model_outcomes(
 outcomes <- outcome_registry$outcome
 exposure_base <- if (!is.null(cfg$spdm_main_exposure_vars) && length(cfg$spdm_main_exposure_vars) > 0) {
   cfg$spdm_main_exposure_vars
-} else if (!is.null(cfg$impact_aging_vars) && length(cfg$impact_aging_vars) > 0) {
-  cfg$impact_aging_vars
 } else {
-  c("age60_resident_share")
+  c("lag4_age60_resident_share")
 }
 exposures <- intersect(exposure_base, names(panel))
 

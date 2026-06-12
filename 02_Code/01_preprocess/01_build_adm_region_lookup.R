@@ -14,6 +14,12 @@
 # DependsOn : config.R, utils_io.R, utils_spatial.R
 #==============================================================================
 
+#==============================================================================
+# 0. Setup
+#==============================================================================
+
+# Load the shared config, package loader, safe IO helpers, and spatial helpers
+# first so this script uses the same path registry as the rest of the pipeline.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -28,13 +34,34 @@ ensure_dirs(c(
   cfg$dir_logs
 ))
 
+#==============================================================================
+# 1. Load canonical 2020 administrative boundary
+#==============================================================================
+
+# The 2020 Seoul administrative-dong boundary is the spatial key origin for
+# downstream preprocessing joins; the padded `adm_cd` created by the loader is
+# the stable unit identifier reused across the quarterly panel.
 boundary <- load_commercial_boundary(cfg$dir_boundary, cfg$target_crs)
 
+#==============================================================================
+# 2. Build static dong-gu-living-area lookup
+#==============================================================================
+
+# This is static reference metadata, not a quarterly panel table. It attaches
+# gu and five-living-area labels to each 2020 administrative dong through the
+# canonical `adm_cd` prefix contract.
 lookup <- build_adm_region_lookup(
   boundary_tbl = boundary,
   boundary_year = cfg$boundary_year
 )
 
+#==============================================================================
+# 3. QC gate
+#==============================================================================
+
+# The lookup is a small upstream dependency, so failures should stop immediately:
+# otherwise downstream joins, QC summaries, and reporting labels can drift
+# quietly while still producing files.
 qc <- summarise_adm_region_lookup_qc(lookup)
 
 write_csv_safe(qc, cfg$logs$adm_region_lookup_qc)
@@ -49,6 +76,12 @@ if (any(qc$status == "FAIL")) {
   )
 }
 
+#==============================================================================
+# 4. Publish canonical outputs
+#==============================================================================
+
+# Parquet is the downstream canonical artifact; CSV is retained as the
+# human-readable review/reporting copy.
 write_parquet_safe(lookup, cfg$paths$adm_region_lookup)
 write_csv_safe(lookup, cfg$paths$adm_region_lookup_csv)
 

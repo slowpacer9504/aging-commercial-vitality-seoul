@@ -17,9 +17,9 @@
 # 0. Setup
 #==============================================================================
 
-# 서울시 상권분석서비스 branch를 두 층으로 만든다.
-# 1) seoul_raw_integrated_wide / seoul_raw_review: source별 원천을 설명 가능하게 통합한 층
-# 2) seoul_quarter_base: 이후 aux와 결합할 분석용 분기 base panel
+# This Seoul Commercial Service branch publishes two layers:
+# 1) seoul_raw_integrated_wide / seoul_raw_review: inspectable source-level raw layers
+# 2) seoul_quarter_base: analysis-ready quarterly base panel for later auxiliary joins
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -29,6 +29,11 @@ ensure_dirs(cfg$required_dirs)
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 02_build_seoul_quarter_base", timestamp()))
 
+## 0-1. Resolve output and raw-source contracts --------------------------------
+
+# The quarter base, raw review companion, raw integrated layer, and aggregation
+# QC file are a matched output set. Their paths are resolved through `cfg` before
+# any raw data is read so downstream scripts consume the canonical registry names.
 quarter_base_path <- value_or(cfg$paths$quarter_base, file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"))
 quarter_aggregation_qc_path <- value_or(
   cfg$logs$panel_quarter_aggregation_qc,
@@ -40,6 +45,9 @@ if (!dir.exists(seoul_root)) {
   stop("[ERROR] Seoul commercial raw directory not found", call. = FALSE)
 }
 
+# The former long raw integration artifact is outside the current wide-only
+# publication contract, so remove it early instead of leaving a stale alternative
+# for manual consumers to discover later.
 if (file.exists(cfg$paths$seoul_raw_integrated_long)) {
   removed <- isTRUE(file.remove(cfg$paths$seoul_raw_integrated_long))
   append_log(
@@ -57,12 +65,12 @@ if (file.exists(cfg$paths$seoul_raw_integrated_long)) {
 # 1. Seoul Commercial Harmonization Helpers
 #==============================================================================
 
-# 아래 helper들은 서울 상권 raw 파일을 "source type별로 식별"하고,
-# 공통 key(adm_cd/year/quarter)로 정리하며, review/base 단계에서
-# 재사용할 source별 working table을 만드는 역할을 한다.
-# 즉, helper 계층은 원천 CSV를 바로 분석용 panel로 보내지 않고
-# "표준 key를 가진 raw layer"와 "source별 canonical working layer" 사이에
-# 완충지대를 두어 source 구조 차이를 흡수하는 역할을 한다.
+# These helpers identify Seoul commercial raw files by source type, standardize
+# them to the common adm_cd/year/quarter keys, and build source-specific working
+# tables reused by the review and base layers.
+# The helper layer deliberately keeps a buffer between raw CSV files and the
+# analysis panel so source-specific schema differences are absorbed before
+# publication.
 source_var_map <- list(
   sales = c(
     "당월_매출_금액" = "total_sales_raw",
@@ -124,6 +132,8 @@ source_var_map <- list(
     "서울_운영_영업_개월_평균" = "seoul_operating_months_avg_raw"
   )
 )
+
+## 1-1. Source discovery and key normalization ----------------------------------
 
 read_seoul_csv <- function(path, ...) {
   readr::read_csv(
@@ -205,9 +215,10 @@ derive_service_cs_group <- function(code) {
   )
 }
 
-# source scan은 단순 파일 목록이 아니라 이 raw branch의 정의역을 확정하는 단계다.
-# 여기서 어떤 파일이 sales/store/facility 등으로 분류되는지가 이후 review 출력과
-# annual base 집계 범위를 결정하므로, unknown source는 초기에 드러내야 한다.
+# Source scanning is not just file listing; it defines the raw branch domain.
+# Classifying files as sales, store, facility, and related source types
+# determines later review outputs and base aggregation scope, so unknown sources
+# must surface early.
 scan_seoul_sources <- function(root_dir) {
   files <- list.files(root_dir, recursive = TRUE, full.names = TRUE, pattern = "[.]csv$")
   files <- files[!grepl("[.]DS_Store$", files)]
@@ -224,6 +235,8 @@ scan_seoul_sources <- function(root_dir) {
   }) |>
     dplyr::arrange(source_type, file_declared_year, file)
 }
+
+## 1-2. Key and publication validation helpers ---------------------------------
 
 assert_no_dup_keys <- function(df, keys, label) {
   assert_required_cols(df, keys, name = label)
@@ -301,8 +314,9 @@ read_source_selected <- function(path, source_type, file_declared_year = NA_inte
 
   service_code <- if ("서비스_업종_코드" %in% names(out)) as.character(out[["서비스_업종_코드"]]) else rep(NA_character_, nrow(out))
 
-  # selected layer는 source 공통 식별자와 raw extra 열을 함께 보존한다.
-  # 덕분에 이후 review는 원천 흔적을 잃지 않고, base builder는 공통 key를 바로 재사용할 수 있다.
+  # The selected layer preserves common source identifiers alongside extra raw
+  # columns, letting review outputs keep source traces while base builders reuse
+  # shared keys directly.
   selected <- out |>
     dplyr::transmute(
       source_type = source_type,
@@ -322,6 +336,8 @@ read_source_selected <- function(path, source_type, file_declared_year = NA_inte
 
   dplyr::bind_cols(selected, raw_extra)
 }
+
+## 1-3. Source working-layer and metric helpers --------------------------------
 
 build_working_source_df <- function(df, source_type) {
   out <- df |>
@@ -353,8 +369,8 @@ build_working_source_df <- function(df, source_type) {
     out[[std_col]] <- out[[raw_col]]
   }
 
-  # sales/store 계열은 업종 코드 축이 분석적으로 중요하므로,
-  # 서비스 코드 원문과 상위 CS group을 둘 다 유지해 이후 share/entropy를 만든다.
+  # Sales and store sources need the service-code axis for composition metrics,
+  # so keep both the original service label and the higher-level CS group.
   if (source_type %in% c("sales", "store")) {
     service_name <- if ("서비스_업종_코드_명" %in% names(out)) {
       as.character(out[["서비스_업종_코드_명"]])
@@ -417,11 +433,7 @@ semas_daypart_hours_all <- c(6, 5, 3, 3, 4, 3)
 semas_daypart_suffixes_06_24 <- semas_daypart_suffixes_all[-1]
 semas_daypart_hours_06_24 <- semas_daypart_hours_all[-1]
 
-first_non_missing <- function(x) {
-  idx <- which(!is.na(x))
-  if (length(idx) == 0) return(x[NA_integer_][1])
-  x[idx[[1]]]
-}
+## 1-4. Quarter publication and review helpers ---------------------------------
 
 first_present_value <- function(x) {
   idx <- which(value_present(x))
@@ -457,62 +469,6 @@ value_present <- function(x) {
 has_any_value_row <- function(df, value_cols) {
   if (nrow(df) == 0 || length(value_cols) == 0) return(logical(0))
   Reduce("|", lapply(value_cols, function(cc) value_present(df[[cc]])))
-}
-
-build_anchor_by_year <- function(df, value_cols) {
-  if (nrow(df) == 0) {
-    return(tibble::tibble(
-      adm_cd = character(0),
-      year = integer(0),
-      anchor_quarter = integer(0)
-    ))
-  }
-
-  out <- df |>
-    dplyr::group_by(adm_cd, year) |>
-    dplyr::group_modify(function(.x, .y) {
-      # Q4 업데이트형 source는 strict Q4 snapshot으로만 발행한다.
-      # Q4가 없거나 Q4 값이 비어 있으면 같은 연도 최신분기로 fallback하지 않는다.
-      # active quarterly panel에는 이 anchor 시점 자체를 남기지 않고 값만 발행한다.
-      .x_q4 <- .x[.x$quarter == 4L, , drop = FALSE]
-      keep <- has_any_value_row(.x_q4, value_cols)
-      if (!any(keep)) {
-        row <- tibble::tibble(anchor_quarter = NA_integer_)
-        for (cc in value_cols) row[[cc]] <- NA
-        return(row)
-      }
-
-      picked <- .x_q4[keep, , drop = FALSE][1, , drop = FALSE]
-
-      out_row <- tibble::tibble(anchor_quarter = suppressWarnings(as.integer(picked$quarter[[1]])))
-      for (cc in value_cols) out_row[[cc]] <- picked[[cc]][[1]]
-      out_row
-    }) |>
-    dplyr::ungroup() |>
-    dplyr::arrange(adm_cd, year)
-
-  out
-}
-
-mean_or_na <- function(x) {
-  x_num <- safe_num(x)
-  if (length(x_num) == 0L || all(is.na(x_num))) return(NA_real_)
-  mean(x_num, na.rm = TRUE)
-}
-
-publish_anchor_by_year <- function(df, value_cols, availability_col = NULL) {
-  value_cols <- intersect(value_cols, names(df))
-  anchors <- build_anchor_by_year(df, value_cols)
-
-  out <- anchors |>
-    dplyr::select(adm_cd, year, dplyr::all_of(value_cols))
-
-  if (!is.null(availability_col)) {
-    out[[availability_col]] <- dplyr::if_else(!is.na(anchors$anchor_quarter), 1L, 0L)
-  }
-
-  out |>
-    dplyr::arrange(adm_cd, year)
 }
 
 pick_first_present_value <- function(x) {
@@ -604,8 +560,9 @@ summarise_review_source <- function(
     drop_cols = character(0),
     always_keep_cols = character(0)
 ) {
-  # review summary는 원천 행을 그대로 모두 남기지 않고, group key 기준으로
-  # 합계/첫 유효값/고유값 병합 중 적절한 규칙을 적용해 사람이 읽을 수 있는 폭으로 축약한다.
+  # Review summaries do not keep every raw row. They compress each group key with
+  # the appropriate sum, first-present-value, or unique-value rule so the output
+  # stays readable for manual inspection.
   keep_cols <- detect_review_keep_cols(
     df,
     drop_cols = unique(c(group_keys, drop_cols)),
@@ -695,6 +652,8 @@ log_extreme_summary <- function(df, col) {
   )
 }
 
+## 1-5. Staged output helpers ---------------------------------------------------
+
 build_stage_output_path <- function(path) {
   dir <- fs::path_dir(path)
   ext <- tools::file_ext(path)
@@ -712,8 +671,9 @@ stage_output_write <- function(final_path, writer) {
 }
 
 promote_staged_outputs <- function(staged_outputs) {
-  # review/base는 서로 계약이 맞는 파일 세트이므로 staged promote를 원자적으로 처리한다.
-  # 일부만 갱신된 상태를 막아, 실행 중 실패해도 이전 정본 세트를 복구할 수 있게 한다.
+  # Review and base outputs are a matched file set, so staged promotion is handled
+  # atomically. This prevents partial refreshes and allows the previous canonical
+  # set to be restored when publication fails mid-run.
   staged_paths <- vapply(staged_outputs, function(x) x$staged_path, character(1))
   backup_paths <- stats::setNames(rep("", length(staged_outputs)), names(staged_outputs))
   promoted <- character(0)
@@ -767,20 +727,20 @@ promote_staged_outputs <- function(staged_outputs) {
   invisible(promoted)
 }
 
-# ----------------------------------------------------------------------------
-# A) Build Seoul raw integrated outputs (simple integration)
-# ----------------------------------------------------------------------------
-
 #==============================================================================
 # 2. Scan Raw Files and Build Wide Output
 #==============================================================================
 
-# 먼저 raw 폴더 전체를 스캔해 파일마다 source_type을 식별한다.
-# 여기서 unknown source가 발견되면 조용히 무시하지 않고 중단하는 이유는,
-# raw source periodicity가 바뀌는 문제를 초기에 드러내기 위해서다.
-# 서울 상권 raw는 sales/store처럼 split-year file도 있고, 나머지처럼
-# single-file multi-year source도 있으므로 파일 수가 아니라 parsed quarter-code 범위를 본다.
+# Scan the full raw folder first and assign a source_type to every file. Unknown
+# sources stop the run because they may signal a source-periodicity change.
+# Seoul commercial raw files mix split-year sales/store files with single-file
+# multi-year sources, so coverage is judged by parsed quarter codes rather than
+# by file counts alone.
 source_scan <- scan_seoul_sources(seoul_root)
+
+# Review-column rules are derived from discovered source headers. This keeps the
+# human-readable companion aligned with the current raw schema while preventing
+# raw-only identifiers from leaking into the canonical quarter base.
 review_keep_cols_map <- setNames(
   lapply(sort(unique(source_scan$source_type)), function(st) build_review_keep_cols(source_scan, st)),
   sort(unique(source_scan$source_type))
@@ -833,8 +793,9 @@ if (length(missing_required_source_types) > 0L) {
 
 selected_list <- vector("list", nrow(source_scan))
 
-# raw_integrated_wide는 source별 원천 컬럼을 최대한 보존한 "설명 가능한"
-# 통합층이다. 아직 sales/store/floating 등을 한 행으로 합치지 않는다.
+# raw_integrated_wide is an inspectable integration layer that preserves as many
+# source-specific raw columns as possible. It does not yet collapse sales, store,
+# floating, and other sources into one row.
 for (ii in seq_len(nrow(source_scan))) {
   rec <- source_scan[ii, ]
   selected <- read_source_selected(
@@ -850,17 +811,25 @@ raw_integrated_wide <- dplyr::bind_rows(selected_list) |>
 
 adm_name_lookup <- build_adm_name_lookup(raw_integrated_wide)
 
+# The working-source map is the handoff from "raw but standardized" rows to
+# source-specific builders. Each table keeps one source type but shares the same
+# `adm_cd`, `year`, and `quarter` contract.
 working_source_map <- setNames(
   lapply(sort(unique(source_scan$source_type)), function(st) build_working_source_df(raw_integrated_wide, st)),
   sort(unique(source_scan$source_type))
 )
 
+# Enforce uniqueness before aggregation so duplicated raw rows cannot silently
+# inflate sales, store, or population quantities.
 for (st in sort(unique(raw_integrated_wide$source_type))) {
   keys <- c("adm_cd", "year", "quarter")
   if (st %in% c("sales", "store")) keys <- c(keys, "service_industry_code")
   assert_no_dup_keys(raw_integrated_wide |> dplyr::filter(source_type == st), keys, sprintf("%s raw integrated wide", st))
 }
 
+# The published raw layer must stay inside the configured panel-build horizon.
+# Out-of-range quarters indicate either source drift or quarter-code parsing
+# failure and should not flow into later panel joins.
 invalid_year_quarter_n <- raw_integrated_wide |>
   dplyr::filter(
     is.na(year) | is.na(quarter) |
@@ -873,6 +842,8 @@ if (invalid_year_quarter_n > 0) {
   stop(sprintf("[ERROR] Invalid year/quarter rows in Seoul raw integrated wide: %d", invalid_year_quarter_n), call. = FALSE)
 }
 
+# Terminal-year coverage is checked source-by-source because mixed raw layouts
+# can otherwise hide a partially updated source behind files from other types.
 terminal_year_coverage <- raw_integrated_wide |>
   dplyr::filter(!is.na(year), !is.na(quarter), year == cfg$short_end) |>
   dplyr::distinct(source_type, quarter) |>
@@ -911,12 +882,13 @@ if (nrow(missing_terminal_quarters) > 0L) {
 }
 
 #==============================================================================
-# 3. Build Annual Base Components
+# 3. Build Source Components for Quarter Base
 #==============================================================================
 
-# year base는 영향분석 branch의 canonical input이다.
-# 상권 원천 내부에서 완결되는 파생변수(매출 비중, 개폐업률, 다양성,
-# 60대 비중, 연 1회 변수의 annual anchor selection)를 이 단계에서 끝낸다.
+# This section converts each source-specific working table into `adm_cd x
+# year x quarter` components. Flow variables are summed, level/snapshot variables
+# keep their source-quarter meaning, and derived shares are calculated before the
+# final multi-source join.
 sales_major_cols <- paste0("sales_", c("cs1", "cs2", "cs3"))
 sales_share_cols <- paste0("sales_share_", c("cs1", "cs2", "cs3"))
 store_major_cols <- paste0("store_", c("cs1", "cs2", "cs3"))
@@ -930,6 +902,11 @@ floating_time_cols <- c(
   "floating_time_14_17_raw", "floating_time_17_21_raw", "floating_time_21_24_raw"
 )
 
+## 3-1. Sales and store activity components ------------------------------------
+
+# Sales and store sources carry a service-industry axis. Collapse that axis only
+# after preserving CS-group composition, time concentration, age-60 sales share,
+# opening/closure rates, and diversity diagnostics.
 sales_raw <- working_source_map[["sales"]]
 if (nrow(sales_raw) == 0) stop("[ERROR] sales source is empty", call. = FALSE)
 assert_required_cols(
@@ -954,8 +931,9 @@ if (length(unexpected_sales_major) > 0) {
 }
 
 sales_major <- sales_raw |>
-  # sales_major는 매출을 대분류(cs1/cs2/cs3) 단위로 다시 모은 중간층이다.
-  # total_sales와 분리해 두는 이유는 업종구성비와 총량을 독립적으로 QC하기 위해서다.
+  # sales_major is an intermediate CS-group layer. Keep it separate from
+  # total_sales so industry composition and total volume can be checked
+  # independently.
   dplyr::transmute(
     adm_cd,
     year,
@@ -1006,8 +984,9 @@ sales_time_entropy <- sales_raw |>
   dplyr::select(adm_cd, year, quarter, sales_time_entropy, sales_time_entropy_06_24)
 
 sales_q <- sales_raw |>
-  # sales_q는 업종축을 접어 동-분기 총매출과 60대 매출만 남긴다.
-  # 이 레벨에서 바로 share를 계산해 downstream 모델이 raw 업종행을 다시 접지 않게 한다.
+  # sales_q collapses the service-industry axis to dong-quarter totals and
+  # age-60 sales. Shares are calculated here so downstream models do not need to
+  # re-aggregate raw service rows.
   dplyr::transmute(
     adm_cd,
     year,
@@ -1071,8 +1050,9 @@ store_major <- store_raw |>
   tidyr::pivot_wider(names_from = var_name, values_from = value, values_fill = 0)
 
 store_entropy <- store_raw |>
-  # diversity_index는 업종별 점포수 분포 기반이므로,
-  # 먼저 서비스 업종별 점포수를 모은 뒤 Shannon entropy를 계산해야 한다.
+  # diversity_index is based on the store-count distribution by service industry,
+  # so store counts must be aggregated by service industry before Shannon entropy
+  # is calculated.
   dplyr::transmute(
     adm_cd,
     year,
@@ -1112,6 +1092,11 @@ store_q <- store_raw |>
     store_share_cs3 = dplyr::if_else(total_store_count > 0, store_cs3 / total_store_count, NA_real_)
   )
 
+## 3-2. Population and source-quarter snapshot components ----------------------
+
+# Non-sales sources already publish at the administrative-dong quarter level.
+# Keep quarterly snapshot/level semantics here; source-specific as-of or lag
+# treatment happens later when the shared panel is assembled.
 floating_raw <- working_source_map[["floating"]]
 assert_required_cols(
   floating_raw,
@@ -1259,167 +1244,11 @@ change_q <- publish_values_by_quarter(
     operating_months_rel_seoul = operating_months_avg - seoul_operating_months_avg
   )
 
-sales_time_year <- sales_raw |>
-  dplyr::transmute(
-    adm_cd,
-    year,
-    sales_time_00_06 = safe_num(sales_time_00_06_raw),
-    sales_time_06_11 = safe_num(sales_time_06_11_raw),
-    sales_time_11_14 = safe_num(sales_time_11_14_raw),
-    sales_time_14_17 = safe_num(sales_time_14_17_raw),
-    sales_time_17_21 = safe_num(sales_time_17_21_raw),
-    sales_time_21_24 = safe_num(sales_time_21_24_raw)
-  ) |>
-  dplyr::group_by(adm_cd, year) |>
-  dplyr::summarise(
-    dplyr::across(
-      dplyr::all_of(paste0("sales_time_", semas_daypart_suffixes_all)),
-      sum_or_na
-    ),
-    .groups = "drop"
-  ) |>
-  dplyr::rowwise() |>
-  dplyr::mutate(
-    sales_time_entropy = calc_interval_entropy(
-      c_across(dplyr::all_of(paste0("sales_time_", semas_daypart_suffixes_all))),
-      semas_daypart_hours_all
-    ),
-    sales_time_entropy_06_24 = calc_interval_entropy(
-      c_across(dplyr::all_of(paste0("sales_time_", semas_daypart_suffixes_06_24))),
-      semas_daypart_hours_06_24
-    )
-  ) |>
-  dplyr::ungroup() |>
-  dplyr::select(adm_cd, year, sales_time_entropy, sales_time_entropy_06_24)
+## 3-3. Assemble quarter base and review companion -----------------------------
 
-sales_quarter_stability_year <- sales_q |>
-  dplyr::group_by(adm_cd, year) |>
-  dplyr::summarise(
-    sales_quarter_stability = quarter_stability_score(total_sales),
-    .groups = "drop"
-  )
-
-sales_y <- sales_q |>
-  dplyr::group_by(adm_cd, year) |>
-  dplyr::summarise(
-    total_sales = sum_or_na(total_sales),
-    sales_count = sum_or_na(sales_count),
-    age60_sales_amount = sum_or_na(age60_sales_amount),
-    dplyr::across(dplyr::all_of(sales_major_cols), sum_or_na),
-    .groups = "drop"
-  ) |>
-  dplyr::left_join(sales_time_year, by = c("adm_cd", "year")) |>
-  dplyr::left_join(sales_quarter_stability_year, by = c("adm_cd", "year")) |>
-  add_missing_numeric_cols(sales_major_cols, fill = 0) |>
-  dplyr::mutate(
-    age60_sales_share = dplyr::if_else(total_sales > 0, age60_sales_amount / total_sales, NA_real_),
-    sales_share_cs1 = dplyr::if_else(total_sales > 0, sales_cs1 / total_sales, NA_real_),
-    sales_share_cs2 = dplyr::if_else(total_sales > 0, sales_cs2 / total_sales, NA_real_),
-    sales_share_cs3 = dplyr::if_else(total_sales > 0, sales_cs3 / total_sales, NA_real_)
-  )
-
-store_entropy_year <- store_raw |>
-  dplyr::transmute(
-    adm_cd,
-    year,
-    quarter,
-    service_industry_code = as.character(service_industry_code),
-    store_count = safe_num(total_store_count_raw)
-  ) |>
-  dplyr::group_by(adm_cd, year, quarter, service_industry_code) |>
-  dplyr::summarise(store_count = sum(store_count, na.rm = TRUE), .groups = "drop") |>
-  dplyr::group_by(adm_cd, year, service_industry_code) |>
-  dplyr::summarise(store_count = mean_or_na(store_count), .groups = "drop_last") |>
-  dplyr::summarise(diversity_index = calc_shannon_entropy(store_count), .groups = "drop")
-
-store_major_year <- store_raw |>
-  dplyr::transmute(
-    adm_cd,
-    year,
-    quarter,
-    service_cs_group,
-    store_count = safe_num(total_store_count_raw)
-  ) |>
-  dplyr::group_by(adm_cd, year, quarter, service_cs_group) |>
-  dplyr::summarise(value = sum(store_count, na.rm = TRUE), .groups = "drop") |>
-  dplyr::group_by(adm_cd, year, service_cs_group) |>
-  dplyr::summarise(value = mean_or_na(value), .groups = "drop") |>
-  dplyr::mutate(var_name = paste0("store_", service_cs_group)) |>
-  dplyr::select(adm_cd, year, var_name, value) |>
-  tidyr::pivot_wider(names_from = var_name, values_from = value, values_fill = 0)
-
-store_y <- store_q |>
-  dplyr::group_by(adm_cd, year) |>
-  dplyr::summarise(
-    total_store_count = mean_or_na(total_store_count),
-    opening_store_count = sum_or_na(opening_store_count),
-    closure_store_count = sum_or_na(closure_store_count),
-    .groups = "drop"
-  ) |>
-  dplyr::left_join(store_entropy_year, by = c("adm_cd", "year")) |>
-  dplyr::left_join(store_major_year, by = c("adm_cd", "year")) |>
-  add_missing_numeric_cols(store_major_cols, fill = 0) |>
-  dplyr::mutate(
-    opening_rate = dplyr::if_else(total_store_count > 0, opening_store_count / total_store_count, NA_real_),
-    closure_rate = dplyr::if_else(total_store_count > 0, closure_store_count / total_store_count, NA_real_),
-    instability_index = closure_rate - opening_rate,
-    store_share_cs1 = dplyr::if_else(total_store_count > 0, store_cs1 / total_store_count, NA_real_),
-    store_share_cs2 = dplyr::if_else(total_store_count > 0, store_cs2 / total_store_count, NA_real_),
-    store_share_cs3 = dplyr::if_else(total_store_count > 0, store_cs3 / total_store_count, NA_real_)
-  )
-
-floating_time_sum_cols <- paste0("floating_time_", semas_daypart_suffixes_all)
-floating_time_year <- floating_q |>
-  dplyr::group_by(adm_cd, year) |>
-  dplyr::summarise(
-    dplyr::across(dplyr::all_of(floating_time_sum_cols), sum_or_na),
-    .groups = "drop"
-  ) |>
-  dplyr::rowwise() |>
-  dplyr::mutate(
-    floating_time_entropy = calc_interval_entropy(
-      c_across(dplyr::all_of(floating_time_sum_cols)),
-      semas_daypart_hours_all
-    ),
-    floating_time_entropy_06_24 = calc_interval_entropy(
-      c_across(dplyr::all_of(paste0("floating_time_", semas_daypart_suffixes_06_24))),
-      semas_daypart_hours_06_24
-    )
-  ) |>
-  dplyr::ungroup() |>
-  dplyr::select(adm_cd, year, floating_time_entropy, floating_time_entropy_06_24)
-
-floating_quarter_stability_year <- floating_q |>
-  dplyr::group_by(adm_cd, year) |>
-  dplyr::summarise(
-    floating_quarter_stability = quarter_stability_score(floating_pop),
-    .groups = "drop"
-  )
-
-floating_y <- floating_q |>
-  dplyr::group_by(adm_cd, year) |>
-  dplyr::summarise(
-    floating_pop = mean_or_na(floating_pop),
-    age60_floating_pop = mean_or_na(age60_floating_pop),
-    floating_pop_flow = sum_or_na(floating_pop),
-    age60_floating_pop_flow = sum_or_na(age60_floating_pop),
-    .groups = "drop"
-  ) |>
-  dplyr::left_join(floating_time_year, by = c("adm_cd", "year")) |>
-  dplyr::left_join(floating_quarter_stability_year, by = c("adm_cd", "year")) |>
-  dplyr::mutate(
-    age60_floating_share = dplyr::if_else(
-      floating_pop_flow > 0,
-      age60_floating_pop_flow / floating_pop_flow,
-      NA_real_
-    )
-  ) |>
-  dplyr::select(-floating_pop_flow, -age60_floating_pop_flow)
-
-# ----------------------------------------------------------------------------
-# C) Assemble final quarter base and quarterly raw review companion
-# ----------------------------------------------------------------------------
-
+# Floating population is the preferred base universe because it is the widest
+# quarterly population source, but the final grid keeps any adm_cd appearing in
+# other required Seoul commercial sources and logs that expansion.
 adm_base <- sort(unique(floating_q$adm_cd))
 adm_pool <- sort(unique(c(
   adm_base,
@@ -1451,10 +1280,16 @@ review_panel_grid <- tidyr::expand_grid(
 ) |>
   dplyr::filter(!(year == cfg$short_end & quarter > cfg$short_end_quarter))
 
+# Service CS groups are retained in the review companion so source-level sales
+# and store rows can be inspected without polluting the canonical quarter base
+# with a service-industry dimension.
 service_cs_group_levels <- sort(unique(c(as.character(sales_raw$service_cs_group), as.character(store_raw$service_cs_group))))
 service_cs_group_levels <- service_cs_group_levels[!is.na(service_cs_group_levels) & trimws(service_cs_group_levels) != ""]
 if (length(service_cs_group_levels) == 0L) service_cs_group_levels <- c("cs1", "cs2", "cs3")
 
+# The review table is a source-audit companion. It keeps source-prefixed fields
+# and selected raw metadata for inspection, while preserving unique
+# `adm_cd-year-quarter-service_cs_group` keys.
 sales_review_raw <- summarise_review_source(
   df = sales_raw,
   group_keys = c("adm_cd", "year", "quarter", "service_cs_group"),
@@ -1564,6 +1399,9 @@ seoul_raw_review <- review_panel_grid |>
   dplyr::arrange(adm_cd, year, quarter, service_cs_group)
 assert_no_dup_keys(seoul_raw_review, c("adm_cd", "year", "quarter", "service_cs_group"), "seoul_raw_review")
 
+# `out_quarter` is the canonical Seoul commercial base published at `adm_cd-yq`.
+# It carries derived quarterly measures only; raw quarter-code/source columns
+# remain in the review and raw-integrated artifacts.
 out_quarter <- panel_quarter_grid |>
   dplyr::left_join(
     sales_q |>
@@ -1606,6 +1444,8 @@ out_quarter <- panel_quarter_grid |>
 # 4. Run QC and Save Quarter Base
 #==============================================================================
 
+# The quarter base is the first published `adm_cd-yq` commercial panel layer, so
+# duplicate keys and raw parser-only columns are treated as hard contract breaks.
 validate_panel_keys(out_quarter, c("adm_cd", "yq"))
 
 forbidden_quarter_base_cols <- intersect(c("quarter_code_raw"), names(out_quarter))
@@ -1619,6 +1459,8 @@ if (length(forbidden_quarter_base_cols) > 0L) {
   )
 }
 
+# Diversity can degenerate silently when the service-industry axis collapses or
+# store counts are missing. Give it a dedicated QC gate before publishing.
 diversity_qc <- dplyr::bind_rows(
   out_quarter |>
     dplyr::group_by(yq) |>
@@ -1725,6 +1567,9 @@ quarter_aggregation_qc <- dplyr::bind_rows(
   diversity_qc
 )
 
+# Stage every member of the output set before promotion. This keeps the quarter
+# base, raw review companion, raw integrated layer, and aggregation QC in sync
+# even when a write fails halfway through the publish step.
 staged_outputs <- list(
   quarter_base = list(
     final_path = quarter_base_path,
@@ -1746,6 +1591,8 @@ staged_outputs <- list(
 
 promote_staged_outputs(staged_outputs)
 
+# The final log records both row-count evidence and special publication rules so
+# later audits can distinguish expected source behavior from data drift.
 log_extreme_summary(out_quarter, "total_sales")
 log_extreme_summary(out_quarter, "total_store_count")
 log_extreme_summary(out_quarter, "floating_pop")

@@ -12,11 +12,8 @@
 #==============================================================================
 
 find_commercial_boundary_shp <- function(boundary_dir) {
-  # 서울 상권분석서비스 경계는 파일명 변형이 약간 있을 수 있어서,
-  # 허용 패턴 후보를 순서대로 시도한다.
-  # 첫 번째 매치만 반환하는 이유는 canonical source contract를 유지하려는 것이다.
-  # Colab/Linux에서는 Drive sync 과정에서 Unicode normalization(NFC/NFD)이
-  # 달라질 수 있어서, basename 기준 + normalization fallback까지 같이 본다.
+  # Discover the canonical Seoul commercial-boundary shapefile across expected
+  # filename variants and Unicode-normalization differences from Drive sync.
   patterns <- c(
     "상권분석서비스\\(영역-행정동\\)[.]shp$",
     "상권분석서비스\\(영역-행정동\\).*[.]shp$"
@@ -57,8 +54,8 @@ find_commercial_boundary_shp <- function(boundary_dir) {
     }
   }
 
-  # exact pattern이 깨진 환경에서도 canonical keyword 조합이 보이면
-  # 가장 먼저 잡히는 shapefile을 fallback으로 사용한다.
+  # Fall back to the first file that still carries the canonical service and
+  # administrative-dong keywords when exact filename matching fails.
   keyword_views <- unique(c(
     candidate_views$base_raw,
     candidate_views$base_nfc,
@@ -80,10 +77,8 @@ find_commercial_boundary_shp <- function(boundary_dir) {
 #==============================================================================
 
 load_commercial_boundary <- function(boundary_dir, target_crs = 5179L) {
-  # short-run quarterly panel과 auxiliary join이 모두 참조하는 기준
-  # 행정동 경계를 읽는 canonical loader다.
-  # 상권 경계는 이 프로젝트의 최종 분석 단위이므로,
-  # 여기서 만든 `adm_cd`가 downstream panel key의 사실상 원점이 된다.
+  # Load the administrative-dong boundary used by both the quarterly base panel
+  # and auxiliary joins. The `adm_cd` created here anchors downstream keys.
   shp <- find_commercial_boundary_shp(boundary_dir)
   if (is.na(shp)) stop("[ERROR] commercial boundary shapefile not found", call. = FALSE)
 
@@ -101,8 +96,7 @@ load_commercial_boundary <- function(boundary_dir, target_crs = 5179L) {
   code_col <- code_col[[1]]
 
   obj$adm_cd_raw <- as.character(obj[[code_col]])
-  # 원본 코드값도 `adm_cd_raw`로 남겨 두면,
-  # 이후 join mismatch나 원천 데이터 검토 시 역추적이 쉽다.
+  # Preserve the raw code for source-data audits and join-mismatch debugging.
   obj$adm_cd <- stringr::str_pad(obj$adm_cd_raw, width = 10, side = "left", pad = "0")
   obj
 }
@@ -113,8 +107,8 @@ load_commercial_boundary <- function(boundary_dir, target_crs = 5179L) {
 #==============================================================================
 
 seoul_gu_region_lookup <- function() {
-  # 서울 5대 권역생활권-25개 자치구 체계는 행정동 경계의 adm_cd 앞 6자리로
-  # 안정적으로 식별된다. expected_adm_n은 2020 기준 425개 행정동 계약의 QC용이다.
+  # Map 25 districts to Seoul's five living-area regions using stable six-digit
+  # administrative prefixes. Expected counts encode the 2020 425-dong QC target.
   tibble::tribble(
     ~gu_prefix, ~gu_name, ~living_area, ~living_area_order, ~expected_adm_n,
     "001111", "종로구", "도심권", 1L, 17L,
@@ -151,8 +145,8 @@ seoul_gu_region_lookup <- function() {
 }
 
 build_adm_region_lookup <- function(boundary_tbl, boundary_year = 2020L) {
-  # 행정동-자치구-생활권 lookup은 2020 기준 행정동 경계를 원천으로 삼는다.
-  # Downstream reporting과 preprocessing에서 같은 정적 계약을 재사용한다.
+  # Build the static administrative-dong to district/living-area lookup from the
+  # 2020 boundary contract reused by preprocessing and reporting.
   base <- if (inherits(boundary_tbl, "sf")) {
     sf::st_drop_geometry(boundary_tbl)
   } else {
@@ -264,9 +258,8 @@ summarise_adm_region_lookup_qc <- function(lookup) {
 #==============================================================================
 
 build_listw <- function(sf_obj, type = "queen") {
-  # Queen/Rook/kNN 기반 공간가중행렬을 같은 인터페이스로 생성한다.
-  # `region.id`는 나중에 panel 정렬과 residual Moran에서 다시 쓰이므로
-  # 가능하면 `adm_cd`를 그대로 row name으로 심어 둔다.
+  # Build Queen, Rook, and kNN spatial weights behind one interface, preserving
+  # `adm_cd` as `region.id` for later panel alignment and Moran diagnostics.
   region_ids <- if ("adm_cd" %in% names(sf_obj)) as.character(sf_obj$adm_cd) else as.character(seq_len(nrow(sf_obj)))
 
   nb <- switch(
@@ -284,7 +277,7 @@ build_listw <- function(sf_obj, type = "queen") {
     stop("unknown w type")
   )
 
-  # style='W' row-standardization은 메인 연구설계의 기본 규칙이다.
+  # Row-standardized W weights are the main research-design contract.
   spdep::nb2listw(nb, style = "W", zero.policy = TRUE)
 }
 
@@ -294,16 +287,16 @@ build_listw <- function(sf_obj, type = "queen") {
 #==============================================================================
 
 get_listw_region_ids <- function(listw_obj) {
-  # listw에 저장된 region.id는 panel/geometry 정렬의 기준점이므로,
-  # Moran 진단에서는 매번 이 값을 우선 확인한다.
+  # Stored region IDs are the alignment anchor between geometry, panel rows, and
+  # residual Moran diagnostics.
   ids <- attr(listw_obj$neighbours, "region.id")
   if (is.null(ids)) stop("[ERROR] region.id is missing in spatial weights", call. = FALSE)
   as.character(ids)
 }
 
 align_numeric_vector_to_listw <- function(data, listw_obj, value_col, id_col = "adm_cd", min_units = 30L) {
-  # Moran 계열 진단은 변수별 complete-case 표본으로 다시 W를 subset해야
-  # 평균대치 없이도 통계량과 유효 표본 크기를 일관되게 해석할 수 있다.
+  # Moran diagnostics subset W to each variable's complete-case support so the
+  # statistic, sample size, and missingness treatment stay aligned.
   if (!id_col %in% names(data)) {
     stop(sprintf("[ERROR] id column missing: %s", id_col), call. = FALSE)
   }

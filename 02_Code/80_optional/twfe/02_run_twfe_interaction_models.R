@@ -45,7 +45,7 @@ outcome_registry <- resolve_model_outcomes(
   include_robustness = FALSE
 )
 outcomes <- outcome_registry$outcome
-exposure_base <- value_or(cfg$twfe_main_exposure_vars, c("age60_resident_share"))
+exposure_base <- value_or(cfg$twfe_main_exposure_vars, c("lag4_age60_resident_share"))
 exposures <- intersect(exposure_base, names(panel))
 exposures <- exposures[vapply(exposures, function(v) sum(is.finite(panel[[v]])) > 100, logical(1))]
 

@@ -56,7 +56,7 @@ outcome_registry <- resolve_model_outcomes(
 )
 outcomes <- outcome_registry$outcome
 main_exposure <- intersect(
-  value_or(cfg$spdm_main_exposure_vars, c("age60_resident_share")),
+  value_or(cfg$spdm_main_exposure_vars, c("lag4_age60_resident_share")),
   names(panel)
 )
 

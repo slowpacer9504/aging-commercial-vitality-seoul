@@ -41,11 +41,11 @@ outcome_registry <- resolve_model_outcomes(
 )
 outcomes <- outcome_registry$outcome
 main_exposure <- intersect(
-  value_or(cfg$twfe_main_exposure_vars, c("age60_resident_share")),
+  value_or(cfg$twfe_main_exposure_vars, c("lag4_age60_resident_share")),
   names(panel)
 )
 channel_vars <- intersect(
-  value_or(cfg$twfe_channel_vars, "age60_floating_share"),
+  value_or(cfg$twfe_channel_vars, "lag2_age60_floating_share"),
   names(panel)
 )
 main_control_contract <- load_twfe_main_control_contracts(outcomes)
@@ -61,10 +61,10 @@ main_controls_by_outcome <- stats::setNames(
   names(main_control_contracts)
 )
 
-# The mediator equation (`x_to_m`) has `age60_floating_share` as its outcome,
-# which is not part of the main TWFE outcome contract. It therefore uses the
-# controls selected in every main TWFE outcome contract, rather than running a
-# separate mediator-specific control screen.
+# The mediator equation (`x_to_m`) uses the configured lagged floating-aging
+# channel variable as its outcome. Because that mediator is outside the main TWFE
+# outcome contract, it inherits controls selected in every main TWFE outcome
+# contract rather than running a separate mediator-specific screen.
 main_control_lists <- lapply(main_controls_by_outcome, function(x) {
   x <- unique(as.character(value_or(x, character())))
   x[!is.na(x) & nzchar(x)]

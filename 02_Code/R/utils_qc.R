@@ -16,10 +16,8 @@
 #==============================================================================
 
 assert_required_cols <- function(df, cols, name = deparse(substitute(df))) {
-  # 데이터셋 contract의 가장 기본 검증이다. 기대한 컬럼이 하나라도
-  # 없으면 downstream 처리를 계속하지 않고 즉시 중단한다.
-  # 대부분의 스크립트가 raw source 직후와 save 직전에 이 함수를 써서,
-  # schema drift를 최대한 앞단에서 잡는다.
+  # Enforce the most basic dataset contract before downstream joins or models
+  # can silently operate on a drifted schema.
   miss <- setdiff(cols, names(df))
   if (length(miss) > 0) {
     stop(sprintf("[ERROR] %s missing columns: %s", name, paste(miss, collapse = ", ")), call. = FALSE)
@@ -35,11 +33,8 @@ assert_required_cols <- function(df, cols, name = deparse(substitute(df))) {
 standardize_keys <- function(df) {
   # Raw sources use slightly different administrative code aliases. Normalize
   # them early so all joins operate on one canonical key set.
-  # raw source마다 행정동 코드/연도/분기 컬럼명이 달라서, 초기에
-  # `adm_cd`, `year`, `quarter`로 맞춰두면 이후 join 코드가 단순해진다.
-  # 이 함수는 이름 표준화와 타입 표준화를 같이 수행한다.
-  # 즉 컬럼명만 바꾸는 것이 아니라, `adm_cd` padding과
-  # `year/quarter` 정수화까지 한 번에 끝낸다.
+  # This helper standardizes both names and types, including `adm_cd` padding
+  # and integer year/quarter fields.
   nm <- names(df)
   map <- c(
     adm_cd = "adm_cd", adm_code = "adm_cd", admdong_cd = "adm_cd", dong_cd = "adm_cd",
@@ -68,8 +63,8 @@ make_yq <- function(year, quarter) {
 #==============================================================================
 
 validate_panel_keys <- function(df, keys = c("adm_cd", "yq")) {
-  # active canonical panel은 `adm_cd-yq` 유일키를 가져야 한다.
-  # 중복이 있으면 회귀 표본이 조용히 늘어나거나 집계가 틀어질 수 있다.
+  # The active canonical panel must have unique keys; duplicates would inflate
+  # model samples or distort grouped summaries.
   assert_required_cols(df, keys)
   dups <- df |>
     dplyr::count(dplyr::across(dplyr::all_of(keys)), name = "n") |>
@@ -87,8 +82,7 @@ validate_quarter_panel_keys <- function(df, keys = c("adm_cd", "year", "quarter"
 }
 
 summarize_missing <- function(df) {
-  # 어떤 변수가 얼마나 비어 있는지 공통 형식으로 요약하는 helper다.
-  # 이 결과는 QC csv나 로그 본문으로 바로 저장하기 좋은 long table 형태다.
+  # Return missingness in a long, export-ready format for QC CSVs and logs.
   tibble::tibble(
     variable = names(df),
     n_missing = vapply(df, function(x) sum(is.na(x)), numeric(1)),

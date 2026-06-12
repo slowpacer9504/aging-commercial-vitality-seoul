@@ -34,8 +34,8 @@ project_attached_packages <- function() {
 }
 
 project_runtime_namespace_packages <- function() {
-  # namespace 호출만 쓰는 패키지도 런타임 시작 전에 확인해야
-  # 긴 전처리/모형 스크립트가 중간에서 뒤늦게 깨지지 않는다.
+  # Namespace-only dependencies are validated before long preprocessing or
+  # modeling scripts can fail late in the run.
   c("rlang", "stringi", "tidyselect")
 }
 
@@ -197,8 +197,8 @@ validate_project_packages <- function(scope = c("runtime", "full_strict"), extra
 #==============================================================================
 
 load_project_packages <- function(extra = NULL) {
-  # 공통 attach 세트는 최소한으로 유지하고, namespace-only dependency는
-  # 별도로 검증만 해서 불필요한 attach 충돌을 피한다.
+  # Keep the attached set minimal; namespace-only dependencies are validated
+  # without attachment to avoid unnecessary masking conflicts.
   attach_pkgs <- normalize_package_vector(c(project_attached_packages(), extra))
 
   missing <- find_missing_project_packages(scope = "runtime", extra = extra)

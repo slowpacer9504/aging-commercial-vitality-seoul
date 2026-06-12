@@ -20,9 +20,8 @@
 # 0. Setup
 #==============================================================================
 
-# `run_all`은 각 스크립트의 내부 로직을 대체하지 않는다.
-# 정해진 순서대로 호출하고, 각 단계의 성공/실패/소요시간을 로그에 남기는
-# orchestration 역할만 맡는다.
+# run_all only orchestrates the canonical scripts; each step keeps its own
+# transformation or modeling contract and reports step-level status here.
 options(scipen = 999)
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
@@ -38,12 +37,9 @@ append_log(cfg$logs$model_run, sprintf("\n# Pipeline Start: %s", timestamp()))
 # 1. Ordered Pipeline Scripts
 #==============================================================================
 
-# 배열 순서 자체가 canonical pipeline order다.
-# default run은 active quarterly panel -> ESDA -> TWFE -> SPDM main ->
-# W robustness -> robustness -> QC -> reporting 흐름만 실행한다.
-# optional/sidecar scripts는 quarterly contract에 맞게 유지하되 default
-# run_all success contract와 필수 test plan에서는 제외한다.
-# SPDM channel path는 optional/manual appendix sidecar로 직접 실행한다.
+# The vector order is the canonical active pipeline order: quarterly panel,
+# ESDA, TWFE, SPDM main, W robustness, robustness, QC, and reporting. Optional
+# sidecars stay outside default run_all success and required test contracts.
 # Fresh auxiliary geocoding requires KAKAO_REST_API_KEY only when the
 # existing cache files do not already resolve all needed addresses or queries.
 scripts <- cfg$canonical_pipeline_scripts
@@ -53,10 +49,8 @@ scripts <- cfg$canonical_pipeline_scripts
 # 2. Sequential Execution
 #==============================================================================
 
-# 각 스텝을 별도 child environment에서 실행하는 이유는,
-# 스크립트 내부 객체가 `run_all` 상태를 덮어쓰지 않게 하기 위해서다.
-# 또한 step별 성공/실패를 개별 로그 row로 남겨야,
-# 긴 파이프라인이 중간에서 멈춰도 어느 지점까지 끝났는지 바로 확인할 수 있다.
+# Each step runs in a child environment so script-local objects cannot overwrite
+# orchestration state, while the log keeps a resumable audit trail.
 run_pipeline_step <- function(sc) {
   abs <- here::here(sc)
   if (!file.exists(abs)) stop(sprintf("[ERROR] missing script: %s", sc), call. = FALSE)
@@ -70,8 +64,8 @@ run_pipeline_step <- function(sc) {
 
   tryCatch(
     {
-      # `sys.source()`를 쓰면 각 스크립트를 그대로 재사용하면서도,
-      # 함수 정의/중간 객체를 현재 orchestration 환경과 분리할 수 있다.
+      # sys.source() reuses each script directly while isolating function and
+      # intermediate-object definitions inside the step environment.
       sys.source(abs, envir = step_env)
       step_finished_at <- Sys.time()
       append_log(
@@ -100,8 +94,8 @@ run_pipeline_step <- function(sc) {
 }
 
 for (sc in scripts) {
-  # 순차 실행을 강제하는 이유는, 대부분의 스크립트가 바로 앞 단계의
-  # canonical output을 입력으로 삼기 때문이다.
+  # Sequential execution is required because most steps consume the immediately
+  # preceding canonical output.
   run_pipeline_step(sc)
 }
 
@@ -110,6 +104,6 @@ for (sc in scripts) {
 # 3. Finalize Run Log
 #==============================================================================
 
-# 최종 로그는 사람이 파이프라인 전체 성공 여부를 훑어보는 audit trail이다.
+# The final log marker makes whole-pipeline success easy to audit manually.
 append_log(cfg$logs$model_run, sprintf("\n# Pipeline End: %s", timestamp()))
 message("[ALL DONE] Pipeline completed")

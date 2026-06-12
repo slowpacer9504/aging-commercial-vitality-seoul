@@ -39,8 +39,8 @@ if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {
   stop("[ERROR] Missing panel or W", call. = FALSE)
 }
 
-requested_x_vars <- value_or(cfg$spdm_main_exposure_vars, "age60_resident_share")
-requested_m_vars <- value_or(cfg$spdm_channel_vars, "age60_floating_share")
+requested_x_vars <- value_or(cfg$spdm_main_exposure_vars, "lag4_age60_resident_share")
+requested_m_vars <- value_or(cfg$spdm_channel_vars, "lag2_age60_floating_share")
 
 channel_read_cols <- unique(c(
   requested_x_vars,

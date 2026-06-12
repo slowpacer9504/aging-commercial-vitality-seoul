@@ -24,6 +24,9 @@
 # 0. Setup
 #==============================================================================
 
+# Active ESDA reads the method-specific panel view, keeps the latest-quarter
+# cross-section for maps and local diagnostics, and preserves the full quarterly
+# sequence only where EHSA needs temporal history.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -32,14 +35,20 @@ source(here::here("02_Code", "R", "utils_spatial.R"))
 load_project_packages(extra = "Kendall")
 ensure_dirs(cfg$required_dirs)
 
+# Variable families are configured in config.R, but this helper keeps the
+# script executable against older configs while preserving the active defaults.
 value_or <- function(x, default) {
   if (is.null(x)) default else x
 }
 
+# ESDA depends on the shared panel and main Queen W already being published by
+# the canonical preprocessing and spatial-weights stages.
 if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {
   stop("[ERROR] Required panel or W file missing for ESDA", call. = FALSE)
 }
 
+# The ESDA view enforces the active analysis window and required variables while
+# retaining quarterly keys for both latest-quarter and sequence diagnostics.
 panel <- read_panel_main_view("esda")
 if (!all(c("adm_cd", "year", "quarter", "yq") %in% names(panel))) {
   stop("[ERROR] ESDA panel view must contain adm_cd, year, quarter, and yq", call. = FALSE)
@@ -57,6 +66,8 @@ panel <- panel |>
     }
   )
 
+# Latest-quarter cross-section is the descriptive ESDA surface used for
+# distribution maps, Global Moran's I, Global Bivariate Moran's I, and LISA.
 latest_row <- panel |>
   dplyr::filter(!is.na(yq), nzchar(yq), is.finite(quarter_index)) |>
   dplyr::arrange(dplyr::desc(quarter_index), dplyr::desc(yq)) |>
@@ -72,10 +83,14 @@ if (nrow(cs) == 0) {
   stop(sprintf("[ERROR] no rows found for latest ESDA quarter: %s", latest_yq), call. = FALSE)
 }
 
+# Boundary geometry is reloaded for maps and W alignment checks so every ESDA
+# artifact uses the same 2020 administrative-dong spatial support.
 b2020 <- load_commercial_boundary(cfg$dir_boundary, cfg$target_crs) |>
   dplyr::select(adm_cd, geometry) |>
   dplyr::mutate(adm_cd = as.character(adm_cd))
 
+# Resolve configured ESDA variable families against columns actually present in
+# panel_main, preventing stale config variables from breaking the active run.
 aging_vars <- intersect(
   unique(as.character(value_or(
     cfg$impact_aging_vars,
@@ -137,6 +152,9 @@ w_paths <- c(
   knn8 = cfg$paths$w_knn8
 )
 
+# Distribution-map variables are intentionally narrower than all ESDA variables:
+# they present core aging and representative vitality surfaces for the latest
+# quarter instead of producing a map for every model outcome.
 distribution_label_lookup <- c(
   age60_floating_share = "60+ floating-population share",
   age60_resident_share = "60+ resident share",
@@ -167,11 +185,8 @@ main_distribution_map_specs <- tibble::tibble(
     palette_type = "sequential"
   )
 
-lisa_map_pairs <- tidyr::crossing(
-  var_x = bivariate_aging_vars,
-  var_y = bivariate_outcomes
-)
-
+# Palettes are defined once and reused by local-diagnostic map writers so
+# cluster labels remain stable across univariate, bivariate, and EHSA maps.
 lisa_levels <- c("High-High", "High-Low", "Low-High", "Low-Low", "Not Significant", "Missing")
 lisa_palette <- c(
   "High-High" = "#9d0208",
@@ -209,6 +224,10 @@ ehsa_palette <- c(
 # 1. Shared Helpers
 #==============================================================================
 
+# Helpers below keep file naming deterministic, stochastic inference
+# reproducible, and failed variable/W combinations represented in output tables.
+
+## 1-1. File naming and reproducibility helpers --------------------------------
 sanitize_stub <- function(x) {
   out <- stringr::str_replace_all(x, "[^A-Za-z0-9]+", "_")
   stringr::str_replace_all(out, "^_+|_+$", "")
@@ -271,6 +290,7 @@ get_w_ids <- function(lw) {
   get_listw_region_ids(lw)
 }
 
+## 1-2. Global Moran helpers ---------------------------------------------------
 compute_global_moran_table <- function(cs, lw, w_type, vars, yq_value, nsim = cfg$esda_global_moran_nsim) {
   purrr::map_dfr(vars, function(v) {
     aligned <- tryCatch(
@@ -356,6 +376,7 @@ compute_global_moran_table <- function(cs, lw, w_type, vars, yq_value, nsim = cf
   })
 }
 
+## 1-3. LISA summary and local-cluster helpers ---------------------------------
 empty_bivariate_summary <- function(yq_value, var_x, var_y, message, status = "failed") {
   tibble::tibble(
     yq = as.character(yq_value),
@@ -411,6 +432,7 @@ empty_univariate_summary <- function(yq_value, variable, message, status = "fail
   )
 }
 
+# Univariate LISA uses the standard z(x) versus W z(x) quadrant convention.
 compute_univariate_lisa_var <- function(cs, lw, variable, yq_value, nsim = 499L, alpha = 0.05) {
   d <- cs |>
     dplyr::transmute(
@@ -516,6 +538,8 @@ compute_univariate_lisa_var <- function(cs, lw, variable, yq_value, nsim = 499L,
   list(summary = summary, local = local)
 }
 
+# Bivariate LISA uses z(x) versus W z(y), where x is an aging variable and y is
+# a commercial-vitality outcome.
 compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 499L, alpha = 0.05) {
   d <- cs |>
     dplyr::transmute(
@@ -625,6 +649,7 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 4
   list(summary = summary, local = local)
 }
 
+## 1-4. Global bivariate Moran helpers -----------------------------------------
 compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 499L) {
   d <- cs |>
     dplyr::transmute(
@@ -719,6 +744,7 @@ compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, yq_value, 
   )
 }
 
+## 1-5. Local-diagnostic map writers -------------------------------------------
 save_univariate_lisa_map <- function(local_tbl, boundary, variable, yq_value) {
   stub <- sanitize_stub(variable)
   out_path <- file.path(cfg$dir_maps, sprintf("univariate_lisa_map__%s.png", stub))
@@ -786,6 +812,7 @@ save_bivariate_lisa_map <- function(local_tbl, boundary, var_x, var_y, yq_value)
   invisible(out_path)
 }
 
+## 1-6. EHSA helpers -----------------------------------------------------------
 empty_ehsa_summary <- function(var, message, status = "failed") {
   tibble::tibble(
     var = var,
@@ -812,6 +839,8 @@ normalize_ehsa_classification <- function(x) {
   )
 }
 
+# EHSA uses the longest complete quarterly suffix that still preserves enough
+# locations, so missing early periods do not discard the whole active panel.
 resolve_ehsa_suffix <- function(panel_df, var, min_locations = 30L) {
   d <- panel_df |>
     dplyr::select(adm_cd, yq, quarter_index, dplyr::all_of(var)) |>
@@ -863,6 +892,8 @@ resolve_ehsa_suffix <- function(panel_df, var, min_locations = 30L) {
   NULL
 }
 
+# sfdep EHSA follows the Gi* convention, so the Queen W is expanded with self
+# neighbors only inside this sequence diagnostic.
 compute_ehsa_for_var <- function(
   panel_df,
   boundary,
@@ -1058,6 +1089,8 @@ save_ehsa_map <- function(local_tbl, boundary, var) {
 # 2. Descriptive Distribution Maps
 #==============================================================================
 
+# Distribution maps are descriptive latest-quarter evidence; they do not drive
+# model estimates and therefore use stable quintile-style visual classes.
 if (nrow(main_distribution_map_specs) > 0L) {
   clear_map_family("^distribution_map__.*\\.png$")
   purrr::pwalk(
@@ -1092,6 +1125,8 @@ if (nrow(main_distribution_map_specs) > 0L) {
 # 3. Global Moran's I and W Sensitivity
 #==============================================================================
 
+# Global Moran's I is computed with Queen plus all predefined robustness W
+# objects, using deterministic permutation p-values for reproducibility.
 global_by_w <- purrr::imap_dfr(w_paths, function(w_path, w_type) {
   if (!file.exists(w_path)) {
     return(tibble::tibble(
@@ -1129,6 +1164,8 @@ lw_queen <- readRDS(cfg$paths$w_queen)
 # 4. Global Bivariate Moran's I
 #==============================================================================
 
+# The same configured aging-by-vitality pairs are used for both global
+# bivariate Moran diagnostics and bivariate LISA local diagnostics.
 bv_pairs <- tidyr::crossing(var_x = bivariate_aging_vars, var_y = bivariate_outcomes)
 global_bv_summary <- purrr::pmap_dfr(
   list(bv_pairs$var_x, bv_pairs$var_y),
@@ -1142,6 +1179,8 @@ write_csv_safe(global_bv_summary, cfg$paths$global_bivariate_morans_i)
 # 5. Univariate LISA
 #==============================================================================
 
+# Univariate LISA stores both the local table used for maps and a compact
+# summary table for reporting and method-alignment QC.
 uv_results <- purrr::map(
   univariate_lisa_vars,
   ~ compute_univariate_lisa_var(cs, lw_queen, .x, latest_yq)
@@ -1171,6 +1210,8 @@ if (length(univariate_lisa_vars) > 0L && nrow(uv_local) > 0L) {
 # 6. Bivariate LISA
 #==============================================================================
 
+# Bivariate LISA reuses the global bivariate pair contract and maps every
+# computed aging-by-vitality combination.
 bv_results <- purrr::pmap(
   list(bv_pairs$var_x, bv_pairs$var_y),
   function(var_x, var_y) compute_bivariate_lisa_pair(cs, lw_queen, var_x, var_y, latest_yq)
@@ -1182,10 +1223,10 @@ bv_local <- dplyr::bind_rows(purrr::map(bv_results, "local"))
 write_csv_safe(bv_summary, cfg$paths$bivariate_lisa_summary)
 write_csv_safe(bv_local, cfg$paths$bivariate_lisa_local)
 
-if (nrow(lisa_map_pairs) > 0L && nrow(bv_local) > 0L) {
+if (nrow(bv_pairs) > 0L && nrow(bv_local) > 0L) {
   clear_map_family("^bivariate_lisa_map__.*\\.png$")
   purrr::pwalk(
-    list(lisa_map_pairs$var_x, lisa_map_pairs$var_y),
+    list(bv_pairs$var_x, bv_pairs$var_y),
     function(map_x, map_y) {
       local_pair <- bv_local |>
         dplyr::filter(var_x == !!map_x, var_y == !!map_y)
@@ -1200,6 +1241,8 @@ if (nrow(lisa_map_pairs) > 0L && nrow(bv_local) > 0L) {
 # 7. Emerging Hot Spot Analysis
 #==============================================================================
 
+# EHSA is the only ESDA step that uses the quarterly sequence. It reports the
+# complete-case suffix actually used so temporal coverage remains auditable.
 ehsa_results <- purrr::map(
   ehsa_vars,
   ~ compute_ehsa_for_var(panel, b2020, lw_queen, .x)
@@ -1229,6 +1272,8 @@ if (nrow(ehsa_local) > 0L) {
 # 8. Logs
 #==============================================================================
 
+# The run log records both row counts and map counts for quick pipeline audits
+# without reopening every output table.
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 02_run_esda", timestamp()))
 append_log(
   cfg$logs$data_qc,
@@ -1243,7 +1288,7 @@ append_log(
     length(univariate_lisa_vars),
     length(univariate_lisa_vars),
     nrow(bv_summary),
-    nrow(lisa_map_pairs),
+    nrow(bv_pairs),
     length(ehsa_vars),
     as.integer(cfg$esda_ehsa_min_periods)
   )

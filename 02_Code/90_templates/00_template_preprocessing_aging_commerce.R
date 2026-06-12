@@ -15,9 +15,9 @@
 # 0. Setup
 #==============================================================================
 
-# 이 템플릿은 분기 패널 preprocessing 스크립트를 새로 만들 때 따라야 하는
-# 기본 골격을 보여 준다. 핵심 계약은 `adm_cd x yq`, contemporaneous quarterly timing,
-# 그리고 "분기 raw는 active panel의 기본 시간 단위로 발행한다"는 점이다.
+# This template shows the expected structure for new quarterly preprocessing
+# scripts. The core contract is `adm_cd x yq`, contemporaneous quarterly timing,
+# and quarterly raw publication as the active panel's base time unit.
 
 ## 0-1. Load packages ----------------------------------------------------------
 required_packages <- c(
@@ -33,7 +33,7 @@ missing_packages <- required_packages[
 if (length(missing_packages) > 0L) {
   stop(
     sprintf(
-      "[ERROR] 필요한 패키지가 설치되어 있지 않습니다: %s",
+      "[ERROR] Required packages are not installed: %s",
       paste(missing_packages, collapse = ", ")
     ),
     call. = FALSE
@@ -105,7 +105,7 @@ assert_required_cols <- function(df, required_cols, df_name = deparse(substitute
   if (length(missing_cols) > 0L) {
     stop(
       sprintf(
-        "[ERROR] %s에 필요한 컬럼이 없습니다: %s",
+        "[ERROR] %s is missing required columns: %s",
         df_name,
         paste(missing_cols, collapse = ", ")
       ),
@@ -159,10 +159,10 @@ validate_panel_keys <- function(df, key_cols = c("adm_cd", "year")) {
     nrow()
 
   if (dup_n > 0L) {
-    stop(sprintf("[ERROR] 중복 키가 %d건 존재합니다.", dup_n), call. = FALSE)
+    stop(sprintf("[ERROR] Duplicate keys found: %d", dup_n), call. = FALSE)
   }
 
-  cli::cli_alert_success("중복 키 0건 확인")
+  cli::cli_alert_success("Confirmed zero duplicate keys")
   invisible(TRUE)
 }
 
@@ -177,13 +177,13 @@ summarize_missingness <- function(df, vars = names(df)) {
 
 safe_log1p <- function(x) {
   if (!is.numeric(x)) {
-    stop("[ERROR] safe_log1p()는 numeric 벡터만 허용합니다.", call. = FALSE)
+    stop("[ERROR] safe_log1p() accepts numeric vectors only.", call. = FALSE)
   }
   log1p(pmax(x, 0))
 }
 
 #==============================================================================
-# 3. Annualization helpers
+# 3. Quarterly Aggregation Helpers
 #==============================================================================
 
 weighted_mean_or_na <- function(x, w = NULL) {
@@ -247,8 +247,8 @@ quarterize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("
 # 4. Example preprocessing flow
 #==============================================================================
 
-# 아래는 실제 실행 코드가 아니라, quarterly preprocessing 스크립트에서
-# 어떤 순서로 객체를 만들고 어떤 계약을 지켜야 하는지 보여 주는 예시다.
+# The following block is an example pattern, not runnable production code. It
+# shows the object order and contracts expected in quarterly preprocessing.
 
 ## 4-1. Read and clean raw source ----------------------------------------------
 # df_raw_quarterly <- read_csv_kr(fs::path(dir_raw, "seoul_sales_quarterly.csv")) |>
@@ -318,8 +318,8 @@ quarterize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("
 # 5. Template reminders
 #==============================================================================
 
-# - active publication key는 `adm_cd x yq`다.
-# - 분기 raw는 quarterly publication helper를 거쳐 active panel에 남긴다.
-# - additive flow와 level-share를 같은 함수로 집계하지 않는다.
-# - canonical shared panel은 동시점 quarterly contract만 유지한다.
+# - Active publication key is `adm_cd x yq`.
+# - Quarterly raw sources enter the active panel through quarterly publication helpers.
+# - Additive flows and level/share variables are not aggregated with the same helper.
+# - The canonical shared panel keeps only the contemporaneous quarterly contract.
 # - legacy shift/lead overlays are excluded unless explicitly reopened as appendix diagnostics.

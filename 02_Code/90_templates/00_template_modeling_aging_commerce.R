@@ -15,9 +15,10 @@
 # 0. Setup
 #==============================================================================
 
-# 이 템플릿은 현재 프로젝트의 quarterly modeling 코드가 어떤 구조를 가져야 하는가를
-# 보여 주는 학습용 뼈대다. active contract는 `adm_cd x yq`, contemporaneous quarterly timing,
-# TWFE FE `adm_cd + yq`, 그리고 resident-only SPDM main specification이다.
+# This template shows the expected structure for quarterly modeling scripts. The
+# active contract is `adm_cd x yq`, lagged quarterly timing for main exposure
+# and controls, TWFE fixed effects `adm_cd + yq`, and the resident-only SPDM main
+# specification.
 
 ## 0-1. Load packages ----------------------------------------------------------
 required_packages <- c(
@@ -33,7 +34,7 @@ missing_packages <- required_packages[
 if (length(missing_packages) > 0L) {
   stop(
     sprintf(
-      "[ERROR] 필요한 패키지가 설치되어 있지 않습니다: %s",
+      "[ERROR] Required packages are not installed: %s",
       paste(missing_packages, collapse = ", ")
     ),
     call. = FALSE
@@ -81,7 +82,7 @@ assert_required_cols <- function(df, required_cols) {
   missing_cols <- setdiff(required_cols, names(df))
   if (length(missing_cols) > 0L) {
     stop(
-      sprintf("[ERROR] 필요한 컬럼이 없습니다: %s", paste(missing_cols, collapse = ", ")),
+      sprintf("[ERROR] Required columns are missing: %s", paste(missing_cols, collapse = ", ")),
       call. = FALSE
     )
   }
@@ -174,7 +175,7 @@ compute_residual_moran_by_yq <- function(data, residual_col, w_listw) {
 #==============================================================================
 
 if (!file.exists(path_panel_main)) {
-  stop(sprintf("[ERROR] 패널 파일이 없습니다: %s", path_panel_main), call. = FALSE)
+  stop(sprintf("[ERROR] Panel file is missing: %s", path_panel_main), call. = FALSE)
 }
 
 panel_main <- arrow::read_parquet(path_panel_main) |>
@@ -191,9 +192,7 @@ outcomes_main <- c(
 )
 
 exposures_main <- c(
-  "age60_resident_share",
-  "age60_floating_share",
-  "age60_sales_share"
+  "lag4_age60_resident_share"
 )
 
 controls_structural <- c(
@@ -229,12 +228,12 @@ append_log_line(sprintf("- Existing controls: %s", paste(existing_controls, coll
 twfe_models <- build_twfe_suite(
   data = panel_main,
   outcomes = existing_outcomes,
-  exposures = intersect("age60_resident_share", existing_exposures),
+  exposures = intersect("lag4_age60_resident_share", existing_exposures),
   controls = existing_controls
 )
 
 if (length(twfe_models) == 0L) {
-  stop("[ERROR] 실행 가능한 TWFE 모형이 없습니다. outcome/exposure 변수를 점검하세요.", call. = FALSE)
+  stop("[ERROR] No estimable TWFE model is available. Check outcome/exposure variables.", call. = FALSE)
 }
 
 modelsummary::modelsummary(
@@ -256,8 +255,8 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 # 4. Residual Moran example
 #==============================================================================
 
-# 실제 메인 스크립트에서는 common sample 정렬과 W ordering alignment를 먼저 확정해야 한다.
-# 여기서는 quarterly contract에서 `by_yq` diagnostics를 어떻게 남기는지의 패턴만 보여 준다.
+# Real main scripts must first lock the common sample and W ordering alignment.
+# This example only shows the pattern for quarterly `by_yq` diagnostics.
 #
 # if (file.exists(path_w_queen) && "fitstat" %in% getNamespaceExports("fixest")) {
 #   w_queen <- readRDS(path_w_queen)
@@ -271,24 +270,26 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 #==============================================================================
 
 # SPDM template rule:
-# - main exposure는 `age60_resident_share`
-# - quarterly panel time index는 `yq`
-# - true SDM은 `W y`, `X`, `W X`를 함께 포함한다.
-# - `W X`는 quarterly panel에서 직접 생성하고 Durbin placeholder에 의존하지 않는다.
-# - 보고 중심은 coefficient가 아니라 `direct / indirect / total effects`
-# - SDM impact는 `S = (I - rho W)^(-1)`와 `S(beta I + theta W)` 행렬식으로 계산한다.
-# - W robustness는 별도 family로 분리한다.
+# - Main exposure is `lag4_age60_resident_share`.
+# - Quarterly panel time index is `yq`.
+# - True SDM includes `W y`, `X`, and `W X` together.
+# - `W X` includes `W lag4_age60_resident_share` and W-lagged controls built
+#   directly on the quarterly panel, not via a Durbin placeholder.
+# - Reporting centers on `direct / indirect / total effects`, not coefficients.
+# - SDM impacts use `S = (I - rho W)^(-1)` and `S(beta I + theta W)`.
+# - W robustness is kept as a separate family.
 
 # Robustness template rule:
-# - canonical shared panel은 동시점 변수만 가진다.
-# - outcome-definition, sample window, W-Moran 민감도를 분리해 기록한다.
+# - The canonical shared panel keeps contemporaneous variables only.
+# - Outcome-definition, sample-window, and W-Moran sensitivities are recorded separately.
 
 #==============================================================================
 # 6. Template reminders
 #==============================================================================
 
-# - active modeling contract는 `adm_cd x yq`다.
-# - FE는 `adm_cd + yq`로 고정한다.
+# - Active modeling contract is `adm_cd x yq`.
+# - Fixed effects are locked to `adm_cd + yq`.
 # - `year`, `quarter`, `yq`, `quarter_index` are canonical active modeling keys.
-# - GTWR는 optional local sidecar이며 main causal estimator가 아니다.
-# - GTWR lean control은 규모·지가 통제, extended control은 대중교통 접근성 composite와 직장인구를 추가한다.
+# - GTWR is an optional local sidecar, not the main causal estimator.
+# - GTWR lean controls cover scale and land value; extended controls add transit
+#   accessibility and workplace population.
