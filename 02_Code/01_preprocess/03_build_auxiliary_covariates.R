@@ -4,13 +4,13 @@
 # Purpose   : Build quarterly and static auxiliary covariates aligned to
 #             `adm_cd-yq` so the quarterly panel can attach structural controls
 #             without re-reading raw spatial sources.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : panel_building
 # Inputs    : seoul_quarter_base.parquet plus raw land, park, transit, medical,
 #             mall, senior-facility, and walk-environment sources;
-#             Env: KAKAO_REST_API_KEY when unresolved geocoding requests are
-#             not already covered by cache files
+#             KAKAO_REST_API_KEY for unresolved geocoding requests not already
+#             covered by cache files
 # Outputs   : aux_covariates.parquet, walk_betweenness_local800_len_v1.parquet,
 #             source-specific pre-aggregation records, and related source QC logs
 # DependsOn : 02_build_seoul_quarter_base.R
@@ -183,7 +183,7 @@ apartment_geocode_qc_path <- if (!is.null(cfg$logs$apartment_geocode_qc)) {
 # canonical raw-file discovery, spatial mapping, geocoding/cache handling,
 # source-specific panel builders, and final preagg-to-panel aggregation.
 
-## 1-1. CSV Reading and Canonical Source Discovery
+## 1-1. CSV Reading and Canonical Source Discovery -----------------------------
 build_readr_col_types <- function(path, locale) {
   hdr <- tryCatch(
     readr::read_csv(
@@ -328,7 +328,7 @@ log_canonical_source_selection <- function(source_key, paths) {
   )
 }
 
-## 1-2. Date, Identifier, and Numeric Normalization Helpers
+## 1-2. Date, Identifier, and Numeric Normalization Helpers --------------------
 extract_year_from_path <- function(path) {
   ys <- stringr::str_extract_all(path, "(19|20)\\d{2}")[[1]]
   if (length(ys) == 0) return(NA_integer_)
@@ -492,7 +492,7 @@ fill_group_year_series <- function(df, group_col, value_col, years = years_targe
   out
 }
 
-## 1-3. Land Price Source Builders
+## 1-3. Land Price Source Builders ---------------------------------------------
 build_land_price_series <- function(boundary_dir) {
   land_dir <- file.path(boundary_dir, "02_Land_Price")
   if (!dir.exists(land_dir)) {
@@ -1078,7 +1078,7 @@ build_land_price_lpi_factor <- function(boundary_dir) {
   factor_adm
 }
 
-## 1-4. Spatial Mapping and Base Panel Helpers
+## 1-4. Spatial Mapping and Base Panel Helpers ---------------------------------
 assign_point_ids_to_adm <- function(points_sf, id_col) {
   within <- suppressWarnings(
     sf::st_join(
@@ -1196,7 +1196,7 @@ build_base_year_values <- function(value_cols, fill = NA_real_) {
     dplyr::mutate(!!!vals)
 }
 
-## 1-5. Cache and Review-Layer Contracts
+## 1-5. Cache and Review-Layer Contracts ---------------------------------------
 
 # The betweenness cache must remain one static adm-level row per neighborhood.
 # Reuse is rejected when the spec version, radius, weighting, or aggregation
@@ -1462,7 +1462,7 @@ remove_obsolete_aux_intermediate_files <- function() {
   invisible(NULL)
 }
 
-## 1-6. Text Normalization and Workplace Worker Source Helpers
+## 1-6. Text Normalization and Workplace Worker Source Helpers -----------------
 normalize_unicode_text <- function(x) {
   x <- as.character(x)
   if (requireNamespace("stringi", quietly = TRUE)) {
@@ -1749,7 +1749,7 @@ build_workplace_worker_year <- function(base_year) {
   list(year = out, qc = qc)
 }
 
-## 1-7. Point-Source Activity Windows and Transit Builders
+## 1-7. Point-Source Activity Windows and Transit Builders ---------------------
 guess_point_crs <- function(x, y) {
   xx <- safe_num(x)
   yy <- safe_num(y)
@@ -1854,7 +1854,7 @@ build_point_preagg_quarter_count <- function(df, count_col) {
     dplyr::select(-has_source_yq)
 }
 
-## 1-8. Static Park and Mixed-Frequency Transit Sources
+## 1-8. Static Park and Mixed-Frequency Transit Sources ------------------------
 build_park_area_static <- function() {
   park_dir <- file.path(cfg$dir_boundary, "03_Park")
   shp <- list.files(park_dir, pattern = "[.]shp$", full.names = TRUE)
@@ -2292,7 +2292,7 @@ build_transit_panel <- function() {
   )
 }
 
-## 1-9. Medical, Mall, and Senior Classification Constants
+## 1-9. Medical, Mall, and Senior Classification Constants ---------------------
 medical_detail_step_cols <- c(
   "medical_clinic_count_aux",
   "medical_dental_clinic_count_aux",
@@ -2513,7 +2513,7 @@ build_mall_panel <- function() {
   )
 }
 
-## 1-10. Address Normalization and General Geocoding Helpers
+## 1-10. Address Normalization and General Geocoding Helpers -------------------
 clean_senior_address <- function(x) {
   out <- as.character(x)
   out <- stringr::str_replace_all(out, "\\(.*?\\)", "")
@@ -3209,7 +3209,7 @@ fill_missing_coords_with_geocode <- function(
   out
 }
 
-## 1-11. Apartment Registry Helpers
+## 1-11. Apartment Registry Helpers --------------------------------------------
 parse_apartment_date <- function(x) {
   x_chr <- as.character(x)
   x_chr <- stringr::str_squish(x_chr)
@@ -3748,7 +3748,7 @@ build_apartment_registry_panel <- function() {
   )
 }
 
-## 1-12. Senior Facility Geocoding and Direct-Match Helpers
+## 1-12. Senior Facility Geocoding and Direct-Match Helpers --------------------
 read_senior_manual_fix_tbl <- function(path) {
   empty <- tibble::tibble(
     facility_type = character(),
@@ -4916,7 +4916,7 @@ build_senior_year_from_preagg <- function(df, years = years_target) {
   expand_static_to_year(senior_static, years = years)
 }
 
-## 1-13. Physical Environment and Walk-Network Helpers
+## 1-13. Physical Environment and Walk-Network Helpers -------------------------
 build_physical_env_static <- function(park_static) {
   # Physical environment combines heterogeneous static sources: road/sidewalk
   # shapefiles for length, a walk-network CSV for intersection density and
@@ -5364,7 +5364,7 @@ build_physical_env_static <- function(park_static) {
     )
 }
 
-## 1-14. Coverage Logging Helper
+## 1-14. Coverage Logging Helper -----------------------------------------------
 log_coverage <- function(df, var_name) {
   if (!var_name %in% names(df)) return(invisible(NULL))
   cov_tbl <- df |>

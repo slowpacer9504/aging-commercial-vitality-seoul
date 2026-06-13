@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run the supplementary/manual TWFE COVID interaction appendix and
 #             export coefficient, diagnostic, and linear-combination summaries.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-30
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : panel_modeling

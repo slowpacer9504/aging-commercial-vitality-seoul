@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run appendix SPDM models using broad sector-share outcomes and
 #             separate resident/floating aging-share exposures.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-29
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling

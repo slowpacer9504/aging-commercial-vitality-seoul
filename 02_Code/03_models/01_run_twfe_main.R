@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Estimate the main two-way fixed effects baseline models, export
 #             summary tables/plots, and test residual spatial dependence.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : panel_modeling
 # Inputs    : panel_main.parquet, W_queen.rds

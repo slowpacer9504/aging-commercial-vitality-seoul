@@ -3,8 +3,9 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Build slide-ready presentation tables and figures from quarterly
 #             canonical outputs plus any available optional sidecars.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-01
+# Status    : MANUAL_REPORTING / sidecar outside canonical workflow
 # Type      : reporting_sidecar
 # Inputs    : canonical ESDA/TWFE/SPDM outputs, optional SPDM-channel outputs,
 #             optional GTWR outputs

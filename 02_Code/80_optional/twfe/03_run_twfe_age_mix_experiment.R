@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run an appendix TWFE sidecar that replaces the resident-only
 #             age60 exposure with grouped resident age-population vectors.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-29
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : panel_modeling

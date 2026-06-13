@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Provide reusable transformation helpers for panel-safe log and
 #             winsorization.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : utility
 # Inputs    : numeric vectors and panel data frames

@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Re-estimate the resident-only main SPDM under Queen, Rook, kNN6,
 #             and kNN8 to check W sensitivity using the same SDM contract.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-29
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, W_queen.rds, W_rook.rds, W_knn6.rds, W_knn8.rds

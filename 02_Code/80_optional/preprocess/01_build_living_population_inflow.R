@@ -5,8 +5,9 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Build quarterly external inflow population from Seoul Living
 #             Population monthly ZIP sources without extracting raw CSV files.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-05-01
+# Status    : QUARTERLY_OPTIONAL / manual preprocessing sidecar outside canonical workflow
 # Type      : panel_building
 # Inputs    : seoul_quarter_base.parquet, INNER_PEOPLE_YYYYMM.zip,
 #             METRO_PEOPLE_YYYYMM.zip

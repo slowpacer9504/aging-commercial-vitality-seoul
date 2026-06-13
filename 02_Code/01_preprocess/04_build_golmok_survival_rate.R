@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Download Seoul Commercial District Service new-enterprise
 #             survival-rate JSON and publish an adm_cd-yq quarterly layer.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-05-04
 # Type      : preprocessing
 # Inputs    : Seoul Commercial District Service selectSurvivalRate JSON,

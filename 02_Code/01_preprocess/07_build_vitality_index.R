@@ -4,7 +4,7 @@
 # Purpose   : Read the pre-vitality shared panel, build vitality indices, and
 #             publish panel_main.parquet as the final shared analysis panel
 #             for downstream scripts.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : panel_building
 # Inputs    : panel_main_pre_vitality.parquet

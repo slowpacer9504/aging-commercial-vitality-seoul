@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Centralize column, key, and missingness checks so that all
 #             scripts enforce the same panel-data contracts.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : utility
 # Inputs    : data frames and expected column/key definitions

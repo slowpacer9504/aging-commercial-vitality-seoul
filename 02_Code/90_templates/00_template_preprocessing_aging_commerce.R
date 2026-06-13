@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Project-specific template for quarterly preprocessing, harmonization,
 #             and panel construction under the 2020 Seoul administrative-dong rule.
-# Author    : <AUTHOR>
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-22
 # Type      : panel_building
 # Inputs    : <RAW_INPUT_FILES>
@@ -72,7 +72,7 @@ dir_logs <- fs::path(dir_output, "04_Logs")
 fs::dir_create(c(dir_intermediate, dir_analysis_ready, dir_panel, dir_logs))
 
 #==============================================================================
-# 1. IO helpers
+# 1. IO Helpers
 #==============================================================================
 
 read_csv_kr <- function(path, encoding = "UTF-8", show_col_types = FALSE, ...) {
@@ -97,7 +97,7 @@ write_parquet_safe <- function(df, path, ...) {
 }
 
 #==============================================================================
-# 2. Validation helpers
+# 2. Validation Helpers
 #==============================================================================
 
 assert_required_cols <- function(df, required_cols, df_name = deparse(substitute(df))) {
@@ -244,7 +244,7 @@ quarterize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("
 }
 
 #==============================================================================
-# 4. Example preprocessing flow
+# 4. Example Preprocessing Flow
 #==============================================================================
 
 # The following block is an example pattern, not runnable production code. It
@@ -315,7 +315,7 @@ quarterize_level <- function(df, value_cols, weight_col = NULL, group_cols = c("
 # write_csv_safe(summarize_missingness(panel_base), path_agg_qc)
 
 #==============================================================================
-# 5. Template reminders
+# 5. Template Reminders
 #==============================================================================
 
 # - Active publication key is `adm_cd x yq`.

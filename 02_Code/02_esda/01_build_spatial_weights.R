@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Build Queen, Rook, and kNN spatial weights on the 2020
 #             commercial-administrative boundary used by the quarterly panel.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : spatial_preprocessing
 # Inputs    : 2020 commercial administrative boundary shapefile

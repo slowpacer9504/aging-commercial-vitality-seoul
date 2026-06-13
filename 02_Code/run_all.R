@@ -5,12 +5,12 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Orchestrate the end-to-end pipeline in the intended execution
 #             order and write a stepwise run log.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : reporting
 # Inputs    : all upstream scripts and their declared input contracts;
-#             Env: KAKAO_REST_API_KEY when step 05 must geocode uncached
-#             records through the Kakao local API
+#             KAKAO_REST_API_KEY when step 05 must geocode uncached records
+#             through the Kakao local API
 #             (eg: Sys.setenv(KAKAO_REST_API_KEY = "your_kakao_rest_api_key"))
 # Outputs   : model_run_log.md and all pipeline products
 # DependsOn : all scripts listed in `scripts`

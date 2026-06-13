@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Emit a deferred quarterly GWR-delta appendix bundle using the
 #             active 2019Q4-2025Q4 analysis horizon metadata.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-22
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
@@ -15,6 +15,10 @@
 # DependsOn : 01_run_twfe_main.R
 #==============================================================================
 
+#==============================================================================
+# 0. Setup
+#==============================================================================
+
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -23,6 +27,10 @@ source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 05_run_gwr_delta", timestamp()))
+
+#==============================================================================
+# 1. Helper Functions
+#==============================================================================
 
 # Deferred GWR-delta outputs preserve the appendix contract even when local
 # early-late estimation is intentionally inactive.
@@ -247,6 +255,10 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
       )
   })
 }
+
+#==============================================================================
+# 2. Publish Deferred GWR-Delta Bundle
+#==============================================================================
 
 {
   # Read the current GWR-delta view and publish resident/floating deferred

@@ -4,7 +4,7 @@
 # Purpose   : Build the merged quarterly base panel and shared pre-vitality panel
 #             by combining the quarterly Seoul base, auxiliary covariates,
 #             common contemporaneous transforms, and QC.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-22
 # Type      : panel_building
 # Inputs    : seoul_quarter_base.parquet, aux_covariates.parquet,

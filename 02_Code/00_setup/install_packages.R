@@ -6,7 +6,7 @@
 # Purpose   : Install and strictly validate the full project package set for
 #             a fresh Windows R / RStudio environment before running the
 #             analytical pipeline.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-03
 # Type      : config
 # Inputs    : packages.R, CRAN access

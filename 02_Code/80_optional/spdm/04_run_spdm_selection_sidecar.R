@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run appendix selection diagnostics for SEM vs SDM on the same
 #             Queen sample/control contract used by the main resident-only SPDM.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-30
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling

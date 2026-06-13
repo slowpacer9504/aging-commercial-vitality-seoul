@@ -3,13 +3,18 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run explicit bw.gtwr bandwidth selection diagnostics for the
 #             resident-only quarterly GTWR main sidecar.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-05-20
+# Status    : QUARTERLY_DIAGNOSTIC / manual GTWR diagnostic outside canonical workflow
 # Type      : spatial_panel_modeling_diagnostic
 # Inputs    : panel_main.parquet, administrative boundary
 # Outputs   : gtwr_bandwidth_selection_<control_set>.csv,
 #             gtwr_bandwidth_cache/<control_set>/main/*.rds
 # DependsOn : 01_run_gtwr_main.R, utils_gtwr_main.R
+#==============================================================================
+
+#==============================================================================
+# 0. Setup
 #==============================================================================
 
 source(here::here("02_Code", "00_setup", "config.R"))
@@ -21,6 +26,10 @@ source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 07_select_gtwr_bandwidth", timestamp()))
+
+#==============================================================================
+# 1. Helper Functions
+#==============================================================================
 
 # Bandwidth selection writes a diagnostic table plus cache entries, but does not
 # replace the fixed-bandwidth main GTWR contract by itself.
@@ -185,6 +194,10 @@ run_gtwr_bandwidth_selection_job <- function(job, panel_xy, bw_cache_dir) {
     message = message
   )
 }
+
+#==============================================================================
+# 2. Run Bandwidth Selection Diagnostic
+#==============================================================================
 
 # Require explicit non-fixed bandwidth strategy so accidental default runs do not
 # spend time on a diagnostic that cannot estimate a bandwidth.

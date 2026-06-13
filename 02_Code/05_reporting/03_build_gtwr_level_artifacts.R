@@ -3,8 +3,9 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Build paper-ready quarterly GTWR level artifacts from existing GTWR
 #             local-beta outputs without rerunning GTWR.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-05-04
+# Status    : MANUAL_REPORTING / sidecar outside canonical workflow
 # Type      : reporting_sidecar
 # Inputs    : gtwr_local_beta_panel_<control_set>.csv,
 #             gtwr_local_coefficients_<control_set>.csv,

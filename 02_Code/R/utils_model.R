@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Provide shared helpers for TWFE estimation, control screening,
 #             and model-output tidying.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : utility
 # Inputs    : panel data frames, model variable names, model lists

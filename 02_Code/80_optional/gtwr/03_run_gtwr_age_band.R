@@ -3,9 +3,9 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run age-band quarterly GTWR sidecars for resident and floating
 #             age-share exposures.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-22
-# Status    : OPTIONAL_SIDECAR
+# Status    : QUARTERLY_OPTIONAL / manual GTWR sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, registered_resident_population.parquet,
 #             seoul_raw_integrated_wide.parquet, administrative boundary
@@ -16,6 +16,10 @@
 # DependsOn : 02_build_seoul_quarter_base.R,
 #             05_build_registered_resident_population.R,
 #             07_build_vitality_index.R, utils_gtwr_main.R
+#==============================================================================
+
+#==============================================================================
+# 0. Setup
 #==============================================================================
 
 source(here::here("02_Code", "00_setup", "config.R"))
@@ -29,6 +33,10 @@ source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_gtwr_age_band", timestamp()))
+
+#==============================================================================
+# 1. Helper Functions
+#==============================================================================
 
 empty_age_band_summary_tbl <- function() {
   add_gtwr_constant_cols(
@@ -91,6 +99,10 @@ add_age_band_payload_metadata <- function(payload, job) {
   )
   payload
 }
+
+#==============================================================================
+# 2. Run Age-Band GTWR Sidecar
+#==============================================================================
 
 {
   if (!file.exists(cfg$paths$panel_main) ||

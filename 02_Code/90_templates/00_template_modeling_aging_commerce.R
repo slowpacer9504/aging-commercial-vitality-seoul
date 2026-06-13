@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Project-specific template for quarterly TWFE, residual Moran's I,
 #             SPDM, and robustness analysis on adm_cd x yq panel data.
-# Author    : <AUTHOR>
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-22
 # Type      : panel_modeling
 # Inputs    : panel_main.parquet, boundary_2020.gpkg, W_queen.rds
@@ -64,7 +64,7 @@ path_robustness_csv <- fs::path(dir_tables, "robustness_summary.csv")
 path_model_log <- fs::path(dir_logs, "model_run_log.md")
 
 #==============================================================================
-# 1. Helper functions
+# 1. Helper Functions
 #==============================================================================
 
 append_log_line <- function(text, path) {
@@ -171,7 +171,7 @@ compute_residual_moran_by_yq <- function(data, residual_col, w_listw) {
 }
 
 #==============================================================================
-# 2. Data loading
+# 2. Data Loading
 #==============================================================================
 
 if (!file.exists(path_panel_main)) {
@@ -222,7 +222,7 @@ append_log_line(sprintf("- Existing exposures: %s", paste(existing_exposures, co
 append_log_line(sprintf("- Existing controls: %s", paste(existing_controls, collapse = ", ")), path_model_log)
 
 #==============================================================================
-# 3. TWFE example
+# 3. TWFE Example
 #==============================================================================
 
 twfe_models <- build_twfe_suite(
@@ -252,7 +252,7 @@ twfe_tidy <- purrr::imap_dfr(
 write_csv_safe(twfe_tidy, path_twfe_csv)
 
 #==============================================================================
-# 4. Residual Moran example
+# 4. Residual Moran Example
 #==============================================================================
 
 # Real main scripts must first lock the common sample and W ordering alignment.
@@ -266,7 +266,7 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 # }
 
 #==============================================================================
-# 5. SPDM and robustness reminders
+# 5. SPDM and Robustness Reminders
 #==============================================================================
 
 # SPDM template rule:
@@ -284,7 +284,7 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 # - Outcome-definition, sample-window, and W-Moran sensitivities are recorded separately.
 
 #==============================================================================
-# 6. Template reminders
+# 6. Template Reminders
 #==============================================================================
 
 # - Active modeling contract is `adm_cd x yq`.

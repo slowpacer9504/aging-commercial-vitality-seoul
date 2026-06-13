@@ -2,7 +2,7 @@
 # Script    : utils_esda_maps.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Provide reusable choropleth helpers for descriptive ESDA maps.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-20
 # Type      : utility
 # Inputs    : sf boundary + numeric cross-section values

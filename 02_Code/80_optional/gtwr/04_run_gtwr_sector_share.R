@@ -3,9 +3,9 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run the sector-share quarterly GTWR optional sidecar with separate
 #             resident-only and floating-only exposure families.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-22
-# Status    : OPTIONAL_SIDECAR
+# Status    : QUARTERLY_OPTIONAL / manual GTWR sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, administrative boundary
 # Outputs   : gtwr_sector_share_models_*.csv,
@@ -14,6 +14,10 @@
 #             gtwr_sector_share_controls_used_*.csv,
 #             gtwr_sector_share_frozen_spec_*.csv
 # DependsOn : 03_run_spdm_sector_share_experiment.R, utils_gtwr_main.R
+#==============================================================================
+
+#==============================================================================
+# 0. Setup
 #==============================================================================
 
 source(here::here("02_Code", "00_setup", "config.R"))
@@ -25,6 +29,10 @@ source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 04_run_gtwr_sector_share", timestamp()))
+
+#==============================================================================
+# 1. Helper Functions
+#==============================================================================
 
 empty_sector_share_summary_tbl <- function() {
   add_gtwr_constant_cols(
@@ -85,6 +93,10 @@ add_sector_share_payload_metadata <- function(payload, job) {
   )
   payload
 }
+
+#==============================================================================
+# 2. Run Sector-Share GTWR Sidecar
+#==============================================================================
 
 {
   if (!file.exists(cfg$paths$panel_main)) {

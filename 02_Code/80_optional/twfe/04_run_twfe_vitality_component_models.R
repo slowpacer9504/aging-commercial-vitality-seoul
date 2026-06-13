@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run an appendix TWFE sidecar using vitality component variables
 #             as outcomes.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-05-24
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : panel_modeling

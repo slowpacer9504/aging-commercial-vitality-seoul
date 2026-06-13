@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Produce quarterly descriptive tables and time-series figures after
 #             the main quarterly modeling steps have finished.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : reporting
 # Inputs    : panel_main.parquet

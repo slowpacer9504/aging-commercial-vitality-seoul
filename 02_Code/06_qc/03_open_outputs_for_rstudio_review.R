@@ -3,8 +3,9 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Provide RStudio-friendly helpers to browse, load, and preview
 #             generated outputs under 03_Processed_Data and 03_Output.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-11
+# Status    : MANUAL_QC / interactive review outside canonical workflow
 # Type      : qc / interactive review helper
 # Inputs    : generated outputs under 01_Data/03_Processed_Data and 03_Output
 # Outputs   : in-memory inventory + helper functions for interactive review

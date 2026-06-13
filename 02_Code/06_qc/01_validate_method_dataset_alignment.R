@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Validate the active quarterly panel/method contract and ignore
 #             deferred appendix assets when judging run success.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-18
 # Type      : qc
 # Inputs    : active preprocess/model outputs up to robustness

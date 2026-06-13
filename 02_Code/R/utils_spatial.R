@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Provide shared helpers for administrative-boundary discovery,
 #             geometry loading, and W creation.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : utility
 # Inputs    : boundary directories, year identifiers, sf objects

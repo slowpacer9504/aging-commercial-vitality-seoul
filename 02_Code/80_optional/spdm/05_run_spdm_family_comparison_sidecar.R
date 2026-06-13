@@ -4,7 +4,7 @@
 # Purpose   : Rebuild the main Queen SPDM sample/control contract and run the
 #             appendix TWFE/SLX/SAR/SDM/SEM/SDEM/SARAR-SAC/GNS family
 #             comparison on that fixed contract.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-30
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling

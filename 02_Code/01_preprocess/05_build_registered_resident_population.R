@@ -5,7 +5,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Build canonical quarterly resident-population and resident-aging
 #             variables from MOIS monthly 5-year registered-population CSVs.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-05-14
 # Type      : panel_building
 # Inputs    : MOIS registered population CSVs, seoul_quarter_base.parquet,

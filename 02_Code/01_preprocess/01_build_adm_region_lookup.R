@@ -5,7 +5,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Build the canonical adm_cd-dong-gu-living-area lookup from the
 #             2020 Seoul administrative-dong boundary.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-05-14
 # Type      : static_lookup_building
 # Inputs    : 2020 Seoul commercial-service administrative-dong boundary
@@ -35,7 +35,7 @@ ensure_dirs(c(
 ))
 
 #==============================================================================
-# 1. Load canonical 2020 administrative boundary
+# 1. Load Canonical 2020 Administrative Boundary
 #==============================================================================
 
 # The 2020 Seoul administrative-dong boundary is the spatial key origin for
@@ -44,7 +44,7 @@ ensure_dirs(c(
 boundary <- load_commercial_boundary(cfg$dir_boundary, cfg$target_crs)
 
 #==============================================================================
-# 2. Build static dong-gu-living-area lookup
+# 2. Build Static Dong-Gu-Living-Area Lookup
 #==============================================================================
 
 # This is static reference metadata, not a quarterly panel table. It attaches
@@ -56,7 +56,7 @@ lookup <- build_adm_region_lookup(
 )
 
 #==============================================================================
-# 3. QC gate
+# 3. QC Gate
 #==============================================================================
 
 # The lookup is a small upstream dependency, so failures should stop immediately:
@@ -77,7 +77,7 @@ if (any(qc$status == "FAIL")) {
 }
 
 #==============================================================================
-# 4. Publish canonical outputs
+# 4. Publish Canonical Outputs
 #==============================================================================
 
 # Parquet is the downstream canonical artifact; CSV is retained as the

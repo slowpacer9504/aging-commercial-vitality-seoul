@@ -2,7 +2,7 @@
 # Script    : utils_age_mix.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Shared helpers for quarterly age-mix appendix sidecars.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-22
 # Type      : utility
 # Inputs    : registered_resident_population.parquet,

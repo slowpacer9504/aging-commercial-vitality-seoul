@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Provide shared helpers for SPDM preparation, estimation,
 #             impacts inference, and diagnostics.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-29
 # Type      : utility
 # Inputs    : panel data, listw objects, model metadata

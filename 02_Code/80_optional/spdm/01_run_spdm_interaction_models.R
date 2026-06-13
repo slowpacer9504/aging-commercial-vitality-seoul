@@ -4,7 +4,7 @@
 # Purpose   : Run the supplementary/manual SPDM COVID interaction appendix and
 #             export coefficients,
 #             impacts, effect summaries, and selected controls.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-29
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling

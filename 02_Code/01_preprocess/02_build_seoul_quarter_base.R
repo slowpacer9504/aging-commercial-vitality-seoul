@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Build Seoul commercial raw-integrated wide outputs and the
 #             canonical quarterly base panel for 2019-2025 impact analysis.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : panel_building
 # Inputs    : Seoul commercial service raw csv files by source type

@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Provide shared helpers for directory creation, logging, and
 #             standardized file IO across preprocessing and modeling scripts.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : utility
 # Inputs    : file paths, data frames, R objects

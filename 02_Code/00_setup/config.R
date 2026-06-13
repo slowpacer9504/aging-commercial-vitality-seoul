@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Define shared paths, analysis constants, and runtime toggles for
 #             the full preprocessing-modeling pipeline.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : config
 # Inputs    : Project root resolved by here::here()

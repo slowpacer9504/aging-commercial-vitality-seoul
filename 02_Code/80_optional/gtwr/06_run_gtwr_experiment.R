@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Emit a quarterly GTWR experiment registry and deferred result
 #             bundle for manual appendix comparisons.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-22
 # Status    : QUARTERLY_APPENDIX / manual sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
@@ -16,6 +16,10 @@
 # DependsOn : 01_run_gtwr_main.R
 #==============================================================================
 
+#==============================================================================
+# 0. Setup
+#==============================================================================
+
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
 source(here::here("02_Code", "R", "utils_io.R"))
@@ -24,6 +28,10 @@ source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 06_run_gtwr_experiment", timestamp()))
+
+#==============================================================================
+# 1. Helper Functions
+#==============================================================================
 
 split_tokens <- function(x) {
   x <- trimws(as.character(value_or(x, "")[[1]]))
@@ -287,6 +295,10 @@ build_message <- function(meta, experiment_id) {
     )
   }
 }
+
+#==============================================================================
+# 2. Publish Deferred GTWR Experiment Bundle
+#==============================================================================
 
 {
   if (!file.exists(cfg$paths$panel_main)) {

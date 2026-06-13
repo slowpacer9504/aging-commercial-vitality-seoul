@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Provide reusable helpers for the resident-only quarterly GTWR
 #             optional sidecar.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-27
 # Type      : utility
 # Inputs    : panel data frames, GTWR config, GTWR model objects

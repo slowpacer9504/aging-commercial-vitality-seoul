@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run the main Queen-based resident-only true SDM/SPDM and export
 #             the canonical main-model outputs for direct/indirect/total effects.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, W_queen.rds

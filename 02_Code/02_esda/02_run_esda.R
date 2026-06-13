@@ -5,9 +5,8 @@
 #             distribution maps, Global Moran's I, Global Bivariate Moran's I,
 #             univariate/bivariate LISA, W-sensitivity diagnostics, and
 #             quarterly-sequence EHSA over core aging and vitality variables.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
-# Updated   : 2026-04-22
 # Type      : esda
 # Inputs    : panel_main.parquet, W_*.rds, 2020 commercial boundary
 # Outputs   : global_morans_i.csv, global_morans_i_by_w.csv,

@@ -3,8 +3,9 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Audit processed parquet outputs for readability, schema coverage,
 #             key integrity, and quarterly-contract compliance.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
+# Status    : MANUAL_QC / post-run review outside canonical workflow
 # Type      : qc
 # Inputs    : all parquet files under 01_Data/03_Processed_Data
 # Outputs   : processed_parquet_inventory.csv, processed_parquet_schema.csv,

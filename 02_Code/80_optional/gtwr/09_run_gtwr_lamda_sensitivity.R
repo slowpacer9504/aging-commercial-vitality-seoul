@@ -3,14 +3,19 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run lamda grid sensitivity for the resident-only quarterly GTWR
 #             main sidecar.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-05-20
+# Status    : QUARTERLY_DIAGNOSTIC / manual GTWR diagnostic outside canonical workflow
 # Type      : spatial_panel_modeling_diagnostic
 # Inputs    : panel_main.parquet, gtwr_main_models_<control_set>.csv,
 #             gtwr_local_coefficients_<control_set>.csv
 # Outputs   : gtwr_lamda_sensitivity_<control_set>.csv,
 #             gtwr_lamda_sensitivity_cache/<control_set>/main/*.rds
 # DependsOn : 01_run_gtwr_main.R, utils_gtwr_main.R
+#==============================================================================
+
+#==============================================================================
+# 0. Setup
 #==============================================================================
 
 source(here::here("02_Code", "00_setup", "config.R"))
@@ -22,6 +27,10 @@ source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 09_run_gtwr_lamda_sensitivity", timestamp()))
+
+#==============================================================================
+# 1. Run Lamda Sensitivity Diagnostic
+#==============================================================================
 
 {
   # Lamda sensitivity holds the main GTWR bandwidth rule fixed and perturbs the

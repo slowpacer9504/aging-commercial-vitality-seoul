@@ -3,7 +3,7 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run quarterly outcome-definition, sample-window, and W-Moran
 #             sensitivity checks around the main TWFE specification.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : robustness
 # Inputs    : panel_main.parquet, W_queen.rds, W_rook.rds, W_knn6.rds, W_knn8.rds

@@ -3,8 +3,9 @@
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run the resident-only quarterly GTWR optional sidecar and overwrite
 #             the configured output bundle on each active execution.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-03-27
+# Status    : QUARTERLY_OPTIONAL / manual GTWR sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, administrative boundary
 # Outputs   : gtwr_main_models_<control_set>.csv,

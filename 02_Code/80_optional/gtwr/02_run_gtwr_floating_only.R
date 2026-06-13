@@ -2,9 +2,9 @@
 # Script    : 02_run_gtwr_floating_only.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run the floating-only quarterly GTWR optional sidecar.
-# Author    : Codex
+# Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-04-22
-# Status    : OPTIONAL_SIDECAR
+# Status    : QUARTERLY_OPTIONAL / manual GTWR sidecar outside canonical workflow
 # Type      : spatial_panel_modeling
 # Inputs    : panel_main.parquet, administrative boundary
 # Outputs   : gtwr_floating_models_*.csv, gtwr_floating_local_beta_panel_*.csv,
@@ -12,6 +12,10 @@
 #             gtwr_floating_controls_used_*.csv,
 #             gtwr_floating_frozen_spec_*.csv
 # DependsOn : 01_run_gtwr_main.R, utils_gtwr_main.R
+#==============================================================================
+
+#==============================================================================
+# 0. Setup
 #==============================================================================
 
 source(here::here("02_Code", "00_setup", "config.R"))
@@ -23,6 +27,10 @@ source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", timestamp()))
+
+#==============================================================================
+# 1. Run Floating-Only GTWR Sidecar
+#==============================================================================
 
 {
   # Validate optional GTWR dependencies before reading the main panel or opening
