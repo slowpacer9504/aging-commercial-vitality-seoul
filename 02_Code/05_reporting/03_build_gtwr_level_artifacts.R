@@ -270,7 +270,7 @@ save_triptych_panel_plot_safe <- function(panel_rows,
                                           width,
                                           row_height,
                                           dpi = 320,
-                                          widths = c(0.34, 1, 1, 1.08),
+                                          widths = c(0.6, 1, 1, 1, 0.2),
                                           header_height = 0.24) {
   fs::dir_create(fs::path_dir(path))
   tmp <- tempfile(
@@ -303,12 +303,14 @@ save_triptych_panel_plot_safe <- function(panel_rows,
     }
   }, add = TRUE)
 
+  shared_legend <- cowplot::get_legend(panel_rows[[1]]$delta)
+
   grid::grid.newpage()
   grid::pushViewport(
     grid::viewport(
       layout = grid::grid.layout(
         nrow = n_rows + 1L,
-        ncol = 4L,
+        ncol = 5L,
         heights = grid::unit(c(header_height, rep(row_height, n_rows)), "in"),
         widths = grid::unit(widths, "null")
       )
@@ -351,10 +353,15 @@ save_triptych_panel_plot_safe <- function(panel_rows,
       gp = row_gp,
       vp = grid::viewport(layout.pos.row = row_i, layout.pos.col = 1L)
     )
-    print(row_spec$early, vp = grid::viewport(layout.pos.row = row_i, layout.pos.col = 2L))
-    print(row_spec$latest, vp = grid::viewport(layout.pos.row = row_i, layout.pos.col = 3L))
-    print(row_spec$delta, vp = grid::viewport(layout.pos.row = row_i, layout.pos.col = 4L))
+    print(row_spec$early + ggplot2::theme(legend.position = "none"), vp = grid::viewport(layout.pos.row = row_i, layout.pos.col = 2L))
+    print(row_spec$latest + ggplot2::theme(legend.position = "none"), vp = grid::viewport(layout.pos.row = row_i, layout.pos.col = 3L))
+    print(row_spec$delta + ggplot2::theme(legend.position = "none"), vp = grid::viewport(layout.pos.row = row_i, layout.pos.col = 4L))
   }
+
+  grid::pushViewport(grid::viewport(layout.pos.row = 2L:(n_rows + 1L), layout.pos.col = 5L))
+  grid::grid.draw(shared_legend)
+  grid::popViewport()
+
   grid::popViewport()
 
   grDevices::dev.off()
@@ -470,7 +477,8 @@ make_map_plot <- function(data,
     ggplot2::geom_sf(ggplot2::aes(fill = .data[[estimate_col]]), color = NA) +
     ggplot2::scale_fill_gradient2(
       low = "#2166AC", mid = "white", high = "#B2182B",
-      midpoint = 0, limits = c(-max_abs, max_abs), na.value = "grey85"
+      midpoint = 0, limits = c(-max_abs, max_abs), na.value = "grey85",
+      oob = scales::squish
     ) +
     ggplot2::theme_void() +
     ggplot2::labs(
@@ -1172,8 +1180,8 @@ for (i in seq_len(nrow(outcome_registry))) {
       by = "adm_cd"
     )
 
-  max_abs_level_i <- max_abs_or_one(c(snapshot_i$earliest_estimate, snapshot_i$latest_estimate))
-  max_abs_delta_i <- max_abs_or_one(snapshot_i$delta_estimate)
+  max_abs_level_i <- 10
+  max_abs_delta_i <- 10
 
   triptych_map_path_i <- file.path(
     cfg$dir_report,
@@ -1199,7 +1207,8 @@ for (i in seq_len(nrow(outcome_registry))) {
     max_abs = max_abs_level_i,
     title = sprintf("Latest: %s", latest_yq_i),
     subtitle = "shared level scale",
-    fill_label = "beta\n(level)"
+    fill_label = "beta",
+    show_legend = FALSE
   )
 
   delta_triptych_plot_i <- make_map_plot(
@@ -1208,7 +1217,7 @@ for (i in seq_len(nrow(outcome_registry))) {
     max_abs = max_abs_delta_i,
     title = "Delta: latest - earliest",
     subtitle = sprintf("%s | separate delta scale", tag_selected),
-    fill_label = "beta\n(delta)"
+    fill_label = "beta"
   )
 
   save_triptych_plot_safe(
@@ -1242,7 +1251,8 @@ for (i in seq_len(nrow(outcome_registry))) {
     max_abs = max_abs_level_i,
     title = NULL,
     subtitle = NULL,
-    fill_label = "beta\n(level)"
+    fill_label = "beta",
+    show_legend = FALSE
   )
 
   clean_delta_plot_i <- make_map_plot(
@@ -1251,7 +1261,7 @@ for (i in seq_len(nrow(outcome_registry))) {
     max_abs = max_abs_delta_i,
     title = NULL,
     subtitle = NULL,
-    fill_label = "beta\n(delta)"
+    fill_label = "beta"
   )
 
   triptych_panel_rows[[length(triptych_panel_rows) + 1L]] <- list(
@@ -1266,7 +1276,7 @@ triptych_panel_clean_path <- report_png_path("gtwr_level_early_latest_delta_trip
 save_triptych_panel_plot_safe(
   panel_rows = triptych_panel_rows,
   path = triptych_panel_clean_path,
-  width = 17.8,
+  width = 14.5,
   row_height = 2.35,
   header_height = 0.55
 )
