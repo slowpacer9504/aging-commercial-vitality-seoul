@@ -518,10 +518,10 @@ cfg$aux_source_contracts <- list(
 #==============================================================================
 
 # GTWR is a manual quarterly local sidecar. The default main specification fixes
-# the adaptive spatiotemporal bandwidth at 480 neighbors to keep the local sample
-# roughly comparable to the pre-quarterly 120-neighbor setting;
-# bw.gtwr() search is available only through the dedicated bandwidth-selection
-# diagnostic script when explicitly requested through GTWR_BANDWIDTH_STRATEGY.
+# the adaptive spatiotemporal bandwidth at 60 neighbors, reflecting the current
+# bandwidth-selection and sensitivity diagnostics. bw.gtwr() search is available
+# only through the dedicated bandwidth-selection diagnostic script when explicitly
+# requested through GTWR_BANDWIDTH_STRATEGY.
 cfg$gtwr_control_min_obs <- 500L
 cfg$gtwr_control_min_units <- 30L
 cfg$gtwr_control_min_sample_retention <- 0.95
@@ -544,8 +544,8 @@ if (!cfg$gtwr_bw_anchor_yq %in% cfg$analysis_quarter_sequence$yq) cfg$gtwr_bw_an
 cfg$gtwr_bw_approach <- trimws(Sys.getenv("GTWR_BW_APPROACH", unset = "CV"))
 if (!cfg$gtwr_bw_approach %in% c("CV", "cv", "AIC", "aic", "AICc")) cfg$gtwr_bw_approach <- "CV"
 cfg$gtwr_refresh_bw_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BW_CACHE", unset = "false"))) %in% c("1", "true", "yes")
-cfg$gtwr_st_bw <- suppressWarnings(as.integer(Sys.getenv("GTWR_ST_BW", unset = "480")))
-if (!is.finite(cfg$gtwr_st_bw) || cfg$gtwr_st_bw < 120L) cfg$gtwr_st_bw <- 480L
+cfg$gtwr_st_bw <- suppressWarnings(as.integer(Sys.getenv("GTWR_ST_BW", unset = "60")))
+if (!is.finite(cfg$gtwr_st_bw) || cfg$gtwr_st_bw < 30L) cfg$gtwr_st_bw <- 60L
 cfg$gtwr_lamda <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LAMDA", unset = "0.05")))
 if (!is.finite(cfg$gtwr_lamda) || cfg$gtwr_lamda < 0) cfg$gtwr_lamda <- 0.05
 cfg$gtwr_ksi <- suppressWarnings(as.numeric(Sys.getenv("GTWR_KSI", unset = "0")))
@@ -556,12 +556,12 @@ if (!is.finite(cfg$gtwr_local_cn_warn_threshold) || cfg$gtwr_local_cn_warn_thres
 }
 cfg$gtwr_lamda_sensitivity_grid <- trimws(Sys.getenv("GTWR_LAMDA_SENSITIVITY_GRID", unset = "0.025,0.05,0.1,0.2"))
 cfg$gtwr_refresh_lamda_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_LAMDA_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
-cfg$gtwr_bandwidth_sensitivity_grid <- trimws(Sys.getenv("GTWR_BANDWIDTH_SENSITIVITY_GRID", unset = "240,360,480,600,720"))
+cfg$gtwr_bandwidth_sensitivity_grid <- trimws(Sys.getenv("GTWR_BANDWIDTH_SENSITIVITY_GRID", unset = "30,60,90,120,180"))
 cfg$gtwr_refresh_bandwidth_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BANDWIDTH_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_experiment_bw_approaches <- trimws(Sys.getenv("GTWR_EXPERIMENT_BW_APPROACHES", unset = "CV"))
 cfg$gtwr_experiment_lamda_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_LAMDA_GRID", unset = "0.05"))
 cfg$gtwr_experiment_ksi_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_KSI_GRID", unset = "0"))
-cfg$gtwr_experiment_min_st_bw_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_MIN_ST_BW_GRID", unset = "120"))
+cfg$gtwr_experiment_min_st_bw_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_MIN_ST_BW_GRID", unset = "30"))
 cfg$gtwr_experiment_control_strategies <- trimws(Sys.getenv("GTWR_EXPERIMENT_CONTROL_STRATEGIES", unset = "baseline"))
 cfg$gtwr_experiment_required_controls <- trimws(Sys.getenv("GTWR_EXPERIMENT_REQUIRED_CONTROLS", unset = ""))
 cfg$gtwr_experiment_optional_pool <- trimws(Sys.getenv("GTWR_EXPERIMENT_OPTIONAL_POOL", unset = ""))

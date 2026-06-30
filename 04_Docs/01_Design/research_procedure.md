@@ -396,7 +396,7 @@ GTWR main은 quarterly resident-only local sidecar다.
 - 실행 방식: outcome-exposure spec 단위로 계산하며, `GTWR_PARALLEL_SPECS`만큼 병렬 worker를 사용한다.
 - 재개 방식: spec별 RDS cache를 `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/`에 저장하고, 중단 후 재실행하면 유효한 완료 spec은 재사용한다.
 - control set: 기본값은 `GTWR_CONTROL_SET=lean`이다. `lean`은 주민등록인구 기반 `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`만 사용한다. `extended`는 여기에 `lag4_transit_accessibility`와 `lag4_ln_workplace_worker_pop`을 추가한다.
-- bandwidth 방식: main GTWR는 fixed adaptive `GTWR_ST_BW=480`을 사용한다. `adaptive=TRUE` 기준으로 각 추정점 주변 시공간 이웃 480개를 사용해 outcome 간 비교 가능성과 extended control set의 추정 가능성을 함께 유지한다. `full_panel_bw_gtwr`와 `anchor_quarter_bw_gtwr` 탐색은 `07_select_gtwr_bandwidth.R`에서만 수행하고, 선택 결과는 `gtwr_bandwidth_selection_<control_set>.csv`와 bandwidth cache에 저장한다. `08_run_gtwr_bandwidth_sensitivity.R`는 `GTWR_BANDWIDTH_SENSITIVITY_GRID`의 기본값 `240,360,480,600,720`을 같은 outcome-control-spec에 반복 적용하고, baseline 480 대비 beta correlation, 절대변화, sign flip, local condition-number 변화를 `gtwr_bandwidth_sensitivity_<control_set>.csv`에 저장한다.
+- bandwidth 방식: main GTWR는 fixed adaptive `GTWR_ST_BW=60`을 사용한다. `adaptive=TRUE` 기준으로 각 추정점 주변 시공간 이웃 60개를 사용한다. `full_panel_bw_gtwr`와 `anchor_quarter_bw_gtwr` 탐색은 `07_select_gtwr_bandwidth.R`에서만 수행하고, 선택 결과는 `gtwr_bandwidth_selection_<control_set>.csv`와 bandwidth cache에 저장한다. `08_run_gtwr_bandwidth_sensitivity.R`는 `GTWR_BANDWIDTH_SENSITIVITY_GRID`의 기본값 `30,60,90,120,180`을 같은 outcome-control-spec에 반복 적용하고, baseline 60 대비 beta correlation, 절대변화, sign flip, local condition-number 변화를 `gtwr_bandwidth_sensitivity_<control_set>.csv`에 저장한다.
 - lamda 민감도: `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다. `GTWR_LAMDA_SENSITIVITY_GRID`의 각 값을 같은 outcome-control-spec에 적용해 GTWR를 재추정하고, baseline latest-quarter beta 대비 상관, 절대변화, sign flip, local condition-number 변화를 `gtwr_lamda_sensitivity_<control_set>.csv`에 저장한다.
 - local CN 진단: `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 따르되, GTWR에서 사용한 `st.dist`/`gw.weight` 기반 시공간 가중치를 적용한다.
 
@@ -404,7 +404,7 @@ GTWR의 핵심 운영 원칙은 아래와 같다.
 
 1. quarterly sample만 사용한다.
 2. main control pool은 `GTWR_CONTROL_SET`으로 선택한다. 기본 `lean`은 상주인구 규모와 지가 통제만 사용하고, `extended`는 대중교통 접근성 composite를 추가한다.
-3. main bandwidth는 fixed `GTWR_ST_BW=480`으로 통일한다. full-panel 또는 anchor-quarter `bw.gtwr()` 탐색, fixed bandwidth grid 민감도, lamda grid 민감도는 각각 `07_select_gtwr_bandwidth.R`, `08_run_gtwr_bandwidth_sensitivity.R`, `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
+3. main bandwidth는 fixed `GTWR_ST_BW=60`으로 통일한다. full-panel 또는 anchor-quarter `bw.gtwr()` 탐색, fixed bandwidth grid 민감도, lamda grid 민감도는 각각 `07_select_gtwr_bandwidth.R`, `08_run_gtwr_bandwidth_sensitivity.R`, `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
 4. main raw/output surface는 latest quarter local beta를 기준으로 만든다.
 5. earliest-to-latest delta는 `gtwr_delta_*` 보조 reporting table에서만 파생한다.
 6. final CSV bundle은 매 실행마다 전체 spec cache를 다시 집계해 갱신한다.

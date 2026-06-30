@@ -256,10 +256,11 @@
   - GTWR extended에서 버스정류장 수와 지하철역 수는 별도 통제변수로 투입하지 않고 `lag4_transit_accessibility` composite로 투입하며, 직장인구 규모는 `lag4_ln_workplace_worker_pop`으로 통제한다.
   - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 기록한다.
   - local condition-number는 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 `st.dist`/`gw.weight` 기반 시공간 가중치에 맞춰 적용한다.
-  - 기본 bandwidth는 fixed `GTWR_ST_BW=480`으로 통일한다.
-  - `adaptive=TRUE` 기준에서 480은 각 추정점 주변 시공간 이웃 관측치 480개를 의미한다.
+  - 기본 bandwidth는 fixed `GTWR_ST_BW=60`으로 통일한다.
+  - `adaptive=TRUE` 기준에서 60은 각 추정점 주변 시공간 이웃 관측치 60개를 의미한다.
   - `01_run_gtwr_main.R`는 `GTWR_BANDWIDTH_STRATEGY`가 fixed가 아니어도 `bw.gtwr()`를 실행하지 않는다.
   - `bw.gtwr()` full-panel/anchor-quarter 탐색, fixed bandwidth grid 민감도, lamda grid 민감도는 각각 `07_select_gtwr_bandwidth.R`, `08_run_gtwr_bandwidth_sensitivity.R`, `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
+  - `08_run_gtwr_bandwidth_sensitivity.R`의 기본 fixed bandwidth grid는 `30,60,90,120,180`이며, baseline은 `GTWR_ST_BW=60`이다.
   - main summary와 local coefficient table은 latest-quarter local beta를 `estimate_type=latest`로 저장한다.
   - latest-quarter coefficient coverage를 `latest_missing_n`, `latest_coverage_share`로 기록한다.
   - earliest-to-latest 변화량은 `gtwr_delta_*` 보조 reporting table로만 파생한다.
@@ -326,8 +327,9 @@
   - `gwr_delta_floating_local_coefficients.csv`
   - `gwr_delta_controls_used.csv`
 - 구현 원칙:
-  - delta window는 `2019-2021` 대 `2023-2025`의 `3Y vs 3Y`로 고정한다.
-  - raw output schema는 `early_*_year`, `late_*_year`, `window_n_year`를 쓴다.
+  - delta window metadata는 active analysis horizon인 `2019Q4~2025Q4`에서 파생한다.
+  - early window는 active horizon의 첫 3개 calendar year에 해당하는 `2019Q4~2021Q4`, late window는 마지막 3개 calendar year에 해당하는 `2023Q1~2025Q4`로 기록한다.
+  - raw output schema는 `sample_min_yq`, `sample_max_yq`, `early_*_yq`, `late_*_yq`, `early_n_quarter`, `late_n_quarter`를 함께 기록하며, legacy compatibility를 위해 `early_*_year`, `late_*_year`, `window_n_year`도 유지한다.
 
 ## 7E) GTWR Bandwidth Selection Diagnostic
 

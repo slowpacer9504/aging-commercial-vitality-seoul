@@ -210,7 +210,7 @@ active methodology stack은 아래와 같다.
 - 목적: 전역모형 이후 남는 국지적 이질성을 시각화한다.
 - 역할: **resident-only quarterly main local sidecar** 이며 기본 pipeline에서는 optional이다. Floating-only, age-band, sector-share local GTWR는 `80_optional/gtwr`의 해당 스크립트를 직접 실행하는 appendix sidecar다.
 - 해석 수준: global causal claim이 아니라 local heterogeneity description
-- bandwidth: main GTWR는 outcome 간 비교 가능성, local coefficient 안정성, extended control set의 추정 가능성을 함께 고려해 fixed adaptive `GTWR_ST_BW=480`을 기본으로 사용한다. `bw.gtwr()` full-panel/anchor-quarter 탐색은 `07_select_gtwr_bandwidth.R`에서만 실행하고, 선택 결과를 main GTWR에 자동 주입하지 않는다. `08_run_gtwr_bandwidth_sensitivity.R`는 고정 adaptive bandwidth grid `240,360,480,600,720`을 같은 spec에 반복 적용해 baseline `480` 대비 latest-quarter beta agreement, sign flip, local condition-number 변화를 보조표로 기록한다.
+- bandwidth: main GTWR는 outcome 간 비교 가능성, local coefficient 안정성, bandwidth-selection 결과, sensitivity 진단을 함께 고려해 fixed adaptive `GTWR_ST_BW=60`을 기본으로 사용한다. `bw.gtwr()` full-panel/anchor-quarter 탐색은 `07_select_gtwr_bandwidth.R`에서만 실행하고, 선택 결과를 main GTWR에 자동 주입하지 않는다. `08_run_gtwr_bandwidth_sensitivity.R`는 고정 adaptive bandwidth grid `30,60,90,120,180`을 같은 spec에 반복 적용해 baseline `60` 대비 latest-quarter beta agreement, sign flip, local condition-number 변화를 보조표로 기록한다.
 - lamda sensitivity: `09_run_gtwr_lamda_sensitivity.R`가 `GTWR_LAMDA_SENSITIVITY_GRID`의 값별로 GTWR를 재추정하고, baseline latest-quarter beta와의 상관, 절대변화, sign flip, local condition-number 변화를 보조표로 기록한다.
 - control set: 기본값은 `GTWR_CONTROL_SET=lean`이며, `extended`는 대중교통 접근성 composite를 추가하는 민감도/확장 사양으로 사용한다.
 - reporting surface: GTWR local coefficient는 latest quarter beta를 기준으로 요약하고, earliest-to-latest delta는 보조 appendix diagnostic으로만 파생한다.
