@@ -82,24 +82,24 @@ resolve_numbered_raw_dir <- function(prefix, fallback_name) {
 }
 
 cfg$dir_living_population_inner <- resolve_numbered_raw_dir(
-  "10",
-  "10_서울생활인구 관내이동"
+  "02",
+  "02_서울생활인구_관내이동"
 )
 cfg$dir_living_population_metro <- resolve_numbered_raw_dir(
-  "11",
-  "11_서울생활인구 대도시권 내외국인"
+  "03",
+  "03_서울생활인구_대도시권_내외국인"
 )
 cfg$dir_registered_resident_population <- resolve_numbered_raw_dir(
-  "13",
-  "13_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)"
+  "04",
+  "04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)"
 )
 cfg$dir_land_price_lpi <- resolve_numbered_raw_dir(
-  "14",
-  "14_한국부동산원_전국지가변동률조사"
+  "06",
+  "06_한국부동산원_전국지가변동률조사"
 )
 cfg$dir_workplace_worker_population <- resolve_numbered_raw_dir(
-  "15",
-  "15_서울시 사업체현황(종사자규모별:동별) 통계 (2018~2024)"
+  "07",
+  "07_서울시_사업체현황(종사자규모별:동별)_통계"
 )
 cfg$dir_golmok_survival_json <- file.path(cfg$dir_intermediate, "golmok_survival_json")
 
@@ -459,7 +459,7 @@ cfg$panel_main_view_specs <- list(
 # contracts prevent broad scans from silently selecting the wrong source.
 cfg$aux_source_contracts <- list(
   bus_stop = list(
-    dir_prefix = "07",
+    dir_prefix = "12",
     recursive = FALSE,
     expected_basenames = c(
       "서울시 버스정류소 위치 데이터(20180502).xlsx",
@@ -473,12 +473,12 @@ cfg$aux_source_contracts <- list(
     )
   ),
   subway_station = list(
-    dir_prefix = "09",
+    dir_prefix = "11",
     recursive = FALSE,
     expected_basenames = c("서울시 역사마스터 정보_EPSG4326.csv")
   ),
   medical = list(
-    dir_prefix = "08",
+    dir_prefix = "09",
     recursive = FALSE,
     expected_basenames = c(
       "서울시 병원 인허가 정보.csv",
@@ -486,17 +486,17 @@ cfg$aux_source_contracts <- list(
     )
   ),
   mall = list(
-    dir_prefix = "06",
+    dir_prefix = "08",
     recursive = FALSE,
     expected_basenames = c("서울시 대규모점포 인허가 정보.csv")
   ),
   apartment_registry = list(
-    dir_prefix = "12",
+    dir_prefix = "05",
     recursive = FALSE,
     expected_basenames = c("서울시 공동주택 아파트 정보.csv")
   ),
   walk_network = list(
-    dir_prefix = "05",
+    dir_prefix = "14",
     recursive = TRUE,
     expected_basenames = c("서울시 자치구별 도보 네트워크 공간정보.csv")
   ),

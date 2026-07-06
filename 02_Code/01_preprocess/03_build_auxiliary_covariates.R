@@ -494,7 +494,7 @@ fill_group_year_series <- function(df, group_col, value_col, years = years_targe
 
 ## 1-3. Land Price Source Builders ---------------------------------------------
 build_land_price_series <- function(boundary_dir) {
-  land_dir <- file.path(boundary_dir, "02_Land_Price")
+  land_dir <- file.path(boundary_dir, "03_Land_Price")
   if (!dir.exists(land_dir)) {
     return(list(series = tibble::tibble(), observed = tibble::tibble()))
   }
@@ -778,7 +778,7 @@ empty_land_price_lpi_quarter <- function() {
 }
 
 find_land_price_lpi_csv <- function() {
-  lpi_dir <- value_or(cfg$dir_land_price_lpi, file.path(cfg$dir_raw, "14_한국부동산원_전국지가변동률조사"))
+  lpi_dir <- value_or(cfg$dir_land_price_lpi, file.path(cfg$dir_raw, "06_한국부동산원_전국지가변동률조사"))
   if (!dir.exists(lpi_dir)) return(NA_character_)
 
   csv_paths <- list.files(lpi_dir, pattern = "[.]csv$", recursive = TRUE, full.names = TRUE)
@@ -1489,7 +1489,7 @@ parse_workplace_worker_count <- function(x) {
 resolve_single_workplace_worker_csv <- function() {
   root <- value_or(
     cfg$dir_workplace_worker_population,
-    file.path(cfg$dir_raw, "15_서울시 사업체현황(종사자규모별:동별) 통계 (2018~2024)")
+    file.path(cfg$dir_raw, "07_서울시_사업체현황(종사자규모별:동별)_통계")
   )
   if (!dir.exists(root)) {
     stop(sprintf("[ERROR] Workplace worker raw directory is missing: %s", root), call. = FALSE)
@@ -1856,7 +1856,7 @@ build_point_preagg_quarter_count <- function(df, count_col) {
 
 ## 1-8. Static Park and Mixed-Frequency Transit Sources ------------------------
 build_park_area_static <- function() {
-  park_dir <- file.path(cfg$dir_boundary, "03_Park")
+  park_dir <- file.path(cfg$dir_boundary, "04_Park")
   shp <- list.files(park_dir, pattern = "[.]shp$", full.names = TRUE)
   if (length(shp) == 0) {
     return(base_adm |>
@@ -2329,7 +2329,7 @@ senior_detail_cols <- c(
 )
 
 build_medical_panel <- function() {
-  med_dir <- find_raw_subdir("08")
+  med_dir <- find_raw_subdir("09")
   if (is.na(med_dir)) {
     return(list(
       raw = tibble::tibble()
@@ -2403,7 +2403,7 @@ build_medical_panel <- function() {
 }
 
 build_mall_panel <- function() {
-  mall_dir <- find_raw_subdir("06")
+  mall_dir <- find_raw_subdir("08")
   if (is.na(mall_dir)) {
     return(list(
       raw = tibble::tibble()
@@ -4291,9 +4291,9 @@ build_senior_static <- function() {
   # Geocode success alone is not enough; the final count requires attachment to
   # an administrative neighborhood.
   senior_value_cols <- c("senior_facility_count", senior_detail_cols)
-  senior_dir <- find_raw_subdir("03")
+  senior_dir <- find_raw_subdir("10")
   if (is.na(senior_dir)) {
-    stop("[ERROR] Senior raw directory is missing under 01_Data/01_Raw_Data/03_노인복지시설.", call. = FALSE)
+    stop("[ERROR] Senior raw directory is missing under 01_Data/01_Raw_Data/10_노인복지시설.", call. = FALSE)
   }
 
   find_required_senior_source <- function(dir, expected_basename) {
@@ -5024,7 +5024,7 @@ build_physical_env_static <- function(park_static) {
   }
 
   build_walk_network_metrics <- function() {
-    ped_dir <- find_raw_subdir("05")
+    ped_dir <- find_raw_subdir("14")
     ped_files <- resolve_canonical_source_paths("walk_network")
     if (length(ped_files) == 0) {
       append_log(cfg$logs$data_qc, "- Walk network source missing: intersection_density/betweenness set to NA")

@@ -40,7 +40,7 @@ quarter_aggregation_qc_path <- value_or(
   file.path(cfg$dir_logs, "panel_quarter_aggregation_qc.csv")
 )
 
-seoul_root <- file.path(cfg$dir_raw, "02_Seoul_Commercial_District_ Administrative Dong")
+seoul_root <- file.path(cfg$dir_raw, "01_Seoul_Commercial_District_Administrative_Dong")
 if (!dir.exists(seoul_root)) {
   stop("[ERROR] Seoul commercial raw directory not found", call. = FALSE)
 }
