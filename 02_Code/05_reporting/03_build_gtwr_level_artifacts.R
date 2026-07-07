@@ -11,7 +11,7 @@
 #             gtwr_local_coefficients_<control_set>.csv,
 #             gtwr_main_models_<control_set>.csv
 # Outputs   : gtwr_level_*.csv/png under 03_Output/05_report
-# DependsOn : 02_Code/80_optional/gtwr/01_run_gtwr_main.R
+# DependsOn : 02_Code/03_models/03_run_gtwr_main.R
 #==============================================================================
 
 #==============================================================================

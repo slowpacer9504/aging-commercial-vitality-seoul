@@ -53,11 +53,11 @@ Manual optional preprocessing and local-analysis sidecars:
 
 - `80_optional/preprocess/01_build_living_population_inflow.R`
 - `80_optional/spdm/07_run_spdm_channel_path.R`
-- `80_optional/gtwr/01_run_gtwr_main.R`
+- `03_models/03_run_gtwr_main.R`
 - helper implementation in `R/utils_gtwr_main.R`
 - `80_optional/**` scripts are outside `run_all.R`; execute a file directly to run it.
 - run SPDM channel path manually with `Rscript 02_Code/80_optional/spdm/07_run_spdm_channel_path.R`
-- run GTWR manually with `Rscript 02_Code/80_optional/gtwr/01_run_gtwr_main.R`
+- run GTWR manually with `Rscript 02_Code/03_models/03_run_gtwr_main.R`
 - control set with `GTWR_CONTROL_SET=lean|extended`; `lean` is the default and `extended` adds transit-accessibility and additional location controls
 - parallel specs with `GTWR_PARALLEL_SPECS=<n>`
 - resume completed spec cache with `GTWR_RESUME_SPECS=TRUE`

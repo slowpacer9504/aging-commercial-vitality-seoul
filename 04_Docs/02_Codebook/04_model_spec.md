@@ -236,7 +236,7 @@
 
 - 목표: resident-only local heterogeneity 설명
 - 입력: `panel_main.parquet`, `2020 기준 서울시 행정동 경계`
-- 실행 조건: `80_optional/gtwr/01_run_gtwr_main.R` 직접 실행
+- 실행 조건: `03_models/03_run_gtwr_main.R` 직접 실행
 - 출력:
   - `gtwr_main_models_<control_set>.csv`
   - `gtwr_local_beta_panel_<control_set>.csv`
@@ -258,7 +258,7 @@
   - local condition-number는 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 `st.dist`/`gw.weight` 기반 시공간 가중치에 맞춰 적용한다.
   - 기본 bandwidth는 fixed `GTWR_ST_BW=60`으로 통일한다.
   - `adaptive=TRUE` 기준에서 60은 각 추정점 주변 시공간 이웃 관측치 60개를 의미한다.
-  - `01_run_gtwr_main.R`는 `GTWR_BANDWIDTH_STRATEGY`가 fixed가 아니어도 `bw.gtwr()`를 실행하지 않는다.
+  - `03_run_gtwr_main.R`는 `GTWR_BANDWIDTH_STRATEGY`가 fixed가 아니어도 `bw.gtwr()`를 실행하지 않는다.
   - `bw.gtwr()` full-panel/anchor-quarter 탐색, fixed bandwidth grid 민감도, lamda grid 민감도는 각각 `07_select_gtwr_bandwidth.R`, `08_run_gtwr_bandwidth_sensitivity.R`, `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
   - `08_run_gtwr_bandwidth_sensitivity.R`의 기본 fixed bandwidth grid는 `30,60,90,120,180`이며, baseline은 `GTWR_ST_BW=60`이다.
   - main summary와 local coefficient table은 latest-quarter local beta를 `estimate_type=latest`로 저장한다.

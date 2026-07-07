@@ -386,11 +386,11 @@ SPDM은 active design의 main global model이다.
 
 이 단계는 appendix용 manual sidecar다. main SPDM의 quarterly Queen sample과 selected control contract를 그대로 재구성한 뒤 `TWFE`, `SLX`, `SAR`, `SDM`, `SEM`, `SDEM`, `SARAR/SAC`, `GNS`를 같은 조건에서 비교한다. `SLX`와 `SDEM`의 효과는 endogenous `W y` feedback multiplier가 없는 `W X` 효과로 보고하며, `direct=beta`, `indirect=theta`, `total=beta+theta`로 저장한다. `GNS`는 `W y`, `W X`, spatial error를 모두 포함한 가장 일반적인 appendix sensitivity family이며, 평균효과는 SDM matrix impact 방식으로 기록한다.
 
-### 2.15 `01_run_gtwr_main.R`: optional quarterly local sidecar
+### 2.15 `03_run_gtwr_main.R`: optional quarterly local sidecar
 
 GTWR main은 quarterly resident-only local sidecar다.
 
-- 실행 조건: `80_optional/gtwr/01_run_gtwr_main.R` 직접 실행
+- 실행 조건: `03_models/03_run_gtwr_main.R` 직접 실행
 - 입력: `panel_main.parquet`, 2020 기준 서울시 행정동 경계
 - 해석 수준: local heterogeneity description
 - 실행 방식: outcome-exposure spec 단위로 계산하며, `GTWR_PARALLEL_SPECS`만큼 병렬 worker를 사용한다.

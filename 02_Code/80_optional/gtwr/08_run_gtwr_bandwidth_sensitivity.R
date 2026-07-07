@@ -11,7 +11,7 @@
 #             gtwr_local_coefficients_<control_set>.csv
 # Outputs   : gtwr_bandwidth_sensitivity_<control_set>.csv,
 #             gtwr_bandwidth_sensitivity_cache/<control_set>/main/*.rds
-# DependsOn : 01_run_gtwr_main.R, utils_gtwr_main.R
+# DependsOn : 03_run_gtwr_main.R, utils_gtwr_main.R
 #==============================================================================
 
 #==============================================================================
@@ -53,7 +53,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_bandwidth_sensitiv
   if (!file.exists(summary_path) || !file.exists(local_path)) {
     stop(
       sprintf(
-        "[ERROR] Baseline GTWR outputs are required before bandwidth sensitivity. Run 02_Code/80_optional/gtwr/01_run_gtwr_main.R first. Missing: %s",
+        "[ERROR] Baseline GTWR outputs are required before bandwidth sensitivity. Run 02_Code/03_models/03_run_gtwr_main.R first. Missing: %s",
         paste(c(summary_path, local_path)[!file.exists(c(summary_path, local_path))], collapse = ", ")
       ),
       call. = FALSE
@@ -63,7 +63,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_bandwidth_sensitiv
   summary_tbl <- readr::read_csv(summary_path, show_col_types = FALSE)
   local_tbl <- readr::read_csv(local_path, show_col_types = FALSE)
   if (nrow(summary_tbl) == 0L || nrow(local_tbl) == 0L) {
-    stop("[ERROR] Baseline GTWR outputs are empty; run 01_run_gtwr_main.R successfully before bandwidth sensitivity.", call. = FALSE)
+    stop("[ERROR] Baseline GTWR outputs are empty; run 03_run_gtwr_main.R successfully before bandwidth sensitivity.", call. = FALSE)
   }
 
   panel <- read_panel_main_view("gtwr") |>

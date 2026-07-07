@@ -200,7 +200,7 @@ GTWR는 전역모형 이후에도 지역별 반응 강도와 방향이 다를 �
 | --- | --- | --- | --- |
 | `01_build_living_population_inflow.R` | 서울생활인구 월별 ZIP에서 외부 유입 인구를 quarterly contract로 정리 | `living_population_external_inflow.parquet`, inflow manifest/QC | Methods: 사회적 활력 구성 |
 | `07_run_spdm_channel_path.R` | 고령 상주인구 -> 고령 유동인구 -> 활력 경로 검정 | `spdm_channel_path_effects.csv`, `spdm_channel_diagnostics.csv` | Appendix: optional channel path |
-| `01_run_gtwr_main.R` | resident-only quarterly local sidecar | `gtwr_main_models_<control_set>.csv`, `gtwr_local_coefficients_<control_set>.csv`, `gtwr_local_beta_panel_<control_set>.csv` | Results 후반 또는 Appendix의 local heterogeneity evidence |
+| `03_run_gtwr_main.R` | resident-only quarterly local sidecar | `gtwr_main_models_<control_set>.csv`, `gtwr_local_coefficients_<control_set>.csv`, `gtwr_local_beta_panel_<control_set>.csv` | Results 후반 또는 Appendix의 local heterogeneity evidence |
 
 ### 4.3 Supplementary and Appendix Flow
 

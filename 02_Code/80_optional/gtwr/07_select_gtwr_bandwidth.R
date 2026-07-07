@@ -10,7 +10,7 @@
 # Inputs    : panel_main.parquet, administrative boundary
 # Outputs   : gtwr_bandwidth_selection_<control_set>.csv,
 #             gtwr_bandwidth_cache/<control_set>/main/*.rds
-# DependsOn : 01_run_gtwr_main.R, utils_gtwr_main.R
+# DependsOn : 03_run_gtwr_main.R, utils_gtwr_main.R
 #==============================================================================
 
 #==============================================================================

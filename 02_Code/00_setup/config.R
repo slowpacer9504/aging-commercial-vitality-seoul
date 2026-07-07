@@ -995,7 +995,7 @@ cfg$canonical_pipeline_scripts <- c(
 )
 cfg$optional_sidecar_scripts <- list(
   living_pop_inflow = "02_Code/80_optional/preprocess/01_build_living_population_inflow.R",
-  gtwr_main = "02_Code/80_optional/gtwr/01_run_gtwr_main.R"
+  gtwr_main = "02_Code/03_models/03_run_gtwr_main.R"
 )
 cfg$manual_quarterly_appendix_scripts <- c(
   "02_Code/80_optional/twfe/01_run_twfe_channel_models.R",

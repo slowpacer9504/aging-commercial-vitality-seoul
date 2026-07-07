@@ -1,5 +1,5 @@
 #==============================================================================
-# Script    : 01_run_gtwr_main.R
+# Script    : 03_run_gtwr_main.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run the resident-only quarterly GTWR optional sidecar and overwrite
 #             the configured output bundle on each active execution.
@@ -28,7 +28,7 @@ source(here::here("02_Code", "R", "utils_spatial.R"))
 source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_gtwr_main", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_gtwr_main", timestamp()))
 
 #==============================================================================
 # 1. Resident-Only Quarterly GTWR Contract
@@ -59,7 +59,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_gtwr_main", timestamp()
   outcomes <- outcome_registry$outcome
   focal_vars <- intersect(cfg$gtwr_main_exposure_vars, names(panel))
   control_candidates <- gtwr_main_control_candidate_cols()
-  assert_gtwr_control_vector_current(control_candidates, context = "01_run_gtwr_main")
+  assert_gtwr_control_vector_current(control_candidates, context = "03_run_gtwr_main")
   missing_control_cols <- setdiff(control_candidates, names(panel))
   if (length(missing_control_cols) > 0L) {
     stop(
@@ -157,7 +157,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_gtwr_main", timestamp()
     pending_errors <- purrr::keep(pending_results, ~ inherits(.x, "try-error"))
     if (length(pending_errors) > 0L) {
       stop(
-        sprintf("[ERROR] %d GTWR spec worker(s) failed before writing cache. Re-run 80_optional/gtwr/01_run_gtwr_main.R to continue remaining specs.", length(pending_errors)),
+        sprintf("[ERROR] %d GTWR spec worker(s) failed before writing cache. Re-run 03_models/03_run_gtwr_main.R to continue remaining specs.", length(pending_errors)),
         call. = FALSE
       )
     }
@@ -168,7 +168,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_gtwr_main", timestamp()
       if (is_valid_gtwr_payload(job$payload)) return(job$payload)
       stop(
         sprintf(
-          "[ERROR] GTWR spec cache missing after execution: outcome=%s, focal=%s, path=%s. Re-run 80_optional/gtwr/01_run_gtwr_main.R to continue remaining specs.",
+          "[ERROR] GTWR spec cache missing after execution: outcome=%s, focal=%s, path=%s. Re-run 03_models/03_run_gtwr_main.R to continue remaining specs.",
           job$outcome,
           job$focal_var,
           job$cache_path
@@ -189,7 +189,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_gtwr_main", timestamp()
       dplyr::arrange(outcome_order, focal_var)
     assert_gtwr_controls_trace_current(
       controls_tbl,
-      context = "01_run_gtwr_main controls trace",
+      context = "03_run_gtwr_main controls trace",
       allowed_controls = control_candidates
     )
     frozen_tbl <- dplyr::bind_rows(purrr::map(spec_results, "frozen"))

@@ -13,7 +13,7 @@
 #             gtwr_experiment_ranked_candidates_*.csv,
 #             gtwr_experiment_local_beta_panel_*.csv,
 #             gtwr_experiment_local_coefficients_*.csv
-# DependsOn : 01_run_gtwr_main.R
+# DependsOn : 03_run_gtwr_main.R
 #==============================================================================
 
 #==============================================================================
