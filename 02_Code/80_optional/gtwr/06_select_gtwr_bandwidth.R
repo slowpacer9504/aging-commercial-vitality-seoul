@@ -1,5 +1,5 @@
 #==============================================================================
-# Script    : 07_select_gtwr_bandwidth.R
+# Script    : 06_select_gtwr_bandwidth.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run explicit bw.gtwr bandwidth selection diagnostics for the
 #             resident-only quarterly GTWR main sidecar.
@@ -25,7 +25,7 @@ source(here::here("02_Code", "R", "utils_spatial.R"))
 source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 07_select_gtwr_bandwidth", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 06_select_gtwr_bandwidth", timestamp()))
 
 #==============================================================================
 # 1. Helper Functions
@@ -212,7 +212,7 @@ if (!requireNamespace("sp", quietly = TRUE)) {
 }
 if (identical(cfg$gtwr_bandwidth_strategy, "fixed")) {
   stop(
-    "[ERROR] 07_select_gtwr_bandwidth.R requires GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr or anchor_quarter_bw_gtwr.",
+    "[ERROR] 06_select_gtwr_bandwidth.R requires GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr or anchor_quarter_bw_gtwr.",
     call. = FALSE
   )
 }
@@ -230,7 +230,7 @@ outcome_registry <- resolve_model_outcomes(
 outcomes <- outcome_registry$outcome
 focal_vars <- intersect(cfg$gtwr_main_exposure_vars, names(panel))
 control_candidates <- gtwr_main_control_candidate_cols()
-assert_gtwr_control_vector_current(control_candidates, context = "07_select_gtwr_bandwidth")
+assert_gtwr_control_vector_current(control_candidates, context = "06_select_gtwr_bandwidth")
 missing_control_cols <- setdiff(control_candidates, names(panel))
 if (length(missing_control_cols) > 0L) {
   stop(

@@ -1,5 +1,5 @@
 #==============================================================================
-# Script    : 06_run_gtwr_experiment.R
+# Script    : 05_run_gtwr_experiment.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Emit a quarterly GTWR experiment registry and deferred result
 #             bundle for manual appendix comparisons.
@@ -27,7 +27,7 @@ source(here::here("02_Code", "R", "utils_model.R"))
 source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 06_run_gtwr_experiment", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 05_run_gtwr_experiment", timestamp()))
 
 #==============================================================================
 # 1. Helper Functions
@@ -314,7 +314,7 @@ build_message <- function(meta, experiment_id) {
   outcomes <- intersect(base_outcomes, names(panel))
   focal_vars <- intersect(cfg$gtwr_main_exposure_vars, names(panel))
   control_candidates <- intersect(gtwr_main_control_candidate_cols(), names(panel))
-  assert_gtwr_control_vector_current(control_candidates, context = "06_run_gtwr_experiment")
+  assert_gtwr_control_vector_current(control_candidates, context = "05_run_gtwr_experiment")
   variants <- build_variants()
 
   summary_path <- cfg$get_gtwr_experiment_main_models_path(control_set)
@@ -448,7 +448,7 @@ build_message <- function(meta, experiment_id) {
       dplyr::arrange(outcome_order, experiment_id, focal_var)
     assert_gtwr_controls_trace_current(
       controls_tbl,
-      context = "06_run_gtwr_experiment controls trace",
+      context = "05_run_gtwr_experiment controls trace",
       allowed_controls = control_candidates
     )
     ranked_tbl <- summary_tbl |>

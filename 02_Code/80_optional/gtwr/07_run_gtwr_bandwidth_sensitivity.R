@@ -1,5 +1,5 @@
 #==============================================================================
-# Script    : 08_run_gtwr_bandwidth_sensitivity.R
+# Script    : 07_run_gtwr_bandwidth_sensitivity.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run fixed-bandwidth grid sensitivity for the resident-only
 #             quarterly GTWR main sidecar.
@@ -26,7 +26,7 @@ source(here::here("02_Code", "R", "utils_spatial.R"))
 source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_bandwidth_sensitivity", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 07_run_gtwr_bandwidth_sensitivity", timestamp()))
 
 #==============================================================================
 # 1. Run Bandwidth Sensitivity Diagnostic
@@ -76,7 +76,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_bandwidth_sensitiv
   outcomes <- intersect(outcome_registry$outcome, unique(summary_tbl$outcome))
   focal_vars <- intersect(cfg$gtwr_main_exposure_vars, unique(summary_tbl$focal_var))
   control_candidates <- gtwr_main_control_candidate_cols()
-  assert_gtwr_control_vector_current(control_candidates, context = "08_run_gtwr_bandwidth_sensitivity")
+  assert_gtwr_control_vector_current(control_candidates, context = "07_run_gtwr_bandwidth_sensitivity")
   missing_control_cols <- setdiff(control_candidates, names(panel))
   if (length(missing_control_cols) > 0L) {
     stop(
@@ -203,7 +203,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_bandwidth_sensitiv
     bandwidth_pending_errors <- purrr::keep(bandwidth_pending_results, ~ inherits(.x, "try-error"))
     if (length(bandwidth_pending_errors) > 0L) {
       stop(
-        sprintf("[ERROR] %d GTWR bandwidth sensitivity worker(s) failed before writing cache. Re-run 08_run_gtwr_bandwidth_sensitivity.R to continue remaining sensitivity specs.", length(bandwidth_pending_errors)),
+        sprintf("[ERROR] %d GTWR bandwidth sensitivity worker(s) failed before writing cache. Re-run 07_run_gtwr_bandwidth_sensitivity.R to continue remaining sensitivity specs.", length(bandwidth_pending_errors)),
         call. = FALSE
       )
     }
@@ -214,7 +214,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_bandwidth_sensitiv
       if (is_valid_gtwr_bandwidth_sensitivity_payload(job$payload)) return(job$payload)
       stop(
         sprintf(
-          "[ERROR] GTWR bandwidth sensitivity cache missing after execution: outcome=%s, focal=%s, st_bw=%s, path=%s. Re-run 08_run_gtwr_bandwidth_sensitivity.R to continue.",
+          "[ERROR] GTWR bandwidth sensitivity cache missing after execution: outcome=%s, focal=%s, st_bw=%s, path=%s. Re-run 07_run_gtwr_bandwidth_sensitivity.R to continue.",
           job$outcome,
           job$focal_var,
           as.character(job$st_bw),

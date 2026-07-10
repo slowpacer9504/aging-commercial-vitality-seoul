@@ -1,5 +1,5 @@
 #==============================================================================
-# Script    : 05_run_gwr_delta.R
+# Script    : 04_run_gwr_delta.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Emit a deferred quarterly GWR-delta appendix bundle using the
 #             active 2019Q4-2025Q4 analysis horizon metadata.
@@ -26,7 +26,7 @@ source(here::here("02_Code", "R", "utils_model.R"))
 source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 05_run_gwr_delta", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 04_run_gwr_delta", timestamp()))
 
 #==============================================================================
 # 1. Helper Functions
@@ -276,7 +276,7 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
   control_candidates <- intersect(gwr_delta_control_candidate_cols(), names(panel))
   assert_gtwr_control_vector_current(
     control_candidates,
-    context = "05_run_gwr_delta",
+    context = "04_run_gwr_delta",
     allowed_controls = gwr_delta_control_candidate_cols()
   )
 
@@ -345,7 +345,7 @@ build_deferred_rows <- function(panel, outcomes, focal_vars, gwr_family, control
   )
   assert_gtwr_controls_trace_current(
     controls_tbl,
-    context = "05_run_gwr_delta controls trace",
+    context = "04_run_gwr_delta controls trace",
     allowed_controls = control_candidates,
     control_cols = c("optional_candidates", "selected_controls")
   )

@@ -1,5 +1,5 @@
 #==============================================================================
-# Script    : 09_run_gtwr_lamda_sensitivity.R
+# Script    : 08_run_gtwr_lamda_sensitivity.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run lamda grid sensitivity for the resident-only quarterly GTWR
 #             main sidecar.
@@ -26,7 +26,7 @@ source(here::here("02_Code", "R", "utils_spatial.R"))
 source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 09_run_gtwr_lamda_sensitivity", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_lamda_sensitivity", timestamp()))
 
 #==============================================================================
 # 1. Run Lamda Sensitivity Diagnostic
@@ -76,7 +76,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 09_run_gtwr_lamda_sensitivity"
   outcomes <- intersect(outcome_registry$outcome, unique(summary_tbl$outcome))
   focal_vars <- intersect(cfg$gtwr_main_exposure_vars, unique(summary_tbl$focal_var))
   control_candidates <- gtwr_main_control_candidate_cols()
-  assert_gtwr_control_vector_current(control_candidates, context = "09_run_gtwr_lamda_sensitivity")
+  assert_gtwr_control_vector_current(control_candidates, context = "08_run_gtwr_lamda_sensitivity")
   missing_control_cols <- setdiff(control_candidates, names(panel))
   if (length(missing_control_cols) > 0L) {
     stop(
@@ -202,7 +202,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 09_run_gtwr_lamda_sensitivity"
     sensitivity_pending_errors <- purrr::keep(sensitivity_pending_results, ~ inherits(.x, "try-error"))
     if (length(sensitivity_pending_errors) > 0L) {
       stop(
-        sprintf("[ERROR] %d GTWR lamda sensitivity worker(s) failed before writing cache. Re-run 09_run_gtwr_lamda_sensitivity.R to continue remaining sensitivity specs.", length(sensitivity_pending_errors)),
+        sprintf("[ERROR] %d GTWR lamda sensitivity worker(s) failed before writing cache. Re-run 08_run_gtwr_lamda_sensitivity.R to continue remaining sensitivity specs.", length(sensitivity_pending_errors)),
         call. = FALSE
       )
     }
@@ -213,7 +213,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 09_run_gtwr_lamda_sensitivity"
       if (is_valid_gtwr_lamda_sensitivity_payload(job$payload)) return(job$payload)
       stop(
         sprintf(
-          "[ERROR] GTWR lamda sensitivity cache missing after execution: outcome=%s, focal=%s, lamda=%s, path=%s. Re-run 09_run_gtwr_lamda_sensitivity.R to continue.",
+          "[ERROR] GTWR lamda sensitivity cache missing after execution: outcome=%s, focal=%s, lamda=%s, path=%s. Re-run 08_run_gtwr_lamda_sensitivity.R to continue.",
           job$outcome,
           job$focal_var,
           as.character(job$lamda),

@@ -1,5 +1,5 @@
 #==============================================================================
-# Script    : 03_run_gtwr_age_band.R
+# Script    : 02_run_gtwr_age_band.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run age-band quarterly GTWR sidecars for resident and floating
 #             age-share exposures.
@@ -32,7 +32,7 @@ source(here::here("02_Code", "R", "utils_age_mix.R"))
 source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_gtwr_age_band", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_age_band", timestamp()))
 
 #==============================================================================
 # 1. Helper Functions
@@ -136,7 +136,7 @@ add_age_band_payload_metadata <- function(payload, job) {
     value_or(cfg$gtwr_age_band_domains, c("resident", "floating"))
   )
   control_candidates <- gtwr_main_control_candidate_cols()
-  assert_gtwr_control_vector_current(control_candidates, context = "03_run_gtwr_age_band")
+  assert_gtwr_control_vector_current(control_candidates, context = "02_run_gtwr_age_band")
   missing_control_cols <- setdiff(control_candidates, names(panel_base))
   if (length(missing_control_cols) > 0L) {
     stop(
@@ -311,7 +311,7 @@ add_age_band_payload_metadata <- function(payload, job) {
     }
     assert_gtwr_controls_trace_current(
       controls_tbl,
-      context = "03_run_gtwr_age_band controls trace",
+      context = "02_run_gtwr_age_band controls trace",
       allowed_controls = control_candidates
     )
     frozen_tbl <- dplyr::bind_rows(purrr::map(spec_results, "frozen")) |>

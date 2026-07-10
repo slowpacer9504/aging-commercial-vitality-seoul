@@ -1,5 +1,5 @@
 #==============================================================================
-# Script    : 04_run_gtwr_sector_share.R
+# Script    : 03_run_gtwr_sector_share.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run the sector-share quarterly GTWR optional sidecar with separate
 #             resident-only and floating-only exposure families.
@@ -28,7 +28,7 @@ source(here::here("02_Code", "R", "utils_spatial.R"))
 source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 04_run_gtwr_sector_share", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_gtwr_sector_share", timestamp()))
 
 #==============================================================================
 # 1. Helper Functions
@@ -116,7 +116,7 @@ add_sector_share_payload_metadata <- function(payload, job) {
 
   outcomes <- intersect(cfg$gtwr_sector_share_outcomes, names(panel))
   control_candidates <- gtwr_main_control_candidate_cols()
-  assert_gtwr_control_vector_current(control_candidates, context = "04_run_gtwr_sector_share")
+  assert_gtwr_control_vector_current(control_candidates, context = "03_run_gtwr_sector_share")
   missing_control_cols <- setdiff(control_candidates, names(panel))
   if (length(missing_control_cols) > 0L) {
     stop(
@@ -265,7 +265,7 @@ add_sector_share_payload_metadata <- function(payload, job) {
       dplyr::arrange(.data$exposure_family, .data$outcome_order, .data$outcome, .data$focal_var)
     assert_gtwr_controls_trace_current(
       controls_tbl,
-      context = "04_run_gtwr_sector_share controls trace",
+      context = "03_run_gtwr_sector_share controls trace",
       allowed_controls = control_candidates
     )
     frozen_tbl <- dplyr::bind_rows(purrr::map(spec_results, "frozen")) |>

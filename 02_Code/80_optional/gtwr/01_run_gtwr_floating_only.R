@@ -1,5 +1,5 @@
 #==============================================================================
-# Script    : 02_run_gtwr_floating_only.R
+# Script    : 01_run_gtwr_floating_only.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run the floating-only quarterly GTWR optional sidecar.
 # Author    : Junghyun Pyo (Assisted by Codex)
@@ -26,7 +26,7 @@ source(here::here("02_Code", "R", "utils_spatial.R"))
 source(here::here("02_Code", "R", "utils_gtwr_main.R"))
 load_project_packages()
 
-append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", timestamp()))
+append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_gtwr_floating_only", timestamp()))
 
 #==============================================================================
 # 1. Run Floating-Only GTWR Sidecar
@@ -58,7 +58,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", ti
   outcomes <- outcome_registry$outcome
   focal_vars <- intersect(cfg$gtwr_floating_exposure_vars, names(panel))
   control_candidates <- gtwr_main_control_candidate_cols()
-  assert_gtwr_control_vector_current(control_candidates, context = "02_run_gtwr_floating_only")
+  assert_gtwr_control_vector_current(control_candidates, context = "01_run_gtwr_floating_only")
   missing_control_cols <- setdiff(control_candidates, names(panel))
   if (length(missing_control_cols) > 0L) {
     stop(
@@ -157,7 +157,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", ti
     pending_errors <- purrr::keep(pending_results, ~ inherits(.x, "try-error"))
     if (length(pending_errors) > 0L) {
       stop(
-        sprintf("[ERROR] %d GTWR floating sidecar worker(s) failed before writing cache. Re-run 02_run_gtwr_floating_only.R to continue remaining specs.", length(pending_errors)),
+        sprintf("[ERROR] %d GTWR floating sidecar worker(s) failed before writing cache. Re-run 01_run_gtwr_floating_only.R to continue remaining specs.", length(pending_errors)),
         call. = FALSE
       )
     }
@@ -190,7 +190,7 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 02_run_gtwr_floating_only", ti
       dplyr::arrange(.data$outcome_order, .data$focal_var)
     assert_gtwr_controls_trace_current(
       controls_tbl,
-      context = "02_run_gtwr_floating_only controls trace",
+      context = "01_run_gtwr_floating_only controls trace",
       allowed_controls = control_candidates
     )
     frozen_tbl <- dplyr::bind_rows(purrr::map(spec_results, "frozen"))

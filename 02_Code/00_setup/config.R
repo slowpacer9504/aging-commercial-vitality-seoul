@@ -1009,11 +1009,11 @@ cfg$manual_quarterly_appendix_scripts <- c(
   "02_Code/80_optional/spdm/05_run_spdm_family_comparison_sidecar.R",
   "02_Code/80_optional/spdm/06_run_spdm_vitality_component_models.R",
   "02_Code/80_optional/spdm/07_run_spdm_channel_path.R",
-  "02_Code/80_optional/gtwr/02_run_gtwr_floating_only.R",
-  "02_Code/80_optional/gtwr/03_run_gtwr_age_band.R",
-  "02_Code/80_optional/gtwr/04_run_gtwr_sector_share.R",
-  "02_Code/80_optional/gtwr/05_run_gwr_delta.R",
-  "02_Code/80_optional/gtwr/06_run_gtwr_experiment.R"
+  "02_Code/80_optional/gtwr/01_run_gtwr_floating_only.R",
+  "02_Code/80_optional/gtwr/02_run_gtwr_age_band.R",
+  "02_Code/80_optional/gtwr/03_run_gtwr_sector_share.R",
+  "02_Code/80_optional/gtwr/04_run_gwr_delta.R",
+  "02_Code/80_optional/gtwr/05_run_gtwr_experiment.R"
 )
 cfg$deferred_sidecar_scripts <- cfg$manual_quarterly_appendix_scripts
 cfg$active_output_contract <- list(

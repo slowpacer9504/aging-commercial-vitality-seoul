@@ -63,7 +63,7 @@ Manual optional preprocessing and local-analysis sidecars:
 - resume completed spec cache with `GTWR_RESUME_SPECS=TRUE`
 - clear spec cache and recompute all specs with `GTWR_REFRESH_SPEC_CACHE=TRUE`
 - bandwidth defaults to `GTWR_BANDWIDTH_STRATEGY=fixed` and `GTWR_ST_BW=480`
-- bandwidth search uses `02_Code/80_optional/gtwr/07_select_gtwr_bandwidth.R` plus `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr|anchor_quarter_bw_gtwr`; recompute that cache with `GTWR_REFRESH_BW_CACHE=TRUE`
+- bandwidth search uses `02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R` plus `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr|anchor_quarter_bw_gtwr`; recompute that cache with `GTWR_REFRESH_BW_CACHE=TRUE`
 - main GTWR outputs are tagged by control set, e.g. `gtwr_main_models_lean.csv`
 - main reporting uses latest-quarter local beta; delta is written only to `gtwr_delta_*` appendix tables
 

@@ -259,8 +259,8 @@
   - 기본 bandwidth는 fixed `GTWR_ST_BW=60`으로 통일한다.
   - `adaptive=TRUE` 기준에서 60은 각 추정점 주변 시공간 이웃 관측치 60개를 의미한다.
   - `03_run_gtwr_main.R`는 `GTWR_BANDWIDTH_STRATEGY`가 fixed가 아니어도 `bw.gtwr()`를 실행하지 않는다.
-  - `bw.gtwr()` full-panel/anchor-quarter 탐색, fixed bandwidth grid 민감도, lamda grid 민감도는 각각 `07_select_gtwr_bandwidth.R`, `08_run_gtwr_bandwidth_sensitivity.R`, `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
-  - `08_run_gtwr_bandwidth_sensitivity.R`의 기본 fixed bandwidth grid는 `30,60,90,120,180`이며, baseline은 `GTWR_ST_BW=60`이다.
+  - `bw.gtwr()` full-panel/anchor-quarter 탐색, fixed bandwidth grid 민감도, lamda grid 민감도는 각각 `06_select_gtwr_bandwidth.R`, `07_run_gtwr_bandwidth_sensitivity.R`, `08_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
+  - `07_run_gtwr_bandwidth_sensitivity.R`의 기본 fixed bandwidth grid는 `30,60,90,120,180`이며, baseline은 `GTWR_ST_BW=60`이다.
   - main summary와 local coefficient table은 latest-quarter local beta를 `estimate_type=latest`로 저장한다.
   - latest-quarter coefficient coverage를 `latest_missing_n`, `latest_coverage_share`로 기록한다.
   - earliest-to-latest 변화량은 `gtwr_delta_*` 보조 reporting table로만 파생한다.
@@ -271,7 +271,7 @@
 ## 7A) GTWR Floating-Only Appendix
 
 - manual quarterly GTWR appendix sidecar
-- 실행 조건: `80_optional/gtwr/02_run_gtwr_floating_only.R` 직접 실행
+- 실행 조건: `80_optional/gtwr/01_run_gtwr_floating_only.R` 직접 실행
 - 출력:
   - `gtwr_floating_models_<control_set>.csv`
   - `gtwr_floating_local_beta_panel_<control_set>.csv`
@@ -287,7 +287,7 @@
 ## 7B) GTWR Age-Band Appendix
 
 - manual quarterly GTWR appendix sidecar
-- 실행 조건: `80_optional/gtwr/03_run_gtwr_age_band.R` 직접 실행
+- 실행 조건: `80_optional/gtwr/02_run_gtwr_age_band.R` 직접 실행
 - 출력:
   - `gtwr_age_band_models_<control_set>.csv`
   - `gtwr_age_band_local_beta_panel_<control_set>.csv`
@@ -304,7 +304,7 @@
 ## 7C) GTWR Sector-Share Appendix
 
 - manual quarterly GTWR appendix sidecar
-- 실행 조건: `80_optional/gtwr/04_run_gtwr_sector_share.R` 직접 실행
+- 실행 조건: `80_optional/gtwr/03_run_gtwr_sector_share.R` 직접 실행
 - 출력:
   - `gtwr_sector_share_models_<control_set>.csv`
   - `gtwr_sector_share_local_beta_panel_<control_set>.csv`
@@ -345,7 +345,7 @@
 ## 7F) GTWR Bandwidth Sensitivity Diagnostic
 
 - manual quarterly diagnostic
-- 실행 조건: `80_optional/gtwr/08_run_gtwr_bandwidth_sensitivity.R` 직접 실행
+- 실행 조건: `80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R` 직접 실행
 - 출력:
   - `gtwr_bandwidth_sensitivity_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_bandwidth_sensitivity_cache/<control_set>/main/*.rds`
@@ -356,7 +356,7 @@
 ## 7G) GTWR Lamda Sensitivity Diagnostic
 
 - manual quarterly diagnostic
-- 실행 조건: `80_optional/gtwr/09_run_gtwr_lamda_sensitivity.R` 직접 실행
+- 실행 조건: `80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R` 직접 실행
 - 출력:
   - `gtwr_lamda_sensitivity_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_lamda_sensitivity_cache/<control_set>/main/*.rds`

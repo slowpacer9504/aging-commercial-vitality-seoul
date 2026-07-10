@@ -162,7 +162,7 @@ active shared panel에는 `year`, `quarter`, `yq`, `quarter_index`를 남긴다.
 - extended control은 lean control에 `lag4_transit_accessibility`와 `lag4_ln_workplace_worker_pop`을 추가한다.
 - `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만들고, 두 원천 count는 모델 통제변수로 직접 투입하지 않는다.
 - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 남긴다.
-- bandwidth는 main GTWR에서 fixed `GTWR_ST_BW=480`으로 통일한다. `bw.gtwr()` 탐색은 `07_select_gtwr_bandwidth.R`, 고정 grid `240,360,480,600,720` 민감도는 `08_run_gtwr_bandwidth_sensitivity.R`, lamda grid 민감도는 `09_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
+- bandwidth는 main GTWR에서 fixed `GTWR_ST_BW=480`으로 통일한다. `bw.gtwr()` 탐색은 `06_select_gtwr_bandwidth.R`, 고정 grid `240,360,480,600,720` 민감도는 `07_run_gtwr_bandwidth_sensitivity.R`, lamda grid 민감도는 `08_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
 - main output의 `estimate`는 latest-quarter local beta이며, delta는 별도 보조 reporting table에서만 계산한다.
 - 장시간 실행은 outcome-exposure spec cache를 통해 재개 가능해야 하며, `GTWR_PARALLEL_SPECS`로 worker 수를 제한한다.
 
