@@ -90,48 +90,48 @@
 - Coordinate Reference System (CRS): `EPSG:5179`
 - Retention of `year`, `quarter`, `yq`, and `quarter_index` in the active shared panel
 - Quarterly Publication Rule Checks
-  - `panel_quarter_aggregation_qc.csv` (`FAIL` if quarterly publication rules or coverage expectations break)
+  - [panel_quarter_aggregation_qc.csv](../../03_Output/04_Logs/panel_quarter_aggregation_qc.csv) (`FAIL` if quarterly publication rules or coverage expectations break)
 - Panel Merge Structure Checks
-  - `panel_join_coverage_qc.csv` (`WARN`)
-  - `panel_structural_count_flags.csv` (`FAIL` if structural counts are negative)
+  - [panel_join_coverage_qc.csv](../../03_Output/04_Logs/panel_join_coverage_qc.csv) (`WARN`)
+  - [panel_structural_count_flags.csv](../../03_Output/04_Logs/panel_structural_count_flags.csv) (`FAIL` if structural counts are negative)
 - Land Price Observation/Imputation Checks
-  - `land_price_imputation_qc.csv` (`WARN`)
+  - [land_price_imputation_qc.csv](../../03_Output/04_Logs/land_price_imputation_qc.csv) (`WARN`)
 - Land Price Index Adjusted Official Land Price Checks
-  - `land_price_lpi_raw_match_qc.csv` (`FAIL` if monthly land price index legal dong names fail 1:1 matching with legal dong boundaries)
-  - `land_price_lpi_crosswalk_qc.csv` (`FAIL` if the 425 administrative dong coverage or the normalized weight sum is incorrect)
-  - `land_price_lpi_adjustment_qc.csv` (`WARN` for quarterly adjustment factor and adjusted land price coverage)
+  - [land_price_lpi_raw_match_qc.csv](../../03_Output/04_Logs/land_price_lpi_raw_match_qc.csv) (`FAIL` if monthly land price index legal dong names fail 1:1 matching with legal dong boundaries)
+  - [land_price_lpi_crosswalk_qc.csv](../../03_Output/04_Logs/land_price_lpi_crosswalk_qc.csv) (`FAIL` if the 425 administrative dong coverage or the normalized weight sum is incorrect)
+  - [land_price_lpi_adjustment_qc.csv](../../03_Output/04_Logs/land_price_lpi_adjustment_qc.csv) (`WARN` for quarterly adjustment factor and adjusted land price coverage)
 - Workplace Population Alignment Checks
-  - `workplace_worker_population_qc.csv` (`FAIL` if annual Seoul totals diverge or 425 administrative dong coverage is unmet; `WARN` for 2018~2019 `Hang-dong` backcasts and 2025 carry-forward counts)
+  - [workplace_worker_population_qc.csv](../../03_Output/04_Logs/workplace_worker_population_qc.csv) (`FAIL` if annual Seoul totals diverge or 425 administrative dong coverage is unmet; `WARN` for 2018~2019 `Hang-dong` backcasts and 2025 carry-forward counts)
 - Seoul Living Population External Inflow Checks
-  - `living_population_inflow_manifest.csv` (`WARN` for member-level processing logs and month-level coverage flags)
-  - `living_population_inflow_qc.csv` (`WARN` for annual coverage and value ranges)
+  - [living_population_inflow_manifest.csv](../../03_Output/04_Logs/living_population_inflow_manifest.csv) (`WARN` for member-level processing logs and month-level coverage flags)
+  - [living_population_inflow_qc.csv](../../03_Output/04_Logs/living_population_inflow_qc.csv) (`WARN` for annual coverage and value ranges)
 - Startup Survival Rate Checks
-  - `golmok_survival_rate_qc.csv` (`WARN` for annual coverage, rate ranges, small cohort counts, and numerator/denominator recomputation diffs)
+  - [golmok_survival_rate_qc.csv](../../03_Output/04_Logs/golmok_survival_rate_qc.csv) (`WARN` for annual coverage, rate ranges, small cohort counts, and numerator/denominator recomputation diffs)
 - Registered Resident Population Checks
-  - `registered_resident_population_mapping_qc.csv` (`FAIL` if source administrative names fail to map to an `adm_cd`)
-  - `registered_resident_population_qc.csv` (`FAIL` if 12-month coverage is incomplete, elderly share ranges are abnormal, or core variables are missing; `WARN` for dong division allocation counts)
+  - [registered_resident_population_mapping_qc.csv](../../03_Output/04_Logs/registered_resident_population_mapping_qc.csv) (`FAIL` if source administrative names fail to map to an `adm_cd`)
+  - [registered_resident_population_qc.csv](../../03_Output/04_Logs/registered_resident_population_qc.csv) (`FAIL` if 12-month coverage is incomplete, elderly share ranges are abnormal, or core variables are missing; `WARN` for dong division allocation counts)
 - Vitality Index Component Checks
-  - `vitality_component_qc.csv` (`WARN`, or `FAIL` if core index generation is impossible)
+  - [vitality_component_qc.csv](../../03_Output/04_Logs/vitality_component_qc.csv) (`WARN`, or `FAIL` if core index generation is impossible)
 - Processed Output Integrity Checks (Manual)
-  - `processed_parquet_inventory.csv`
-  - `processed_parquet_schema.csv`
-  - `processed_parquet_missing_summary.csv`
-  - `processed_parquet_qc_checks.csv`
+  - [processed_parquet_inventory.csv](../../03_Output/04_Logs/processed_parquet_inventory.csv)
+  - [processed_parquet_schema.csv](../../03_Output/04_Logs/processed_parquet_schema.csv)
+  - [processed_parquet_missing_summary.csv](../../03_Output/04_Logs/processed_parquet_missing_summary.csv)
+  - [processed_parquet_qc_checks.csv](../../03_Output/04_Logs/processed_parquet_qc_checks.csv)
 - Administrative Dong, Gu, and Living Area Lookup Checks
-  - `adm_region_lookup_qc.csv` (`FAIL` if there is a mismatch in the 425 administrative dongs, 25 gu, 5 living areas, or the number of dongs per gu)
+  - [adm_region_lookup_qc.csv](../../03_Output/04_Logs/adm_region_lookup_qc.csv) (`FAIL` if there is a mismatch in the 425 administrative dongs, 25 gu, 5 living areas, or the number of dongs per gu)
 
 ## 5) Optional Supplementary Surface
 
 - interaction / age-mix / family-comparison appendix scripts
-- `03_run_gtwr_main.R`, additional GTWR sidecars, GTWR bandwidth/lamda diagnostic scripts
+- [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R), additional GTWR sidecars, GTWR bandwidth/lamda diagnostic scripts
   - manual direct-run local analysis only
 
 The assets above are not mandatory contracts for the canonical default run, active QC, or active success criteria.
 
 ## 6) Manual QC & Interactive Review Helpers
 
-- `02_check_processed_parquet_outputs.R`
+- [02_check_processed_parquet_outputs.R](../../02_Code/06_qc/02_check_processed_parquet_outputs.R)
   - A full parquet audit that reads all parquets under `03_Processed_Data` and generates an inventory, schema, missing summary, and QC checks.
   - Assesses the raw quarterly staging layer separately from the active quarterly publication layer.
-- `03_open_outputs_for_rstudio_review.R`
+- [03_open_outputs_for_rstudio_review.R](../../02_Code/06_qc/03_open_outputs_for_rstudio_review.R)
   - An interactive review helper that does not persist any additional outputs.
