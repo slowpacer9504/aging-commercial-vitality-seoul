@@ -28,7 +28,7 @@
 - `gu_prefix`
   - `adm_cd` 앞 6자리 자치구 식별 prefix
 
-위 변수들은 [adm_region_lookup.parquet](../../01_Data/03_Processed_Data/02_Analysis_Ready/adm_region_lookup.parquet)의 정적 metadata이며, 모형의 설명변수가 아니라 주민등록인구 행정동명 매핑, GTWR 권역별 요약, QC, 보고 산출물에서 사용한다.
+위 변수들은 `adm_region_lookup.parquet`의 정적 metadata이며, 모형의 설명변수가 아니라 주민등록인구 행정동명 매핑, GTWR 권역별 요약, QC, 보고 산출물에서 사용한다.
 
 ## 2) 핵심 독립변수
 
@@ -129,7 +129,7 @@ GTWR extended에서는 `bus_stop_count_aux`와 `subway_station_count_aux`를 직
 
 ## 7) 출처 표기 원칙
 
-- 정본 변수 사전은 [02_variable_dictionary.csv](./02_variable_dictionary.csv)이며, `raw_data_source` 열은 각 변수가 의존하는 원천 데이터 출처를 기록한다.
+- 정본 변수 사전은 `02_variable_dictionary.csv`이며, `raw_data_source` 열은 각 변수가 의존하는 원천 데이터 출처를 기록한다.
 - 서울시 상권분석서비스 기반 변수는 원천 세부 테이블을 함께 적는다. 예: 길단위인구 유동인구, 추정매출, 점포, 상권변화지표, 아파트.
 - 행정안전부 주민등록인구현황 기반 변수는 5세별 월별 주민등록인구, 행정동명-`adm_cd` 매핑, 2020 기준 경계 보정 규칙을 함께 적는다.
 - 외부 보조변수는 원천 공공데이터명을 적는다. 예: 공시지가 경계자료, 서울시 버스정류소 위치 정보, 서울시 역사마스터 정보, 서울시 병원/의원 인허가 정보, 서울시 대규모점포 인허가 정보.
