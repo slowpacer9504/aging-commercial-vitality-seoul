@@ -13,8 +13,8 @@ Implementation scripts follow a role-based folder structure and a folder-local n
 
 ## Execution Templates
 
-- `00_template_preprocessing_aging_commerce.R`
-- `00_template_modeling_aging_commerce.R`
+- [00_template_preprocessing_aging_commerce.R](../../02_Code/90_templates/00_template_preprocessing_aging_commerce.R)
+- [00_template_modeling_aging_commerce.R](../../02_Code/90_templates/00_template_modeling_aging_commerce.R)
 
 ## Specification Documents
 

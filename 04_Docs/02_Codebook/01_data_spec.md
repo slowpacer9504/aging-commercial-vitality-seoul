@@ -123,15 +123,15 @@
 ## 5) Optional Supplementary Surface
 
 - interaction / age-mix / family-comparison appendix scripts
-- `03_run_gtwr_main.R`, additional GTWR sidecars, GTWR bandwidth/lamda diagnostic scripts
+- [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R), additional GTWR sidecars, GTWR bandwidth/lamda diagnostic scripts
   - manual direct-run local analysis only
 
 The assets above are not mandatory contracts for the canonical default run, active QC, or active success criteria.
 
 ## 6) Manual QC & Interactive Review Helpers
 
-- `02_check_processed_parquet_outputs.R`
+- [02_check_processed_parquet_outputs.R](../../02_Code/06_qc/02_check_processed_parquet_outputs.R)
   - A full parquet audit that reads all parquets under `03_Processed_Data` and generates an inventory, schema, missing summary, and QC checks.
   - Assesses the raw quarterly staging layer separately from the active quarterly publication layer.
-- `03_open_outputs_for_rstudio_review.R`
+- [03_open_outputs_for_rstudio_review.R](../../02_Code/06_qc/03_open_outputs_for_rstudio_review.R)
   - An interactive review helper that does not persist any additional outputs.
