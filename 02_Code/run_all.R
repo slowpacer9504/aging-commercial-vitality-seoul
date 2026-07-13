@@ -9,9 +9,9 @@
 # Created   : 2026-02-28
 # Type      : reporting
 # Inputs    : all upstream scripts and their declared input contracts;
-#             KAKAO_REST_API_KEY when step 05 must geocode uncached records
-#             through the Kakao local API
-#             (eg: Sys.setenv(KAKAO_REST_API_KEY = "your_kakao_rest_api_key"))
+#             KAKAO_REST_API_KEY, NAVER_CLIENT_ID, and NAVER_CLIENT_SECRET
+#             when step 03 must geocode uncached records through Kakao and Naver APIs
+#             (eg: Sys.setenv(KAKAO_REST_API_KEY = "key", NAVER_CLIENT_ID = "id", NAVER_CLIENT_SECRET = "secret"))
 # Outputs   : model_run_log.md and all pipeline products
 # DependsOn : all scripts listed in `scripts`
 #==============================================================================
@@ -40,7 +40,7 @@ append_log(cfg$logs$model_run, sprintf("\n# Pipeline Start: %s", timestamp()))
 # The vector order is the canonical active pipeline order: quarterly panel,
 # ESDA, TWFE, SPDM main, W robustness, robustness, QC, and reporting. Optional
 # sidecars stay outside default run_all success and required test contracts.
-# Fresh auxiliary geocoding requires KAKAO_REST_API_KEY only when the
+# Fresh auxiliary geocoding requires KAKAO_REST_API_KEY, NAVER_CLIENT_ID, and NAVER_CLIENT_SECRET only when the
 # existing cache files do not already resolve all needed addresses or queries.
 scripts <- cfg$canonical_pipeline_scripts
 

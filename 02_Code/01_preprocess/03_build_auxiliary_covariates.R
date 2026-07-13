@@ -9,8 +9,8 @@
 # Type      : panel_building
 # Inputs    : seoul_quarter_base.parquet plus raw land, park, transit, medical,
 #             mall, senior-facility, and walk-environment sources;
-#             KAKAO_REST_API_KEY for unresolved geocoding requests not already
-#             covered by cache files
+#             KAKAO_REST_API_KEY, NAVER_CLIENT_ID, and NAVER_CLIENT_SECRET
+#             for unresolved geocoding requests not already covered by cache files
 # Outputs   : aux_covariates.parquet, walk_betweenness_local800_len_v1.parquet,
 #             source-specific pre-aggregation records, and related source QC logs
 # DependsOn : 02_build_seoul_quarter_base.R
