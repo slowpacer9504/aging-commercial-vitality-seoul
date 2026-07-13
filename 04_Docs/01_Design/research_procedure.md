@@ -10,8 +10,6 @@
   - 연구 배경, 질문, 변수 역할, 방법론 우선순위
 - `research_procedure.md`
   - 실제 수행 절차, 입력-출력 계약, runtime/QC 규칙
-- `paper_methods_blueprint.md`
-  - 논문 집필용 서사, 표·그림 연결, 본문/부록 배치
 
 active analytical contract는 이 문서가 선언하는 분기 패널 기준을 따른다.
 

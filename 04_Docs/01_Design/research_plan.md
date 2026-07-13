@@ -6,7 +6,7 @@
 
 2026년 5월 17일 기준 active canonical design은 **연도 패널에서 분기 패널로 전환**되었다. 전환 목적은 상권 매출·점포·유동인구의 분기 변동을 보존하고, 연도·정적 자료는 quarter-end as-of 규칙으로 붙여 단기 시공간 변화를 더 촘촘하게 추정하는 것이다. 따라서 본 연구의 active 분석 단위는 `adm_cd x yq`이며, `year`, `quarter`, `yq`, `quarter_index`를 공통 시간 키로 유지한다.
 
-이 문서는 현재 프로젝트의 active design anchor다. 실행 순서, 출력 계약, QC 규칙은 `research_procedure.md`와 codebook에서 구체화한다. 논문 집필 관점에서 단계별 서사와 표·그림 연결을 보려면 `paper_methods_blueprint.md`를 참조한다.
+이 문서는 현재 프로젝트의 active design anchor다. 실행 순서, 출력 계약, QC 규칙은 `research_procedure.md`와 codebook에서 구체화한다.
 
 ## 2. 연구 목적
 

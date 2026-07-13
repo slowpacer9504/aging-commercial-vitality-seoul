@@ -8,7 +8,6 @@
 
 - [research_plan.md](../01_Design/research_plan.md)
 - [research_procedure.md](../01_Design/research_procedure.md)
-- [paper_methods_blueprint.md](../01_Design/paper_methods_blueprint.md)
 - [r_code_style_guide.md](../01_Design/r_code_style_guide.md)
 
 ## 실행 템플릿
