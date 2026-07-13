@@ -1,55 +1,55 @@
-# 연구절차
+# Research Procedure
 
-## 0. 문서 목적
+## 0. Document Purpose
 
-이 문서는 현재 active 연구설계를 실제로 어떻게 수행하는지 설명하는 상세 절차 문서다. 실행 순서만 적는 체크리스트가 아니라, 분기 패널 구축, 공간진단, TWFE, SPDM, GTWR가 어떤 규칙으로 연결되는지 재현 가능한 수준에서 정리한다.
+This document is a detailed procedural guide explaining how the active research design is actually executed. It is not merely a checklist of execution order, but a reproducible summary of how the quarterly panel construction, spatial diagnostics, TWFE, SPDM, and GTWR are logically connected.
 
-문서 역할은 아래처럼 구분한다.
+The document roles are separated as follows:
 
 - [research_plan.md](research_plan.md)
-  - 연구 배경, 질문, 변수 역할, 방법론 우선순위
+  - Research background, questions, variable roles, and methodology priority
 - [research_procedure.md](research_procedure.md)
-  - 실제 수행 절차, 입력-출력 계약, runtime/QC 규칙
+  - Actual execution procedures, input-output contracts, and runtime/QC rules
 
-active analytical contract는 이 문서가 선언하는 분기 패널 기준을 따른다.
+The active analytical contract follows the quarterly panel criteria declared in this document.
 
-## 1. 핵심 수행 원칙
+## 1. Core Execution Principles
 
-### 1.1 현재 방법론 계층
+### 1.1 Current Methodology Stack
 
-현재 canonical methodology stack은 아래 순서를 따른다.
+The current canonical methodology stack follows this order:
 
 1. `ESDA`
 2. `TWFE baseline / residual spatial-diagnostic`
 3. `SPDM main global model`
 4. `GTWR resident-only optional local sidecar`
 
-이 순서는 코드 실행 순서이자 해석 순서다. 먼저 공간 패턴의 존재를 확인하고, 비공간 기준선으로 방향성을 잡고, 공간 확장모형으로 직접효과와 파급효과를 해석한 뒤, 필요할 때만 국지적 이질성을 별도 sidecar로 읽는다.
-[`80_optional/**`](../../02_Code/80_optional)의 preprocessing, TWFE, SPDM, GTWR sidecar는 [run_all.R](../../02_Code/run_all.R) 밖의 manual surface이며, SPDM channel path도 이 optional/manual surface에 포함한다. 해당 파일을 직접 실행하면 별도 `RUN_*` 실행 플래그 없이 실제 작업을 수행한다.
+This order represents both the execution sequence and the interpretation logical flow. We first confirm the presence of spatial patterns, establish a direction with non-spatial baselines, interpret direct and spillover effects via spatial expansion models, and only when necessary, read local heterogeneity through a separate sidecar.
+The preprocessing, TWFE, SPDM, and GTWR sidecars under [`80_optional/**`](../../02_Code/80_optional) are manual surfaces outside of [run_all.R](../../02_Code/run_all.R), and the SPDM channel path is also included in this optional/manual surface. Executing these files directly will perform the actual tasks without requiring separate `RUN_*` execution flags.
 
-### 1.2 비협상 수행 원칙
+### 1.2 Non-negotiable Execution Principles
 
-1. 공간 단위는 **2020년 기준 서울시 행정동(`adm_cd`)** 으로 통일한다.
-2. canonical panel 구축 범위는 **2019Q1~2025Q4** 이고, active 분석기간은 **2019Q4~2025Q4** 이다.
-3. 공통 active key는 `adm_cd`, `yq`다.
-4. active shared panel은 `year`, `quarter`, `yq`, `quarter_index`를 모두 유지한다.
-5. 좌표계는 `EPSG:5179`다.
-6. canonical model timing contract는 **시차 적용 분기 계약** 이다.
-7. main exposure는 `lag4_age60_resident_share`다.
-8. `lag2_age60_floating_share`는 optional SPDM channel path mediator이고, `age60_floating_share`, `age60_sales_share`는 ESDA 또는 appendix 보조 축으로 다룬다.
-9. 종속변수는 개별 활력지표를 우선하고 `vitality_index_base`는 보조 composite로 둔다.
-10. 기본 공간가중행렬은 `Queen` row-standardized다.
-11. 대안 W는 `Rook`, `kNN6`, `kNN8`다.
-12. TWFE는 main inferential endpoint가 아니라 baseline / spatial-diagnostic layer다.
-13. SPDM main은 main global model이며 direct / indirect / total effect 보고가 중심이다.
-14. [80_optional/spdm/07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R)는 optional channel path sidecar이며 `lag4_age60_resident_share -> lag2_age60_floating_share -> vitality` 경로를 검정한다.
-15. GTWR는 optional local sidecar이며 resident-only quarterly contract에 한정한다.
-16. `panel_main.parquet` 하나를 공통 정본으로 두고, ESDA/TWFE/SPDM/GTWR는 method-specific view만 읽는다.
-17. raw data와 boundary 원본은 수정하지 않는다.
+1. The spatial unit is unified to **Seoul administrative dongs (`adm_cd`) based on 2020 boundaries**.
+2. The canonical panel construction scope is **2019Q1-2025Q4**, and the active analysis period is **2019Q4-2025Q4**.
+3. The common active keys are `adm_cd` and `yq`.
+4. The active shared panel retains `year`, `quarter`, `yq`, and `quarter_index`.
+5. The coordinate reference system (CRS) is `EPSG:5179`.
+6. The canonical model timing contract is a **lagged quarterly contract**.
+7. The main exposure is `lag4_age60_resident_share`.
+8. `lag2_age60_floating_share` serves as an optional SPDM channel path mediator, while `age60_floating_share` and `age60_sales_share` are treated as supplementary axes for ESDA or appendices.
+9. For dependent variables, individual vitality indicators are prioritized, and `vitality_index_base` is kept as a supplementary composite.
+10. The primary spatial weights matrix is row-standardized `Queen`.
+11. Alternative W matrices are `Rook`, `kNN6`, and `kNN8`.
+12. TWFE is not the main inferential endpoint but a baseline / spatial-diagnostic layer.
+13. SPDM main is the primary global model, centering on the reporting of direct / indirect / total effects.
+14. [80_optional/spdm/07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R) is an optional channel path sidecar that tests the `lag4_age60_resident_share -> lag2_age60_floating_share -> vitality` pathway.
+15. GTWR is an optional local sidecar restricted strictly to the resident-only quarterly contract.
+16. A single `panel_main.parquet` serves as the authoritative source of truth, and ESDA/TWFE/SPDM/GTWR read only their method-specific views.
+17. Original raw data and boundary sources must not be modified.
 
-### 1.3 이용 데이터와 변수 계약 요약
+### 1.3 Summary of Data and Variable Contracts
 
-- 핵심 데이터셋
+- Core Datasets
   - `seoul_quarter_base.parquet`
   - `adm_region_lookup.parquet`
   - `aux_covariates.parquet`
@@ -61,11 +61,11 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
   - `panel_main_pre_vitality.parquet`
   - `panel_main.parquet`
   - `W_queen.rds`, `W_rook.rds`, `W_knn6.rds`, `W_knn8.rds`
-- 원천 데이터 축
-  - 서울시 상권분석서비스 raw
-  - 보조 공공데이터
-  - 2020 기준 행정동 경계
-- 메인 변수 축
+- Original Data Axes
+  - Seoul Commercial District Analysis Service raw data
+  - Supplementary public data
+  - 2020 base administrative dong boundaries
+- Main Variable Axes
   - main exposure: `lag4_age60_resident_share`
   - channel mediator: `lag2_age60_floating_share`
   - supporting exposures: `age60_resident_share`, `age60_floating_share`, `age60_sales_share`
@@ -74,172 +74,172 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 - robustness composites: `vitality_index_entropy`, `vitality_index_pca`
 - channel path composite: `vitality_index_base`
 
-## 2. 상세 연구 수행 절차
+## 2. Detailed Research Execution Procedures
 
-### 2.1 공통 데이터 기준
+### 2.1 Common Data Standards
 
-이 프로젝트의 실질적 분석 단위는 `adm_cd x yq` 분기 패널이다. 전처리의 핵심은 분기 source의 단기 변동을 보존하고, 연도·정적 source를 quarter-end as-of 규칙으로 붙여 source precision을 명시하는 것이다.
-2019Q1~2019Q3는 rolling 4-quarter 지표와 시차 변수 검증을 위한 warm-up 구간으로 보존하지만, active 분석 표본과 reporting 표본은 `2019Q4~2025Q4`로 제한한다.
+The practical unit of analysis for this project is the `adm_cd x yq` quarterly panel. The core of the preprocessing is preserving the short-term variations of quarterly sources, while explicitly declaring source precision by appending yearly/static sources to the quarterly panel using a quarter-end as-of rule.
+2019Q1-2019Q3 are retained as a warm-up period for calculating rolling 4-quarter indicators and validating lag variables, but the active analysis sample and reporting sample are restricted to `2019Q4-2025Q4`.
 
-공통 수행 원칙은 아래와 같다.
+The common execution principles are as follows:
 
-- 서울시 상권분석서비스 중 분기 source는 `adm_cd-yq` 기준으로 직접 정리한다.
-- 연도·정적 source는 `adm_cd-year` 또는 `adm_cd` 수준에서 정리한 뒤 분기 패널에 as-of 방식으로 결합한다.
-- 모델은 별도 slim panel 파일을 만들지 않고 `panel_main`의 method-specific view만 읽는다.
-- 따라서 전처리와 모델 사이의 실질적 handoff는 `panel_main.parquet` 하나로 고정된다.
+- Among the Seoul Commercial District Analysis Service data, quarterly sources are organized directly on an `adm_cd-yq` basis.
+- Yearly and static sources are organized at the `adm_cd-year` or `adm_cd` level and then joined to the quarterly panel using an as-of approach.
+- Models do not create separate slim panel files; they only read method-specific views of `panel_main`.
+- Therefore, the practical handoff between preprocessing and modeling is firmly established through the single `panel_main.parquet` file.
 
-### 2.1A [01_build_adm_region_lookup.R](../../02_Code/01_preprocess/01_build_adm_region_lookup.R): 행정동-자치구-생활권 lookup 구축
+### 2.1A [01_build_adm_region_lookup.R](../../02_Code/01_preprocess/01_build_adm_region_lookup.R): Build Administrative Dong-District-Living Area Lookup
 
-이 단계의 목적은 2020 기준 서울시 행정동 경계에서 `adm_cd`, 행정동명, 자치구명, 5대 권역생활권을 연결한 정적 lookup을 만드는 것이다. 이 lookup은 분석 패널의 통계모형에는 직접 투입하지 않지만, 주민등록인구 원천의 행정동명 매핑, GTWR 권역별 요약, QC, 보고 산출물에서 같은 지역 분류를 재사용하기 위한 기준 자산이다.
+The purpose of this step is to create a static lookup linking `adm_cd`, administrative dong names, autonomous district names, and the 5 major regional living areas, based on the 2020 Seoul administrative dong boundaries. While this lookup is not directly fed into the statistical models of the analysis panel, it serves as a foundational asset to reuse the same regional classifications in mapping administrative dong names from resident population sources, aggregating GTWR results by region, performing QC, and generating reporting outputs.
 
-핵심 산출물은 아래와 같다.
+Core outputs are as follows:
 
 - `adm_region_lookup.parquet`
-  - `adm_cd` 기준 정적 lookup
+  - Static lookup based on `adm_cd`
 - `adm_region_lookup.csv`
-  - 검토와 보고용 companion table
+  - Companion table for review and reporting
 - `adm_region_lookup_qc.csv`
-  - 425개 행정동, 25개 자치구, 5개 권역생활권, 자치구별 행정동 수 계약 점검
+  - QC checks for 425 administrative dongs, 25 autonomous districts, 5 regional living areas, and the number of dongs per district contracts
 
-이 단계는 raw boundary source를 수정하지 않는다. `adm_cd` 앞 6자리로 자치구를 식별하고, 서울 5대 권역생활권 분류표를 결합한다.
+This step does not modify the raw boundary sources. Autonomous districts are identified by the first 6 digits of `adm_cd`, and the Seoul 5 major regional living areas classification table is joined.
 
-### 2.2 [02_build_seoul_quarter_base.R](../../02_Code/01_preprocess/02_build_seoul_quarter_base.R): 서울 상권 분기 base 구축
+### 2.2 [02_build_seoul_quarter_base.R](../../02_Code/01_preprocess/02_build_seoul_quarter_base.R): Build Seoul Commercial District Quarterly Base
 
-이 단계의 목적은 서울시 상권분석서비스 원천표를 source별로 통합하고, 이후 모든 분석의 기준 격자가 되는 분기 base panel을 만드는 것이다.
+The purpose of this step is to integrate the raw tables of the Seoul Commercial District Analysis Service by source and create a quarterly base panel that serves as the reference grid for all subsequent analyses.
 
-이 스크립트는 먼저 raw 파일 전체를 스캔해 source type을 식별한다. 그 다음 원천 자료를 두 갈래로 처리한다.
+This script first scans all raw files to identify source types. The raw data is then processed in two tracks:
 
-1. `추정매출`, `점포`, `길단위인구(유동인구)`처럼 intra-year 분포를 가진 분기 source
-   - `adm_cd-yq` 기준으로 quarterly publication rule을 적용한다.
-   - additive flow는 분기 합계, level/share는 분기 대표값 또는 분모가중 분기 비중을 사용하고, temporal/stability 구성요소는 분기 단면과 rolling 4-quarter 분포를 이용해 계산한다.
-2. 나머지 연도 source
-   - `adm_cd-year` 기준으로 직접 표준화한다.
-   - 분기 패널에는 source precision을 명시하고 quarter-end as-of 규칙으로 결합한다.
-   - 서울시 상권분석서비스의 Q4 업데이트형 구조 source는 strict Q4 snapshot as-of로 발행한다.
-   - Q4 관측값이 없으면 같은 연도 최신분기 값으로 대체하지 않고 결측으로 둔다.
+1. Quarterly sources with intra-year distribution (e.g., `estimated_sales`, `stores`, `street_population_floating_population`)
+   - A quarterly publication rule is applied on an `adm_cd-yq` basis.
+   - Additive flows use quarterly sums, levels/shares use quarterly representative values or denominator-weighted quarterly shares, and temporal/stability components are calculated using cross-sectional quarterly data and rolling 4-quarter distributions.
+2. Remaining yearly sources
+   - Directly standardized on an `adm_cd-year` basis.
+   - For the quarterly panel, source precision is explicitly stated, and they are joined using a quarter-end as-of rule.
+   - Q4-update-type sources from the Seoul Commercial District Analysis Service are published as strict Q4 snapshot as-of.
+   - If a Q4 observation is missing, it is not replaced with the latest quarter's value of the same year but left as missing.
 
-이 단계의 핵심 산출물은 아래와 같다.
+The core outputs of this step are as follows:
 
 - `seoul_quarter_base.parquet`
-  - canonical quarterly base
+  - Canonical quarterly base
 - `seoul_raw_review.parquet`
-  - raw integration review companion
+  - Raw integration review companion
 - `panel_quarter_aggregation_qc.csv`
-  - quarterly publication rule 적용 결과와 coverage를 점검하는 QC 로그
+  - QC log checking coverage and the results of applying quarterly publication rules
 
-중요한 점은 raw provenance 단계의 원천 분기코드를 표준화해, **active base 이후에는 표준 `year`, `quarter`, `yq`, `quarter_index`만 남기는 것** 이다.
+Crucially, by standardizing the source quarter codes during the raw provenance stage, **only the standard `year`, `quarter`, `yq`, and `quarter_index` remain after the active base.**
 
-### 2.3 [03_build_auxiliary_covariates.R](../../02_Code/01_preprocess/03_build_auxiliary_covariates.R): 보조 공공데이터를 `adm_cd-yq` 보조변수로 정리
+### 2.3 [03_build_auxiliary_covariates.R](../../02_Code/01_preprocess/03_build_auxiliary_covariates.R): Organize Supplementary Public Data as `adm_cd-yq` Covariates
 
-이 단계의 목적은 상권 quarterly base에 바로 붙일 수 있는 보조변수 집합을 만드는 것이다. 먼저 `seoul_quarter_base.parquet`에서 실제로 존재하는 `adm_cd-yq` 조합을 읽어 `base_quarter`를 정의하고, 모든 보조 source를 이 기준에 맞춰 정리한다.
+The purpose of this step is to build a set of auxiliary variables that can be directly attached to the commercial district quarterly base. First, `base_quarter` is defined by reading the `adm_cd-yq` combinations actually present in `seoul_quarter_base.parquet`, and all supplementary sources are organized according to this standard.
 
-주요 작업은 아래와 같다.
+Key tasks are as follows:
 
-1. raw 파일 읽기와 컬럼 정리
-2. point/line/polygon을 `adm_cd` geometry에 배정
-3. geocoding, cache, manual fix 처리
-4. annual/static source를 quarterly panel에 맞춘 as-of covariate로 발행
+1. Reading raw files and cleaning columns
+2. Assigning point/line/polygon data to `adm_cd` geometries
+3. Processing geocoding, caching, and manual fixes
+4. Publishing annual/static sources as as-of covariates tailored to the quarterly panel
 
-공시지가는 필지 polygon의 내부 대표점으로 행정동을 배정한 뒤, 유효한 필지 면적을 가중치로 하는 행정동-연도별 면적가중평균으로 집계한다. 분기 패널에는 해당 연도 공시지가를 같은 연도의 4개 분기에 동일하게 발행한다. 이는 행정동 전체 토지면적 기준의 지가 수준을 통제하기 위한 active contract이며, 엄밀한 행정동-필지 교차면적 계산은 수행하지 않는다.
+Official land prices are processed by assigning administrative dongs to the internal representative points of parcel polygons, and then aggregating them as area-weighted averages by administrative dong and year using valid parcel areas as weights. In the quarterly panel, the official land price for a given year is identically published to all 4 quarters of that year. This is an active contract designed to control the overall land price level based on the total land area of the administrative dong, and strict intersection-area calculations between administrative dongs and parcels are not performed.
 
-이 단계의 주요 산출물은 아래와 같다.
+The main outputs of this step are as follows:
 
 - `aux_covariates.parquet`
-  - `adm_cd-yq` 기준의 canonical auxiliary contract
+  - Canonical auxiliary contract on an `adm_cd-yq` basis
 - `medical_source_preagg.parquet`, `mall_source_preagg.parquet`, `senior_source_preagg.parquet`
-  - 재현 가능한 record-level intermediate
+  - Reproducible record-level intermediates
 - `walk_betweenness_local800_len_v1.parquet`
-  - static walk-environment cache
-- geocode/QC/unmatched log
+  - Static walk-environment cache
+- Geocode/QC/unmatched logs
 
-대중교통 접근성 원천은 분기 source precision을 별도 추적한다. 버스정류장은 2019, 2020, 2025년 단일 snapshot을 해당 연도 분기 대표값으로 반복하고, 2021년 1월~2024년 4월 월별 snapshot은 각 분기말 이전 최신 snapshot을 사용한다. 2024년 5월 이후 원천 공백은 2024년 4월 1일 snapshot을 carry-forward한다. 지하철역은 station master에 개통일 규칙을 부여해 `open_date <= quarter_end`인 역만 해당 분기 count에 포함한다.
+Public transit accessibility sources track quarterly source precision separately. Bus stops repeat single snapshots from 2019, 2020, and 2025 as the representative quarterly values for those respective years. For the monthly snapshots from January 2021 to April 2024, the latest snapshot prior to the end of each quarter is used. For the source gap after May 2024, the April 1, 2024 snapshot is carried forward. Subway stations apply an opening date rule to the station master, including only stations where `open_date <= quarter_end` in the quarter's count.
 
-이제 의료·대형유통 등도 더 이상 active control pool에 들어가지 않는다. record-level pre-aggregation은 유지하되, active panel에는 permit-based as-of 진단 변수로만 남긴다.
+Medical facilities and large-scale retail are no longer included in the active control pool. While record-level pre-aggregation is maintained, they remain in the active panel strictly as permit-based as-of diagnostic variables.
 
-### 2.4 [01_build_living_population_inflow.R](../../02_Code/80_optional/preprocess/01_build_living_population_inflow.R): 서울생활인구 외부 유입 인구 구축
+### 2.4 [01_build_living_population_inflow.R](../../02_Code/80_optional/preprocess/01_build_living_population_inflow.R): Build External Inflow Population based on Seoul Living Population
 
-이 단계의 목적은 서울생활인구 월별 ZIP 원천을 전체 압축해제하지 않고 읽어 `adm_cd-yq` 기준 외부 유입 인구를 만드는 것이다. 상업 활력의 사회적 차원은 단순 내부 유동인구뿐 아니라 외부 생활권에서 유입되는 인구 규모도 반영해야 하므로, 이 산출물은 optional preprocessing layer로 관리하되 최종 패널에는 있으면 결합한다.
+The purpose of this step is to create an external inflow population layer on an `adm_cd-yq` basis by reading the monthly Seoul Living Population ZIP sources without fully extracting them. Because the social dimension of commercial vitality should reflect the scale of population flowing in from external living areas, not just simple internal floating populations, this output is managed as an optional preprocessing layer but is joined to the final panel if it exists.
 
-월별 ZIP 처리 비용이 크기 때문에 [run_all.R](../../02_Code/run_all.R)의 default 실행과 required test plan에서는 이 단계를 제외한다. 수동으로 [01_build_living_population_inflow.R](../../02_Code/80_optional/preprocess/01_build_living_population_inflow.R)를 실행해 산출물이 있으면 [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R)에서 `adm_cd-yq` 기준으로 결합한다. 이미 `living_population_external_inflow.parquet`가 있고 `LIVING_POP_FORCE_REBUILD=FALSE`이면 이 optional preprocessing script는 기존 산출물을 재사용한다.
-전체 재생성은 월별 ZIP 단위 병렬 처리를 사용할 수 있다. `LIVING_POP_CORES`를 2 이상으로 지정하면 INNER와 METRO 각각의 월별 ZIP 처리를 병렬화하되, 최종 parquet, manifest, QC 파일은 부모 프로세스가 한 번만 기록한다.
+Due to the high processing cost of monthly ZIP files, this step is excluded from the default execution of [run_all.R](../../02_Code/run_all.R) and the required test plan. If [01_build_living_population_inflow.R](../../02_Code/80_optional/preprocess/01_build_living_population_inflow.R) is executed manually and its outputs exist, they are joined on an `adm_cd-yq` basis in [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R). If `living_population_external_inflow.parquet` already exists and `LIVING_POP_FORCE_REBUILD=FALSE`, this optional preprocessing script will reuse the existing output.
+Full regeneration can utilize parallel processing for monthly ZIP units. If `LIVING_POP_CORES` is set to 2 or more, the monthly ZIP processing for INNER and METRO will be parallelized, while the final parquet, manifest, and QC files are written once by the parent process.
 
-집계 정의는 아래와 같다.
+Aggregation definitions are as follows:
 
-- 관내이동 자료: 대상 행정동의 자치구와 거주지 자치구가 다른 row만 사용한다.
-- 대도시권 내외국인 자료: 모든 row를 외부 유입으로 사용한다.
-- 시간대: 기본값은 `LIVING_POP_HOURS=0-23` 전체 시간대다.
-- 최종 지표: 생활인구는 누적 flow가 아니라 시점 인구이므로 월별 평균 시점인구를 먼저 계산한 뒤 같은 분기 월평균의 평균으로 계산한다.
-- 월 내부 일수가 부족한 ZIP은 관측된 일자의 월평균을 해당 월 대표값으로 사용하되, `living_population_inflow_manifest.csv`에 `month_success_days`, `month_expected_days`, `month_coverage_flag`를 남긴다.
-- 전체 실행에서는 INNER/METRO 각각 12개월 coverage가 없으면 실패시킨다. 1~9일 또는 10~19일만 있는 부분월은 사용하되 manifest에서 강한 경고 또는 경고로 추적한다.
+- Internal migration data: Only rows where the target administrative dong's district differs from the residential district are used.
+- Metro area domestic/foreign data: All rows are used as external inflow.
+- Time periods: The default is the full `0-23` hours (`LIVING_POP_HOURS=0-23`).
+- Final indicators: Since the living population is a point-in-time stock and not a cumulative flow, the monthly average point-in-time population is calculated first, and then averaged across the months within the same quarter.
+- For ZIP files with missing intra-month days, the average of the observed days is used as the monthly representative value, but `month_success_days`, `month_expected_days`, and `month_coverage_flag` are recorded in `living_population_inflow_manifest.csv`.
+- In a full run, if a 12-month coverage for both INNER/METRO is not achieved, the process will fail. Partial months (1-9 days or 10-19 days) are used but tracked as warnings or severe warnings in the manifest.
 
-주요 산출물은 아래와 같다.
+Main outputs are as follows:
 
 - `living_population_external_inflow.parquet`
   - `inner_external_inflow_pop`, `metro_external_inflow_pop`, `external_inflow_pop`
 - `living_population_inflow_manifest.csv`
-  - ZIP member 처리 성공·오류·스킵 로그
+  - ZIP member processing success/error/skip logs
 - `living_population_inflow_qc.csv`
-  - 분기별 finite coverage와 값 범위 점검
+  - QC for quarterly finite coverage and value ranges
 
-### 2.5 [04_build_golmok_survival_rate.R](../../02_Code/01_preprocess/04_build_golmok_survival_rate.R): 신생기업 생존율 구축
+### 2.5 [04_build_golmok_survival_rate.R](../../02_Code/01_preprocess/04_build_golmok_survival_rate.R): Build Newly Established Firm Survival Rate
 
-이 단계의 목적은 서울시 상권분석서비스 홈페이지의 `selectSurvivalRate.json` 응답을 직접 호출해 `adm_cd-yq` 기준 신생기업 생존율 layer를 만드는 것이다. PDF/OCR 추출 대신 홈페이지 조회에 쓰이는 JSON 응답을 저장하고 파싱하므로, 생존율뿐 아니라 생존 기업 수와 코호트 분모를 함께 보존할 수 있다.
+The purpose of this step is to directly call the `selectSurvivalRate.json` response from the Seoul Commercial District Analysis Service website to construct a newly established firm survival rate layer on an `adm_cd-yq` basis. Because it parses and saves the JSON response used for webpage inquiries instead of performing PDF/OCR extraction, it can preserve not only the survival rates but also the number of surviving firms and cohort denominators.
 
-연구기간 `2019Q1~2025Q4`는 `2019`, `2022`, `2025` 기준연도 Q4 요청으로 확보한다. 각 요청은 3개년 block을 반환하므로 `2019` 요청은 `2017~2019`, `2022` 요청은 `2020~2022`, `2025` 요청은 `2023~2025`를 제공한다. active panel에는 이 중 `2019~2025` 값을 분기 panel에 as-of로 결합하고, 행정동 코드는 project canonical `10자리 adm_cd`로 padding한다.
+The study period `2019Q1-2025Q4` is secured by making Q4 requests for the base years `2019`, `2022`, and `2025`. Since each request returns a 3-year block, the `2019` request provides `2017-2019`, `2022` provides `2020-2022`, and `2025` provides `2023-2025`. Only the `2019-2025` values from these are joined to the active panel on an as-of basis, with the administrative dong codes padded to the project canonical `10-digit adm_cd`.
 
-주요 산출물은 아래와 같다.
+Main outputs are as follows:
 
 - `golmok_survival_rate.parquet`
-  - `survival_1y`, `survival_3y`, `survival_5y`와 각 생존 기업 수·코호트 분모
+  - `survival_1y`, `survival_3y`, `survival_5y` along with surviving firm counts and cohort denominators
 - `golmok_survival_all_levels.parquet`
-  - 서울시 전체, 자치구, 행정동을 포함한 원자료성 파싱 결과
+  - Raw-level parsing results including Seoul total, autonomous districts, and administrative dongs
 - `golmok_survival_rate_qc.csv`
-  - key uniqueness, 분기 coverage, rate 범위, 분자/분모 재계산 diff, 작은 코호트 수 점검
+  - QC for key uniqueness, quarterly coverage, rate ranges, numerator/denominator recalculation diffs, and small cohort sizes
 
-`survival_3y`는 active 안정성 하위지수의 점포 존속성 축에 사용한다. 생존율 분모가 0인 행정동-분기는 값을 임의 대체하지 않고 `NA`로 유지하며, QC 로그에 결측과 작은 코호트 수를 남긴다.
+`survival_3y` is used in the store continuity axis of the active stability sub-index. Administrative dong-quarters with a survival rate denominator of 0 are not arbitrarily replaced but kept as `NA`, and the missing values and small cohort counts are logged in the QC file.
 
-### 2.6 [05_build_registered_resident_population.R](../../02_Code/01_preprocess/05_build_registered_resident_population.R): 주민등록인구 기반 상주인구 구축
+### 2.6 [05_build_registered_resident_population.R](../../02_Code/01_preprocess/05_build_registered_resident_population.R): Build Registered Resident Population
 
-이 단계의 목적은 행정안전부 주민등록인구현황의 행정동별 5세 단위 월별 CSV를 2020 기준 서울시 행정동 코드로 정합해 상주인구 규모와 고령 상주인구 비중을 만드는 것이다. 서울시 상권분석서비스 상주인구는 active main exposure와 `ln_resident_pop`의 원천으로 사용하지 않는다.
+The purpose of this step is to match the monthly 5-year age group CSV files of the Ministry of the Interior and Safety's resident registration population status to the 2020 Seoul administrative dong codes, generating the resident population scale and the share of the elderly resident population. The resident population from the Seoul Commercial District Analysis Service is not used as the source for the active main exposure and `ln_resident_pop`.
 
-월별 stock 변수는 연합계가 아니라 분기 평균으로 발행한다. `age60_resident_share`, `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`는 해당 분기 월별 고령 인구 합계를 같은 분기 월별 총인구 합계로 나눈 분모가중 분기 비중이다. TWFE/SPDM age-mix appendix는 이 주민등록인구 layer에서 청년(20~30대), 중년(40~50대), 노년(60세 이상) 분기 평균 인구수를 만들고 `log1p` 변환한 `ln_young_resident_pop`, `ln_middle_resident_pop`, `ln_old_resident_pop`을 모두 노출로 사용한다. `lag4_ln_resident_pop`은 lagged resident scale control로 유지한다.
+Monthly stock variables are published as quarterly averages, not annual sums. `age60_resident_share`, `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, and `age65plus_resident_share` are denominator-weighted quarterly shares calculated by dividing the monthly sums of the elderly population in the respective quarter by the monthly sums of the total population in the same quarter. For the TWFE/SPDM age-mix appendix, the quarterly average population counts for youth (20s-30s), middle-aged (40s-50s), and elderly (60s and older) are created from this resident population layer, log1p-transformed, and `ln_young_resident_pop`, `ln_middle_resident_pop`, and `ln_old_resident_pop` are all used as exposures. `lag4_ln_resident_pop` is maintained as a lagged resident scale control.
 
-2020 기준 경계 정합을 위해 원천 행정동명은 경계 행정동명과 매칭하고, 분석기간 중 분동·개칭은 2020 기준으로 합산 또는 환원한다. `상일제1동`은 `상일동`, `강일동+상일제2동`은 `강일동`, `개포3동`은 `일원2동`, 2025년 `신설동+용두동+용신동`은 `용신동`으로 처리한다. 2020년에 `오류제2동`에서 분동된 `항동`은 2018~2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2018~2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.
+For the 2020 boundary matching, original administrative dong names are matched to boundary names, and any dong splits/renames during the analysis period are aggregated or reverted based on 2020. `Sangil-je1-dong` becomes `Sangil-dong`, `Gangil-dong + Sangil-je2-dong` becomes `Gangil-dong`, `Gaepo3-dong` becomes `Irwon2-dong`, and the 2025 `Sinseol-dong + Yongdu-dong + Yongsin-dong` is treated as `Yongsin-dong`. `Hang-dong`, which was split from `Oryu-je2-dong` in 2020, was included in the pre-split `Oryu-je2-dong` during 2018-2019. Therefore, the 2018-2019 raw values of `Oryu-je2-dong` are distributed according to the proportions of the same age groups in the same month for `Oryu-je2-dong`/`Hang-dong` in 2020. These split-distribution rows are tracked with `registered_boundary_proxy_flag` and `registered_boundary_proxy_reference_year`.
 
-주요 산출물은 아래와 같다.
+Main outputs are as follows:
 
 - `registered_resident_population.parquet`
-  - `resident_pop`, `age60_resident_pop`, `age60_resident_share`, `age65_74_resident_share`, `age75plus_resident_share` 등
+  - `resident_pop`, `age60_resident_pop`, `age60_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, etc.
 - `registered_resident_population_lag_support.parquet`
-  - 2018Q1~2025Q4 `adm_cd-yq` 주민등록인구 lag-support layer
+  - 2018Q1-2025Q4 `adm_cd-yq` resident population lag-support layer
 - `registered_resident_population_monthly.parquet`
-  - 월별 중간 stock과 연령대 합계 검증용 layer
+  - Intermediate monthly stock and age total validation layer
 - `registered_resident_population_mapping_qc.csv`
-  - 원천 행정동명과 canonical `adm_cd` 매핑 상태
+  - Mapping status between original administrative dong names and canonical `adm_cd`
 - `registered_resident_population_qc.csv`
-  - 분기 coverage, 3개월 coverage, 분동 배분 건수, 고령비중 범위, 연령합계 diff
+  - QC for quarterly coverage, 3-month coverage, split distribution counts, elderly share ranges, and age sum diffs
 
-### 2.7 [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R): 공용 분석패널 결합과 공통 파생변수 생성
+### 2.7 [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R): Join Common Analysis Panel and Create Common Derived Variables
 
-이 단계의 목적은 `seoul_quarter_base`, `aux_covariates`, `living_population_external_inflow`, `golmok_survival_rate`, `registered_resident_population`을 결합하고, `aux_covariates_lag_support`, `registered_resident_population_lag_support`에서 canonical lag 변수를 생성하며, 모든 downstream 분석이 공유하는 공통 파생변수·QC를 한 번에 만들고 최종 활력지수 계산 직전 상태인 `panel_main_pre_vitality`를 발행하는 것이다.
+The purpose of this step is to join `seoul_quarter_base`, `aux_covariates`, `living_population_external_inflow`, `golmok_survival_rate`, and `registered_resident_population`; generate canonical lag variables from `aux_covariates_lag_support` and `registered_resident_population_lag_support`; create common derived variables and QCs shared by all downstream analyses at once; and publish `panel_main_pre_vitality`, the state just before calculating the final vitality indices.
 
-먼저 key 무결성을 다시 확인한다.
+First, key integrity is verified again:
 
 - `seoul_quarter_base`: `adm_cd-yq` unique
 - `aux_covariates`: `adm_cd-yq` unique
-- `aux_covariates_lag_support`: 2018Q1~2025Q4 `adm_cd-yq` unique
-- `workplace_worker_population`: 2018~2025 `adm_cd-year` unique
+- `aux_covariates_lag_support`: 2018Q1-2025Q4 `adm_cd-yq` unique
+- `workplace_worker_population`: 2018-2025 `adm_cd-year` unique
 - `living_population_external_inflow`: `adm_cd-yq` unique when optional output exists
 - `golmok_survival_rate`: `adm_cd-yq` unique
 - `registered_resident_population`: `adm_cd-yq` unique
-- `registered_resident_population_lag_support`: 2018Q1~2025Q4 `adm_cd-yq` unique
+- `registered_resident_population_lag_support`: 2018Q1-2025Q4 `adm_cd-yq` unique
 
-그다음 `adm_cd`, `year`, `quarter`, `yq`, `quarter_index` 기준으로 결합해 `panel_merged_base.parquet`를 만든다. 이 파일은 provenance checkpoint다. 이후 문제가 생기면 “join 자체가 깨졌는지”와 “join 이후 파생변수 계산이 깨졌는지”를 분리해서 볼 수 있어야 한다.
+Then, they are joined by `adm_cd`, `year`, `quarter`, `yq`, and `quarter_index` to create `panel_merged_base.parquet`. This file is a provenance checkpoint. If issues arise later, it must be possible to isolate whether "the join itself broke" or "the derived variable calculation after the join broke."
 
-이 스크립트에서 만드는 대표적 변수군은 아래와 같다.
+The main variable groups created in this script include:
 
 - `covid_period`
-  - `2020Q1~2022Q2` 분기 범위를 표시하는 appendix interaction flag
+  - An appendix interaction flag marking the `2020Q1-2022Q2` quarter range
 - `ln_total_sales`, `ln_sales_count`, `ln_total_store_count`, `ln_sales_per_store`
 - `sales_quarter_stability`, `floating_quarter_stability`
 - `ln_resident_pop`, `ln_floating_pop`, `ln_external_inflow_pop`, `ln_spend_total`
@@ -254,32 +254,32 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 - `stability_score` (`-closure_rate`, diagnostic support)
 - `age60_sales_lq`
 
-`ln_land_price_adjusted`는 기존 행정동-연도 공시지가 수준에 한국부동산원 월별 지역별 지가지수의 전년도 12월 대비 분기 평균 보정계수를 적용한 값이다. 법정동 단위 지가지수는 서울 법정동 경계와 2020 행정동 경계의 공간교차 면적가중 crosswalk로 행정동 단위에 정합한다. `ln_official_land_price`는 원 연간 공시지가 로그로 보존하고, active model control은 `ln_land_price_adjusted`를 사용한다.
+`ln_land_price_adjusted` applies the quarter-average adjustment factor of the Korea Real Estate Board's monthly regional land price index (relative to December of the previous year) to the existing administrative-dong-year official land price levels. The statutory dong-level land price index is matched to the administrative dong level using an area-weighted crosswalk between Seoul statutory dong boundaries and 2020 administrative dong boundaries. The original annual official land price log is preserved as `ln_official_land_price`, while active model controls use `ln_land_price_adjusted`.
 
-그 다음 shared quarterly contract를 확정한다.
+Next, the shared quarterly contract is finalized:
 
-- canonical shared panel은 동시점 source 변수와 등록된 model lag 변수만 유지한다.
-- 허용된 lag 변수는 `lag4_age60_resident_share`, `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`, `lag4_ln_workplace_worker_pop`, `lag2_age60_floating_share`다.
-- legacy suffix형 shift/lead 파생열과 미등록 lag 변수는 active shared panel에 남기지 않는다.
+- The canonical shared panel retains only contemporaneous source variables and registered model lag variables.
+- Permitted lag variables are `lag4_age60_resident_share`, `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`, `lag4_ln_workplace_worker_pop`, and `lag2_age60_floating_share`.
+- Legacy suffix-type shift/lead derived columns and unregistered lag variables are not kept in the active shared panel.
 
-이 단계의 주요 QC는 아래와 같다.
+Key QCs for this stage are as follows:
 
 - `panel_join_coverage_qc.csv`
 - `panel_quarter_aggregation_qc.csv`
 - `panel_structural_count_flags.csv`
 - `missing_data_log.csv`
 
-### 2.8 [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R): 활력지수 구성과 `panel_main` 발행
+### 2.8 [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R): Vitality Index Construction and `panel_main` Publication
 
-이 단계의 목적은 `panel_main_pre_vitality`를 입력으로 활력지수를 계산하고, 최종 canonical shared panel인 `panel_main.parquet`를 발행하는 것이다.
+The purpose of this step is to calculate the vitality indices using `panel_main_pre_vitality` as input and publish `panel_main.parquet`, the final canonical shared panel.
 
-핵심 원칙은 “공통 패널을 다시 바꾸지 않고 허용된 활력 열만 추가한다”는 publication contract다.
+The core principle is a publication contract stating, "We do not alter the common panel again; we only add the permitted vitality columns."
 
-구성요소는 네 개의 하위 차원으로 묶인다.
+The components are grouped into four sub-dimensions:
 
 - `vitality_sub_economic`
   - transaction scale axis: `ln_sales_count`, `ln_total_sales`
-  - final subindex: pooled-z `ln_sales_count`와 pooled-z `ln_total_sales`의 동일가중 평균
+  - final subindex: Equal-weighted average of pooled-z `ln_sales_count` and pooled-z `ln_total_sales`
 - `vitality_sub_social`
   - `ln_floating_pop`, `ln_external_inflow_pop`
 - `vitality_sub_temporal`
@@ -287,46 +287,46 @@ active analytical contract는 이 문서가 선언하는 분기 패널 기준을
 - `vitality_sub_stability`
   - diversity axis: `diversity_index`
   - continuity axis: `operating_months_rel_seoul`, `survival_3y`
-  - final subindex: pooled-z diversity axis와 pooled-z continuity axis의 동일가중 평균
+  - final subindex: Equal-weighted average of pooled-z diversity axis and pooled-z continuity axis
 
-그리고 보조 composite로 아래를 만든다.
+Additionally, the following supplementary composites are created:
 
 - `vitality_index_base`
 - `vitality_index_entropy`
 - `vitality_index_pca`
 
-표준화 기준은 active 분석기간인 `2019Q4~2025Q4 adm_cd-yq` 표본이다. [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R)는 개별 component를 pooled z-score로 표준화해 하위지수를 만들고, 하위지수도 다시 pooled z-score로 맞춘 뒤 composite를 계산한다. 분기별 cross-section 표준화는 active workflow에서 사용하지 않는다.
+The standardization baseline is the active analysis period sample, `2019Q4-2025Q4 adm_cd-yq`. [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R) standardizes individual components using pooled z-scores to create sub-indices, which are then standardized again via pooled z-scores to calculate the composites. Cross-sectional standardization per quarter is not used in the active workflow.
 
-### 2.8 [01_build_spatial_weights.R](../../02_Code/02_esda/01_build_spatial_weights.R): 공간가중행렬 구축
+### 2.8 [01_build_spatial_weights.R](../../02_Code/02_esda/01_build_spatial_weights.R): Spatial Weights Matrix Construction
 
-이 단계는 2020 기준 서울시 행정동 경계를 이용해 공통 spatial contract를 구축한다.
+This step constructs the common spatial contract using the 2020 base Seoul administrative dong boundaries.
 
 - main W: `Queen`
 - robustness W: `Rook`, `kNN6`, `kNN8`
 
-모든 모델과 지도 시각화는 같은 `adm_cd` ordering과 same-boundary contract를 공유해야 한다.
+All models and map visualizations must share the same `adm_cd` ordering and same-boundary contract.
 
-### 2.9 [02_run_esda.R](../../02_Code/02_esda/02_run_esda.R): 분기 단위 공간진단
+### 2.9 [02_run_esda.R](../../02_Code/02_esda/02_run_esda.R): Quarterly Spatial Diagnostics
 
-ESDA는 모형 추정 이전에 공간 패턴의 존재를 확인하는 단계다.
+ESDA is the stage to confirm the presence of spatial patterns before estimating models.
 
-- latest quarter cross-section을 중심으로 분포 지도와 LISA를 저장한다.
-- Global Moran's I는 재현 가능한 permutation p-value를 사용하며, 대안 W 민감도도 같은 방식으로 계산한다.
-- LISA quadrant는 univariate의 경우 `z(x)`와 `W z(x)`, bivariate의 경우 `z(x)`와 `W z(y)`의 부호를 기준으로 분류한다.
-- bivariate LISA 지도는 계산된 `age60_resident_share`/`age60_floating_share`와 활력지표 전체 조합을 저장한다.
-- quarterly sequence를 사용해 EHSA를 계산한다. EHSA는 `sfdep::emerging_hotspot_analysis()`의 Gi* 관례에 맞춰 queen contiguity에 self-neighbor를 포함한 `queen_include_self` weights를 사용한다.
-- 핵심 변수는 `age60_resident_share`, `age60_floating_share`, `vitality_sub_*`, `vitality_index_base`다.
+- Distribution maps and LISA are saved focusing on the latest quarter cross-section.
+- Global Moran's I uses a reproducible permutation p-value, and alternative W sensitivity is calculated the same way.
+- LISA quadrants are classified based on the signs of `z(x)` and `W z(x)` for univariate, and `z(x)` and `W z(y)` for bivariate cases.
+- Bivariate LISA maps are generated for all combinations of `age60_resident_share`/`age60_floating_share` and the vitality indicators.
+- EHSA is calculated using the quarterly sequence. Following the Gi* convention in `sfdep::emerging_hotspot_analysis()`, EHSA uses `queen_include_self` weights that include self-neighbors in the queen contiguity.
+- Key variables are `age60_resident_share`, `age60_floating_share`, `vitality_sub_*`, and `vitality_index_base`.
 
-### 2.10 [01_run_twfe_main.R](../../02_Code/03_models/01_run_twfe_main.R): quarterly TWFE baseline
+### 2.10 [01_run_twfe_main.R](../../02_Code/03_models/01_run_twfe_main.R): Quarterly TWFE Baseline
 
-TWFE는 비공간 기준선과 residual Moran diagnostic을 제공한다.
+TWFE provides non-spatial baselines and residual Moran diagnostics.
 
-- 입력: `panel_main.parquet`, `W_queen.rds`
-- 기본식: `y_it ~ lag4_age60_resident_share + lag4_controls_it | adm_cd + yq`
-- 표준오차: `cluster = ~ adm_cd`
-- 종속변수: `vitality_sub_*`, `vitality_index_base`
+- Input: `panel_main.parquet`, `W_queen.rds`
+- Base specification: `y_it ~ lag4_age60_resident_share + lag4_controls_it | adm_cd + yq`
+- Standard Errors: `cluster = ~ adm_cd`
+- Dependent Variables: `vitality_sub_*`, `vitality_index_base`
 
-필수 산출물은 아래와 같다.
+Required outputs are as follows:
 
 - `twfe_main_models.csv`
 - `twfe_main_controls_used.csv`
@@ -334,40 +334,40 @@ TWFE는 비공간 기준선과 residual Moran diagnostic을 제공한다.
 - `twfe_main_residual_moran.csv`
 - `twfe_main_residual_moran_by_yq.csv`
 
-### 2.11 [02_run_spdm_main.R](../../02_Code/03_models/02_run_spdm_main.R): quarterly SPDM main model
+### 2.11 [02_run_spdm_main.R](../../02_Code/03_models/02_run_spdm_main.R): Quarterly SPDM Main Model
 
-SPDM은 active design의 main global model이다.
+SPDM is the main global model of the active design.
 
-- 입력: `panel_main.parquet`, `W_queen.rds`
-- main exposure: `lag4_age60_resident_share`
-- specification: `y_it = rho W y_it + X_it beta + W X_it theta + adm_cd FE + yq FE + e_it`
-- implementation: `W lag4_age60_resident_share`와 `W controls`를 `yq`별로 직접 생성하고, `splm::spml(lag=TRUE, spatial.error="none", model="within", effect="twoways")`로 추정한다.
-- main output: `direct / indirect / total effects`
-- impact: `S = (I - rho W)^(-1)`와 `S(beta I + theta W)` 기반의 true SDM matrix impact를 사용한다.
-- 표준오차: coefficient와 spatial parameter는 `splm::spml()`의 model-based asymptotic ML `vcov`를 사용하고, impact SE/CI는 같은 `vcov`에서 simulation으로 계산한다. 이 출력은 robust SE가 아니라 model-based inference로 보고한다.
+- Input: `panel_main.parquet`, `W_queen.rds`
+- Main exposure: `lag4_age60_resident_share`
+- Specification: `y_it = rho W y_it + X_it beta + W X_it theta + adm_cd FE + yq FE + e_it`
+- Implementation: `W lag4_age60_resident_share` and `W controls` are manually generated by `yq`, and estimated using `splm::spml(lag=TRUE, spatial.error="none", model="within", effect="twoways")`.
+- Main output: `direct / indirect / total effects`
+- Impact: Uses true SDM matrix impacts based on `S = (I - rho W)^(-1)` and `S(beta I + theta W)`.
+- Standard Errors: Coefficients and spatial parameters use model-based asymptotic ML `vcov` from `splm::spml()`, and impact SEs/CIs are computed via simulation from the same `vcov`. This output is reported as model-based inference, not robust SEs.
 
-핵심 산출물은 아래와 같다.
+Core outputs are as follows:
 
 - `spdm_main_models.csv`
 - `spdm_impacts.csv`
 - `spdm_controls_used.csv`
 - `spdm_main_diagnostics.csv`
 
-### 2.12 [07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R): optional SPDM channel path sidecar
+### 2.12 [07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R): Optional SPDM Channel Path Sidecar
 
-이 단계는 [02_Code/80_optional/spdm/07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R)를 직접 실행할 때만 수행하는 optional mediation-oriented channel sidecar다. `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` 경로를 quarterly Queen SDM 위에서 검정한다. `lag4_age60_resident_share`를 `X`, `lag2_age60_floating_share`를 mediator `M`으로 고정하고, 각 활력 outcome별 동일 balanced sample에서 total-effect equation, mediator equation, outcome equation을 모두 추정한다.
+This step is an optional mediation-oriented channel sidecar executed only when directly running [02_Code/80_optional/spdm/07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R). It tests the `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` pathway over the quarterly Queen SDM. By fixing `lag4_age60_resident_share` as `X` and `lag2_age60_floating_share` as the mediator `M`, it estimates the total-effect equation, mediator equation, and outcome equation simultaneously on identical balanced samples for each vitality outcome.
 
-- total-effect equation: `Y_it = rho W Y_it + X_it beta_c + W X_it theta_c + controls + W controls + FE + e_it`
-- mediator equation: `M_it = rho W M_it + X_it beta_a + W X_it theta_a + controls + W controls + FE + e_it`
-- outcome equation: `Y_it = rho W Y_it + X_it beta_c' + M_it beta_b + W X_it theta_c' + W M_it theta_b + controls + W controls + FE + e_it`
-- channel outcome: `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, `vitality_index_base`
-- excluded outcome: `vitality_sub_social`은 유동인구 source와 직접 겹치므로 channel path의 단독 outcome에서 제외한다. 다만 종합 활력지수는 연구의 네 차원 구성 의미를 유지하기 위해 사회적 활성도를 포함한 `vitality_index_base`를 사용하고, mediator source overlap caveat를 함께 기록한다.
-- indirect effect: `a*b` product effect를 `direct`, `indirect`, `total` scale별로 기록하고, `c - c'` 직접효과 약화 진단을 함께 저장한다.
-- inference: 기본값은 행정동 단위 wild residual bootstrap이다. bootstrap이 비활성화되었거나 유효 draw가 부족하면 `a`와 `b` impact estimate의 독립을 가정한 `delta_independent_approx`를 fallback으로 사용한다.
-- runtime default: channel impact simulation은 `SPDM_CHANNEL_IMPACT_SIM_R=1000`, bootstrap 반복은 `SPDM_CHANNEL_BOOTSTRAP_R=1000`, bootstrap 실행은 `RUN_SPDM_CHANNEL_BOOTSTRAP=TRUE`가 기본이다.
-- parallel runtime: 기본 core 수는 `SPDM_CHANNEL_IMPACT_CORES=4`, `SPDM_CHANNEL_BOOTSTRAP_CORES=4`이다. macOS/Linux/GCP에서는 impact simulation draw와 bootstrap draw를 병렬 처리하며, Windows에서는 안전하게 순차 실행으로 fallback한다.
+- Total-effect equation: `Y_it = rho W Y_it + X_it beta_c + W X_it theta_c + controls + W controls + FE + e_it`
+- Mediator equation: `M_it = rho W M_it + X_it beta_a + W X_it theta_a + controls + W controls + FE + e_it`
+- Outcome equation: `Y_it = rho W Y_it + X_it beta_c' + M_it beta_b + W X_it theta_c' + W M_it theta_b + controls + W controls + FE + e_it`
+- Channel outcomes: `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, `vitality_index_base`
+- Excluded outcome: `vitality_sub_social` overlaps directly with the floating population source, so it is excluded as a standalone outcome for the channel path. However, the comprehensive vitality index uses `vitality_index_base`, which includes social activity, to preserve the study's four-dimensional conceptual construct, while documenting the mediator source overlap caveat.
+- Indirect effect: Records the `a*b` product effect across `direct`, `indirect`, and `total` scales, along with the attenuation diagnostic of the direct effect (`c - c'`).
+- Inference: The default is wild residual bootstrap at the administrative dong level. If bootstrap is disabled or lacks valid draws, `delta_independent_approx` (assuming independence between `a` and `b` impact estimates) serves as a fallback.
+- Runtime defaults: Default settings are `SPDM_CHANNEL_IMPACT_SIM_R=1000` for channel impact simulation, `SPDM_CHANNEL_BOOTSTRAP_R=1000` for bootstrap iterations, and `RUN_SPDM_CHANNEL_BOOTSTRAP=TRUE` to execute the bootstrap.
+- Parallel runtime: Default core counts are `SPDM_CHANNEL_IMPACT_CORES=4` and `SPDM_CHANNEL_BOOTSTRAP_CORES=4`. On macOS/Linux/GCP, impact simulation draws and bootstrap draws are processed in parallel, whereas Windows safely falls back to sequential execution.
 
-핵심 산출물은 아래와 같다.
+Core outputs are as follows:
 
 - `spdm_channel_models.csv`
 - `spdm_channel_impacts.csv`
@@ -376,74 +376,74 @@ SPDM은 active design의 main global model이다.
 - `spdm_channel_bootstrap_draws.csv`
 - `spdm_channel_diagnostics.csv`
 
-### 2.13 [01_run_spdm_w_robustness.R](../../02_Code/04_robustness/01_run_spdm_w_robustness.R): W 민감도 점검
+### 2.13 [01_run_spdm_w_robustness.R](../../02_Code/04_robustness/01_run_spdm_w_robustness.R): W Sensitivity Check
 
-이 단계는 `queen`, `rook`, `knn6`, `knn8`에서 같은 resident-only quarterly SDM contract를 반복 추정한다. 목적은 W 선택에 따른 민감도를 점검하는 것이다.
+This step iteratively estimates the same resident-only quarterly SDM contract across `queen`, `rook`, `knn6`, and `knn8`. Its purpose is to check sensitivity to the choice of W matrix.
 
-### 2.14 [05_run_spdm_family_comparison_sidecar.R](../../02_Code/80_optional/spdm/05_run_spdm_family_comparison_sidecar.R): spatial family comparison
+### 2.14 [05_run_spdm_family_comparison_sidecar.R](../../02_Code/80_optional/spdm/05_run_spdm_family_comparison_sidecar.R): Spatial Family Comparison
 
-이 단계는 appendix용 manual sidecar다. main SPDM의 quarterly Queen sample과 selected control contract를 그대로 재구성한 뒤 `TWFE`, `SLX`, `SAR`, `SDM`, `SEM`, `SDEM`, `SARAR/SAC`, `GNS`를 같은 조건에서 비교한다. `SLX`와 `SDEM`의 효과는 endogenous `W y` feedback multiplier가 없는 `W X` 효과로 보고하며, `direct=beta`, `indirect=theta`, `total=beta+theta`로 저장한다. `GNS`는 `W y`, `W X`, spatial error를 모두 포함한 가장 일반적인 appendix sensitivity family이며, 평균효과는 SDM matrix impact 방식으로 기록한다.
+This step is a manual sidecar for the appendix. It reconstructs the exact quarterly Queen sample and selected control contract of the main SPDM, then compares `TWFE`, `SLX`, `SAR`, `SDM`, `SEM`, `SDEM`, `SARAR/SAC`, and `GNS` under identical conditions. The effects for `SLX` and `SDEM` are reported as `W X` effects without the endogenous `W y` feedback multiplier, saved as `direct=beta`, `indirect=theta`, and `total=beta+theta`. `GNS` is the most general appendix sensitivity family incorporating `W y`, `W X`, and spatial errors, with its average effects recorded via the SDM matrix impact method.
 
-### 2.15 [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R): optional quarterly local sidecar
+### 2.15 [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R): Optional Quarterly Local Sidecar
 
-GTWR main은 quarterly resident-only local sidecar다.
+GTWR main is a quarterly resident-only local sidecar.
 
-- 실행 조건: [03_models/03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R) 직접 실행
-- 입력: `panel_main.parquet`, 2020 기준 서울시 행정동 경계
-- 해석 수준: local heterogeneity description
-- 실행 방식: outcome-exposure spec 단위로 계산하며, `GTWR_PARALLEL_SPECS`만큼 병렬 worker를 사용한다.
-- 재개 방식: spec별 RDS cache를 `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/`에 저장하고, 중단 후 재실행하면 유효한 완료 spec은 재사용한다.
-- control set: 기본값은 `GTWR_CONTROL_SET=lean`이다. `lean`은 주민등록인구 기반 `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`만 사용한다. `extended`는 여기에 `lag4_transit_accessibility`와 `lag4_ln_workplace_worker_pop`을 추가한다.
-- bandwidth 방식: main GTWR는 fixed adaptive `GTWR_ST_BW=60`을 사용한다. `adaptive=TRUE` 기준으로 각 추정점 주변 시공간 이웃 60개를 사용한다. `full_panel_bw_gtwr`와 `anchor_quarter_bw_gtwr` 탐색은 [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R)에서만 수행하고, 선택 결과는 `gtwr_bandwidth_selection_<control_set>.csv`와 bandwidth cache에 저장한다. [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R)는 `GTWR_BANDWIDTH_SENSITIVITY_GRID`의 기본값 `30,60,90,120,180`을 같은 outcome-control-spec에 반복 적용하고, baseline 60 대비 beta correlation, 절대변화, sign flip, local condition-number 변화를 `gtwr_bandwidth_sensitivity_<control_set>.csv`에 저장한다.
-- lamda 민감도: [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R)에서만 실행한다. `GTWR_LAMDA_SENSITIVITY_GRID`의 각 값을 같은 outcome-control-spec에 적용해 GTWR를 재추정하고, baseline latest-quarter beta 대비 상관, 절대변화, sign flip, local condition-number 변화를 `gtwr_lamda_sensitivity_<control_set>.csv`에 저장한다.
-- local CN 진단: `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 따르되, GTWR에서 사용한 `st.dist`/`gw.weight` 기반 시공간 가중치를 적용한다.
+- Execution Condition: Direct execution of [03_models/03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R)
+- Inputs: `panel_main.parquet`, 2020 base Seoul administrative dong boundaries
+- Interpretation level: Local heterogeneity description
+- Execution method: Computations run per outcome-exposure spec, utilizing parallel workers up to `GTWR_PARALLEL_SPECS`.
+- Resumption method: Per-spec RDS caches are saved to `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/`, and if interrupted and restarted, valid completed specs are reused.
+- Control set: Default is `GTWR_CONTROL_SET=lean`. `lean` only uses resident-population-based `lag4_ln_resident_pop` and `lag4_ln_land_price_adjusted`. `extended` adds `lag4_transit_accessibility` and `lag4_ln_workplace_worker_pop` to these.
+- Bandwidth strategy: Main GTWR uses fixed adaptive `GTWR_ST_BW=60`. Based on `adaptive=TRUE`, 60 spatiotemporal neighbors around each estimation point are used. `full_panel_bw_gtwr` and `anchor_quarter_bw_gtwr` searches are only performed in [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), and the selected results are saved to `gtwr_bandwidth_selection_<control_set>.csv` and the bandwidth cache. [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R) applies the default `GTWR_BANDWIDTH_SENSITIVITY_GRID` (`30,60,90,120,180`) iteratively to the same outcome-control-spec, saving beta correlations against the baseline 60, absolute changes, sign flips, and local condition-number shifts to `gtwr_bandwidth_sensitivity_<control_set>.csv`.
+- Lamda sensitivity: Executed exclusively in [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R). It re-estimates GTWR applying each value in `GTWR_LAMDA_SENSITIVITY_GRID` to the same outcome-control-spec, logging correlations, absolute changes, sign flips, and local condition-number shifts against baseline latest-quarter betas to `gtwr_lamda_sensitivity_<control_set>.csv`.
+- Local CN Diagnostics: Follows the `GWmodel::gwr.collin.diagno()` local_CN calculation convention but applies the `st.dist`/`gw.weight`-based spatiotemporal weights used in GTWR.
 
-GTWR의 핵심 운영 원칙은 아래와 같다.
+The core operational principles for GTWR are:
 
-1. quarterly sample만 사용한다.
-2. main control pool은 `GTWR_CONTROL_SET`으로 선택한다. 기본 `lean`은 상주인구 규모와 지가 통제만 사용하고, `extended`는 대중교통 접근성 composite를 추가한다.
-3. main bandwidth는 fixed `GTWR_ST_BW=60`으로 통일한다. full-panel 또는 anchor-quarter `bw.gtwr()` 탐색, fixed bandwidth grid 민감도, lamda grid 민감도는 각각 [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R), [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R)에서만 실행한다.
-4. main raw/output surface는 latest quarter local beta를 기준으로 만든다.
-5. earliest-to-latest delta는 `gtwr_delta_*` 보조 reporting table에서만 파생한다.
-6. final CSV bundle은 매 실행마다 전체 spec cache를 다시 집계해 갱신한다.
-7. lamda와 bandwidth 민감도는 계산비용이 크므로 manual 보조 진단으로만 해석한다.
-8. global causal claim을 대체하지 않는다.
+1. Only quarterly samples are used.
+2. The main control pool is selected via `GTWR_CONTROL_SET`. The default `lean` uses only resident population scale and land price controls, while `extended` adds transit accessibility composites.
+3. The main bandwidth is unified to a fixed `GTWR_ST_BW=60`. `bw.gtwr()` searches (full-panel or anchor-quarter), fixed bandwidth grid sensitivities, and lamda grid sensitivities are strictly separated into [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R), and [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R) respectively.
+4. Main raw/output surfaces are constructed based on latest-quarter local betas.
+5. Earliest-to-latest deltas are derived exclusively for `gtwr_delta_*` auxiliary reporting tables.
+6. The final CSV bundle aggregates and refreshes from the entire spec cache on every run.
+7. Lamda and bandwidth sensitivities are computationally expensive and thus interpreted only as manual auxiliary diagnostics.
+8. GTWR does not replace global causal claims.
 
-추가 GTWR appendix sidecar는 main GTWR와 같은 quarterly panel, `GWmodel::gtwr()` 실행 경로, `GTWR_CONTROL_SET` 계약, fixed bandwidth 기본값을 공유한다. 각각의 `80_optional/gtwr` 스크립트를 직접 실행할 때 실행되며, 별도 spec/bandwidth cache namespace를 사용한다.
+Additional GTWR appendix sidecars share the same quarterly panel, `GWmodel::gtwr()` execution path, `GTWR_CONTROL_SET` contract, and fixed bandwidth default as main GTWR. They run when directly executing the respective `80_optional/gtwr` scripts, utilizing separate spec/bandwidth cache namespaces.
 
-- [01_run_gtwr_floating_only.R](../../02_Code/80_optional/gtwr/01_run_gtwr_floating_only.R): 직접 실행하면 main outcomes x `age60_floating_share`를 추정한다.
-- [02_run_gtwr_age_band.R](../../02_Code/80_optional/gtwr/02_run_gtwr_age_band.R): 직접 실행하면 configured resident/floating domain x age20~age50 exposure x main outcomes를 추정한다. 주민 domain은 행정안전부 주민등록인구 기반 age share와 same-domain total control `ln_resident_pop`을 사용하고, floating domain은 종속변수 구성요소와 겹치는 `ln_floating_pop`을 추가하지 않는다.
-- [03_run_gtwr_sector_share.R](../../02_Code/80_optional/gtwr/03_run_gtwr_sector_share.R): 직접 실행하면 sector-share outcomes에서 resident-only와 floating-only exposure family를 추정한다.
-- [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R): `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr` 또는 `anchor_quarter_bw_gtwr`일 때 resident-only main spec의 `bw.gtwr()` 탐색 결과를 저장한다.
-- [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R): 직접 실행하면 resident-only main baseline output을 기준으로 fixed bandwidth grid 민감도를 실행한다.
-- [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R): 직접 실행하면 resident-only main baseline output을 기준으로 lamda grid 민감도를 실행한다.
-- [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R)는 sidecar raw local coefficient가 있을 때 latest-minus-earliest delta summary/rankings를 파생한다.
+- [01_run_gtwr_floating_only.R](../../02_Code/80_optional/gtwr/01_run_gtwr_floating_only.R): Direct execution estimates main outcomes x `age60_floating_share`.
+- [02_run_gtwr_age_band.R](../../02_Code/80_optional/gtwr/02_run_gtwr_age_band.R): Direct execution estimates configured resident/floating domain x age20~age50 exposure x main outcomes. The resident domain uses age shares based on Ministry of the Interior resident populations and the same-domain total control `ln_resident_pop`, while the floating domain omits `ln_floating_pop` as it overlaps with dependent variable components.
+- [03_run_gtwr_sector_share.R](../../02_Code/80_optional/gtwr/03_run_gtwr_sector_share.R): Direct execution estimates resident-only and floating-only exposure families for sector-share outcomes.
+- [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R): Saves `bw.gtwr()` search results for the resident-only main spec when `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr` or `anchor_quarter_bw_gtwr`.
+- [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R): Direct execution runs fixed bandwidth grid sensitivity against the resident-only main baseline output.
+- [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R): Direct execution runs lamda grid sensitivity against the resident-only main baseline output.
+- [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R) derives latest-minus-earliest delta summaries/rankings whenever sidecar raw local coefficients are present.
 
-### 2.16 [02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R)와 reporting
+### 2.16 [02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R) and Reporting
 
-[02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R)는 outcome-definition, sample-window, W-Moran 민감도를 quarterly contract 위에서 점검한다. [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R)는 본문/부록용 표·그림을 묶고, 본분석 변수의 Pearson 상관행렬과 pairwise 상관표를 함께 발행한다. reporting은 source input이 있는 optional artifact만 선택적으로 붙인다.
+[02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R) checks outcome-definition, sample-window, and W-Moran sensitivities against the quarterly contract. [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R) bundles tables and figures for the main text/appendices, and additionally publishes Pearson correlation matrices and pairwise correlation tables for main analysis variables. Reporting selectively attaches optional artifacts only when source inputs exist.
 
-## 3. Active QC 규칙
+## 3. Active QC Rules
 
-### 3.1 데이터 계약 QC
+### 3.1 Data Contract QC
 
-- key duplication: `adm_cd x yq` 0건
-- panel horizon: `2019Q1~2025Q4`
-- active analysis horizon: `2019Q4~2025Q4`
-- shared panel에서 `year`, `quarter`, `yq`, `quarter_index` 유지
-- quarterly publication/as-of coverage와 aggregation rule 점검
-- 구조 카운트 음수 검출 시 `FAIL`
-- 활력지수 핵심 구성변수 부재 시 `FAIL`
+- Key duplication: 0 occurrences for `adm_cd x yq`
+- Panel horizon: `2019Q1~2025Q4`
+- Active analysis horizon: `2019Q4~2025Q4`
+- Shared panel must retain `year`, `quarter`, `yq`, and `quarter_index`
+- Check quarterly publication/as-of coverage and aggregation rules
+- `FAIL` upon detecting negative structural counts
+- `FAIL` upon absence of core vitality index component variables
 
-### 3.2 모델 계약 QC
+### 3.2 Model Contract QC
 
-- ESDA, TWFE, SPDM은 모두 `panel_main.parquet` 기준으로 동작해야 한다.
-- TWFE residual Moran output은 필수다.
-- SPDM은 direct / indirect / total effects를 보고해야 한다.
-- SPDM channel path는 optional sidecar이며 absence 자체를 failure로 해석하지 않는다. 실행한 경우 `a`, `b`, `c'`, `a*b` effects와 diagnostics를 appendix artifact로 보고한다.
-- GTWR는 optional sidecar이며, absence 자체를 failure로 해석하지 않는다.
+- ESDA, TWFE, and SPDM must all operate based on `panel_main.parquet`.
+- TWFE residual Moran outputs are mandatory.
+- SPDM must report direct / indirect / total effects.
+- SPDM channel path is an optional sidecar, and its absence is not interpreted as a failure. When executed, `a`, `b`, `c'`, `a*b` effects and diagnostics are reported as appendix artifacts.
+- GTWR is an optional sidecar, and its absence is not interpreted as a failure.
 
-### 3.3 처리 산출물 무결성 점검
+### 3.3 Processed Output Integrity Check
 
 - `method_dataset_contract_check.csv`
 - `processed_parquet_inventory.csv`
@@ -451,4 +451,4 @@ GTWR의 핵심 운영 원칙은 아래와 같다.
 - `processed_parquet_missing_summary.csv`
 - `processed_parquet_qc_checks.csv`
 
-이 로그들은 quarterly contract를 기준으로 판정해야 한다.
+These logs must be evaluated against the quarterly contract.
