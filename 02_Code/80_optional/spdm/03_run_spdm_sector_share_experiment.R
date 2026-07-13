@@ -22,9 +22,9 @@
 
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_model.R"))
-source(here::here("02_Code", "R", "utils_spdm.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_model.R"))
+source(here::here("02_Code", "99_utils", "utils_spdm.R"))
 load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_spdm_sector_share_experiment", timestamp()))

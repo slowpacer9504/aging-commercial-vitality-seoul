@@ -20,7 +20,7 @@
 # generated outputs by topic and loads objects only when the user selects them.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
 load_project_packages()
 
 output_roots <- c(

@@ -25,10 +25,10 @@
 # population stocks from the registered-resident source.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_model.R"))
-source(here::here("02_Code", "R", "utils_qc.R"))
-source(here::here("02_Code", "R", "utils_age_mix.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_model.R"))
+source(here::here("02_Code", "99_utils", "utils_qc.R"))
+source(here::here("02_Code", "99_utils", "utils_age_mix.R"))
 load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_twfe_age_mix_experiment", timestamp()))

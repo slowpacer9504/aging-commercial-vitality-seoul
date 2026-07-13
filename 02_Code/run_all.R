@@ -25,7 +25,7 @@
 options(scipen = 999)
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
 
 load_project_packages()
 ensure_dirs(cfg$required_dirs)

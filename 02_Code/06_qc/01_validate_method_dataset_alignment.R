@@ -23,7 +23,7 @@
 # for schema drift when present but do not determine required run success.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
 load_project_packages()
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 01_validate_method_dataset_alignment", timestamp()))

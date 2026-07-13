@@ -20,9 +20,9 @@
 # reused while only the sensitivity axis changes.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_spatial.R"))
-source(here::here("02_Code", "R", "utils_model.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_spatial.R"))
+source(here::here("02_Code", "99_utils", "utils_model.R"))
 load_project_packages()
 
 if (!file.exists(cfg$paths$panel_main)) stop("[ERROR] panel_main missing", call. = FALSE)

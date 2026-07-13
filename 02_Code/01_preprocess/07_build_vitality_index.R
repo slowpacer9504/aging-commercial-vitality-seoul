@@ -22,8 +22,8 @@
 # publishes the final canonical `panel_main`.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_qc.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_qc.R"))
 load_project_packages()
 
 if (!file.exists(cfg$paths$panel_main_pre_vitality)) stop("[ERROR] panel_main_pre_vitality.parquet missing", call. = FALSE)

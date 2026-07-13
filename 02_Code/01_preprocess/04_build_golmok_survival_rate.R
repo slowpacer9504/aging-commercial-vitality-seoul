@@ -23,8 +23,8 @@
 # preserves all parsed levels, and publishes the dong-level values as adm_cd-yq.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_qc.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_qc.R"))
 load_project_packages(extra = c("httr", "jsonlite"))
 ensure_dirs(cfg$required_dirs)
 

@@ -28,9 +28,9 @@
 # sequence only where EHSA needs temporal history.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_esda_maps.R"))
-source(here::here("02_Code", "R", "utils_spatial.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_esda_maps.R"))
+source(here::here("02_Code", "99_utils", "utils_spatial.R"))
 load_project_packages(extra = "Kendall")
 ensure_dirs(cfg$required_dirs)
 

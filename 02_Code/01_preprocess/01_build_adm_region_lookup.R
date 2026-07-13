@@ -22,8 +22,8 @@
 # first so this script uses the same path registry as the rest of the pipeline.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_spatial.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_spatial.R"))
 load_project_packages()
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 01_build_adm_region_lookup", timestamp()))

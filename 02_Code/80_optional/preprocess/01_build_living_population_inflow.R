@@ -23,8 +23,8 @@
 
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_qc.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_qc.R"))
 load_project_packages(extra = "data.table")
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 01_build_living_population_inflow", timestamp()))

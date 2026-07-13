@@ -30,10 +30,10 @@
 #    the final vitality-index publication step.
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_qc.R"))
-source(here::here("02_Code", "R", "utils_spatial.R"))
-source(here::here("02_Code", "R", "utils_transform.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_qc.R"))
+source(here::here("02_Code", "99_utils", "utils_spatial.R"))
+source(here::here("02_Code", "99_utils", "utils_transform.R"))
 load_project_packages()
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 06_build_analysis_panel", timestamp()))

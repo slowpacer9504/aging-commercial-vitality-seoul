@@ -10,7 +10,7 @@
 # Outputs   : seoul_raw_integrated_wide.parquet,
 #             seoul_raw_review.parquet,
 #             seoul_quarter_base.parquet, panel_quarter_aggregation_qc.csv
-# DependsOn : 02_Code/R/utils_io.R, 02_Code/R/utils_qc.R
+# DependsOn : 02_Code/99_utils/utils_io.R, 02_Code/99_utils/utils_qc.R
 #==============================================================================
 
 #==============================================================================
@@ -22,8 +22,8 @@
 # 2) seoul_quarter_base: analysis-ready quarterly base panel for later auxiliary joins
 source(here::here("02_Code", "00_setup", "config.R"))
 source(here::here("02_Code", "00_setup", "packages.R"))
-source(here::here("02_Code", "R", "utils_io.R"))
-source(here::here("02_Code", "R", "utils_qc.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_qc.R"))
 load_project_packages()
 ensure_dirs(cfg$required_dirs)
 
