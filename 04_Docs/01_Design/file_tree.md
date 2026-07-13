@@ -5,9 +5,36 @@ For detailed information regarding code execution or variables, please refer to 
 
 ```text
 ├── .gitignore                                     # Git ignore list
-├── AGENTS.md                                      # Guidelines for AI agent operations
-├── R.Rproj                                        # RStudio project configuration
 ├── README.md                                      # Main project overview and guide
+│
+├── 01_Data/                                       # Data directory (Git untracked except directory structure)
+│   ├── 01_Raw_Data/                               # Raw public datasets (01~14)
+│   │   ├── 01_Seoul_Commercial_District_Administrative_Dong/
+│   │   ├── 02_서울생활인구_관내이동/
+│   │   ├── 03_서울생활인구_대도시권_내외국인/
+│   │   ├── 04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)/
+│   │   ├── 05_서울시_공동주택_아파트_정보/
+│   │   ├── 06_한국부동산원_전국지가변동률조사/
+│   │   ├── 07_서울시_사업체현황(종사자규모별:동별)_통계/
+│   │   ├── 08_서울시_대규모점포_인허가_정보/
+│   │   ├── 09_서울시_병의원_인허가_정보/
+│   │   ├── 10_노인복지시설/
+│   │   ├── 11_서울시_역사_마스터_정보/
+│   │   ├── 12_서울시_버스정류소_위치_정보/
+│   │   ├── 13_도로/
+│   │   └── 14_보도/
+│   │
+│   ├── 02_Boundary/                               # Spatial boundary files (SHPs, GeoJSONs)
+│   │   ├── 01_Seoul/                              # Seoul administrative district boundary
+│   │   ├── 02_Commercial_District/                # Commercial district spatial boundaries
+│   │   ├── 03_Land_Price/                         # Land price zone boundaries
+│   │   ├── 04_Park/                               # Park and green zone spatial data
+│   │   └── 05_수치표고모델(DEM)_90M/              # Digital elevation model for slope calculation
+│   │
+│   └── 03_Processed_Data/                         # Preprocessed intermediate & final data
+│       ├── 01_Intermediate/                       # Intermediate files (geocode caches, crosswalks)
+│       ├── 02_Analysis_Ready/                     # Analyzable variables parquet datasets
+│       └── 03_Panel/                              # Final merged analysis panel (panel_main.parquet)
 │
 ├── 02_Code/                                       # Analysis pipeline scripts
 │   ├── README.md                                  # Detailed guide for running code
@@ -92,9 +119,17 @@ For detailed information regarding code execution or variables, please refer to 
 │       ├── utils_spdm.R
 │       └── utils_transform.R
 │
+├── 03_Output/                                     # Output artifacts (Git untracked except directory structure)
+│   ├── 01_Tables/                                 # Statistical tables (CSVs, HTMLs)
+│   ├── 02_Figures/                                # Model diagnostics and coefficient plots (PNGs)
+│   ├── 03_Maps/                                   # Local coefficient spatial distribution maps (PNGs)
+│   ├── 04_Logs/                                   # Process, geocoding, and runtime cache logs
+│   └── 05_report/                                 # Publication-ready presentation materials
+│
 └── 04_Docs/                                       # Design docs and Codebooks
+    ├── file_tree.md                               # Project file tree (this file)
+    │
     ├── 01_Design/
-    │   ├── file_tree.md                           # Project file tree (this file)
     │   ├── r_code_style_guide.md                  # R coding conventions
     │   ├── research_plan.md                       # Active research goals and framing
     │   └── research_procedure.md                  # Project procedure pipeline
