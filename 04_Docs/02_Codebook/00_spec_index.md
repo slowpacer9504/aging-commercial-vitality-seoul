@@ -1,33 +1,33 @@
-# 연구 스펙 인덱스 (Spec Index)
+# Research Specification Index
 
-이 문서는 코딩 시 참조해야 하는 핵심 명세의 허브다. 현재 active contract는 **서울시 행정동 분기 패널(`adm_cd x yq`)** 이다.
+This document serves as the central hub for core specifications to reference during coding. The current active contract is the **Seoul administrative dong quarterly panel (`adm_cd x yq`)**.
 
-구현 스크립트는 역할별 폴더 구조와 폴더-local 번호 체계를 따른다. 해석해야 할 canonical dataset/key/timing/output naming은 이 codebook이 선언하는 quarterly contract를 따른다.
+Implementation scripts follow a role-based folder structure and a folder-local numbering system. The canonical dataset, key, timing, and output naming conventions to be interpreted strictly follow the quarterly contract declared in this codebook.
 
-## 기준 설계 문서
+## Base Design Documents
 
 - [research_plan.md](../01_Design/research_plan.md)
 - [research_procedure.md](../01_Design/research_procedure.md)
 - [r_code_style_guide.md](../01_Design/r_code_style_guide.md)
 - [file_tree.md](../01_Design/file_tree.md)
 
-## 실행 템플릿
+## Execution Templates
 
 - [00_template_preprocessing_aging_commerce.R](../../02_Code/90_templates/00_template_preprocessing_aging_commerce.R)
 - [00_template_modeling_aging_commerce.R](../../02_Code/90_templates/00_template_modeling_aging_commerce.R)
 
-## 명세 문서
+## Specification Documents
 
-1. [01_data_spec.md](./01_data_spec.md) (동반 데이터셋 목록: [01_data_spec_datasets.csv](./01_data_spec_datasets.csv))
-2. [02_variable_dictionary.md](./02_variable_dictionary.md) (동반 변수 사전 테이블: [02_variable_dictionary.csv](./02_variable_dictionary.csv))
-3. [03_join_harmonization_rules.md](./03_join_harmonization_rules.md) (동반 조인/표준화 룰: [03_join_harmonization_rules.csv](./03_join_harmonization_rules.csv))
-4. [04_model_spec.md](./04_model_spec.md) (동반 모델 스펙: [04_model_spec.csv](./04_model_spec.csv))
+1. [01_data_spec.md](./01_data_spec.md) (Companion dataset list: [01_data_spec_datasets.csv](./01_data_spec_datasets.csv))
+2. [02_variable_dictionary.md](./02_variable_dictionary.md) (Companion variable dictionary table: [02_variable_dictionary.csv](./02_variable_dictionary.csv))
+3. [03_join_harmonization_rules.md](./03_join_harmonization_rules.md) (Companion join/harmonization rules: [03_join_harmonization_rules.csv](./03_join_harmonization_rules.csv))
+4. [04_model_spec.md](./04_model_spec.md) (Companion model specs: [04_model_spec.csv](./04_model_spec.csv))
 5. [99_spec_to_code_map.csv](./99_spec_to_code_map.csv)
 
-## 빠른 참조 순서
+## Quick Reference Sequence
 
-1. 데이터 계층, 출력 위치, QC 로그 확인: `01_data_spec.md` 및 `01_data_spec_datasets.csv`
-2. 변수 정의와 quarterly publication/as-of rule 확인: `02_variable_dictionary.md` 및 `02_variable_dictionary.csv`
-3. 조인 키와 harmonization rule 확인: `03_join_harmonization_rules.md` 및 `03_join_harmonization_rules.csv`
-4. 모형식, FE, timing, output contract 확인: `04_model_spec.md` 및 `04_model_spec.csv`
-5. 실제 스크립트 매핑 확인: `99_spec_to_code_map.csv`
+1. Review data layers, output locations, and QC logs: `01_data_spec.md` and `01_data_spec_datasets.csv`
+2. Check variable definitions and quarterly publication/as-of rules: `02_variable_dictionary.md` and `02_variable_dictionary.csv`
+3. Verify join keys and harmonization rules: `03_join_harmonization_rules.md` and `03_join_harmonization_rules.csv`
+4. Confirm model specifications, FEs, timing, and output contracts: `04_model_spec.md` and `04_model_spec.csv`
+5. Check actual script mappings: `99_spec_to_code_map.csv`
