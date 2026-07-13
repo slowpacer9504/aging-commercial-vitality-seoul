@@ -9,6 +9,7 @@
 - [research_plan.md](../01_Design/research_plan.md)
 - [research_procedure.md](../01_Design/research_procedure.md)
 - [r_code_style_guide.md](../01_Design/r_code_style_guide.md)
+- [file_tree.md](../01_Design/file_tree.md)
 
 ## 실행 템플릿
 
@@ -17,16 +18,16 @@
 
 ## 명세 문서
 
-1. [01_data_spec.md](./01_data_spec.md)
-2. [02_variable_dictionary.md](./02_variable_dictionary.md)
-3. [03_join_harmonization_rules.md](./03_join_harmonization_rules.md)
-4. [04_model_spec.md](./04_model_spec.md)
+1. [01_data_spec.md](./01_data_spec.md) (동반 데이터셋 목록: [01_data_spec_datasets.csv](./01_data_spec_datasets.csv))
+2. [02_variable_dictionary.md](./02_variable_dictionary.md) (동반 변수 사전 테이블: [02_variable_dictionary.csv](./02_variable_dictionary.csv))
+3. [03_join_harmonization_rules.md](./03_join_harmonization_rules.md) (동반 조인/표준화 룰: [03_join_harmonization_rules.csv](./03_join_harmonization_rules.csv))
+4. [04_model_spec.md](./04_model_spec.md) (동반 모델 스펙: [04_model_spec.csv](./04_model_spec.csv))
 5. [99_spec_to_code_map.csv](./99_spec_to_code_map.csv)
 
 ## 빠른 참조 순서
 
-1. 데이터 계층, 출력 위치, QC 로그 확인: `01_data_spec.md`
-2. 변수 정의와 quarterly publication/as-of rule 확인: `02_variable_dictionary.md`
-3. 조인 키와 harmonization rule 확인: `03_join_harmonization_rules.md`
-4. 모형식, FE, timing, output contract 확인: `04_model_spec.md`
+1. 데이터 계층, 출력 위치, QC 로그 확인: `01_data_spec.md` 및 `01_data_spec_datasets.csv`
+2. 변수 정의와 quarterly publication/as-of rule 확인: `02_variable_dictionary.md` 및 `02_variable_dictionary.csv`
+3. 조인 키와 harmonization rule 확인: `03_join_harmonization_rules.md` 및 `03_join_harmonization_rules.csv`
+4. 모형식, FE, timing, output contract 확인: `04_model_spec.md` 및 `04_model_spec.csv`
 5. 실제 스크립트 매핑 확인: `99_spec_to_code_map.csv`
