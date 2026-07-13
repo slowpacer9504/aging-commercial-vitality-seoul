@@ -1,235 +1,233 @@
-# 고령화가 근린 상업 활력에 미치는 영향: 서울시 빅데이터를 이용한 시공간 분석
+# The Impact of Population Aging on Neighborhood Commercial Vitality: A Spatiotemporal Analysis using Seoul Big Data
 
-## 1. 연구 배경과 문제의식
+## 1. Background and Problem Statement
 
-서울시는 빠른 고령화와 생활권 소비구조 재편이 동시에 진행되는 도시다. 같은 고령화라도 어떤 지역에서는 기초 수요를 안정시키고, 다른 지역에서는 유동성과 업종 구성을 약화시킬 수 있다. 따라서 고령화와 상업 활력의 관계는 단순 상관관계가 아니라, 공간의존과 지역 간 상호작용을 포함한 구조로 해석해야 한다.
+Seoul is experiencing rapid population aging alongside a restructuring of local consumption patterns. The same aging trend can stabilize basic demand in some areas, while weakening mobility and business diversity in others. Therefore, the relationship between aging and commercial vitality should not be interpreted as a simple correlation, but rather as a structure that encompasses spatial dependence and inter-regional interactions.
 
-이 문서는 현재 프로젝트의 active design anchor다. 실행 순서, 출력 계약, QC 규칙은 [research_procedure.md](research_procedure.md)와 codebook에서 구체화한다.
+This document serves as the active design anchor for the current project. Execution sequences, output contracts, and QC rules are specified in [research_procedure.md](research_procedure.md) and the codebook.
 
-## 2. 연구 목적
+## 2. Research Objectives
 
-본 연구의 목적은 서울시 근린 상권을 고령화와 공간의존의 관점에서 설명 가능한 실증 구조로 정리하는 것이다. 구체적 목적은 다음과 같다.
+The purpose of this study is to formulate an empirical framework capable of explaining neighborhood commercial districts in Seoul from the perspectives of aging and spatial dependence. The specific objectives are as follows:
 
-1. 거주 기반 고령화가 근린 상업 활력과 어떤 전역적 관계를 가지는지 추정한다.
-2. 거주 기반 고령화가 고령 유동인구 구성을 통해 상업 활력으로 이어지는 경로를 검정한다.
-3. 특정 지역의 고령화와 활력 변화가 주변 지역에 미치는 공간 파급효과를 추정한다.
-4. 전역모형으로 충분히 설명되지 않는 지역별 계수 차이를 국지적 시공간 패턴으로 확인한다.
+1. Estimate the global relationship between residence-based aging and neighborhood commercial vitality.
+2. Estimate the spatial spillover effects that aging and vitality changes in a specific area have on neighboring regions.
+3. Identify local spatiotemporal patterns to account for regional coefficient variations that the global model cannot fully explain.
 
-본 연구는 상업 활력을 하나의 수치로 환원하지 않는다. 경제적 활력, 사회적 활력, 시간적 활력, 안정성의 네 차원을 우선 해석하고, 종합지수는 보조 요약치로 사용한다.
+This study does not reduce commercial vitality to a single numerical value. Instead, we first interpret the four dimensions of economic vitality, social vitality, temporal vitality, and structural stability, utilizing the composite index only as a supplementary summary.
 
-## 3. 주요 연구질문
+## 3. Key Research Questions
 
-- `RQ1. 직접효과와 전역적 관계`
-  - `age60_resident_share`은 서울시 행정동의 근린 상업 활력과 어떤 방향과 크기의 관계를 가지는가.
-  - 그 관계는 `economic`, `social`, `temporal`, `stability` 차원에서 서로 다르게 나타나는가.
-  - `lag4_age60_resident_share -> lag2_age60_floating_share -> vitality` 경로에서 고령 유동인구 구성은 매개 채널로 작동하는가.
+- `RQ1. Direct Effects and Global Relationships`
+  - In what direction and magnitude does `age60_resident_share` relate to neighborhood commercial vitality in Seoul's administrative dongs?
+  - Does this relationship manifest differently across `economic`, `social`, `temporal`, and `stability` dimensions?
 
-- `RQ2. 공간의존과 spillover`
-  - 고령화와 상업 활력은 공간 자기상관을 보이는가.
-  - 비공간 기준선의 잔차에 공간의존이 남는가.
-  - 공간모형에서 직접효과, 간접효과, 총효과는 각각 어떤 패턴을 보이는가.
+- `RQ2. Spatial Dependence and Spillovers`
+  - Do aging and commercial vitality exhibit spatial autocorrelation?
+  - Does spatial dependence remain in the residuals of the non-spatial baseline model?
+  - What patterns emerge in the direct, indirect, and total effects within the spatial model?
 
-- `RQ3. 국지적 시공간 이질성`
-  - 전역 평균효과가 모든 지역에서 비슷하게 나타나는가.
-  - 지역별 계수의 크기와 방향은 어떤 공간적 패턴을 보이는가.
+- `RQ3. Local Spatiotemporal Heterogeneity`
+  - Does the global average effect apply uniformly across all regions?
+  - What spatial patterns do the magnitude and direction of regional coefficients exhibit?
 
-`aging x covid_period` 상호작용, 대체 활력지수, 추가 age-mix와 sector-share 가족은 appendix 또는 robustness로 다룬다. 본문 실증서사의 중심 질문은 위 세 가지다.
-[`80_optional/**`](../../02_Code/80_optional)의 appendix/sidecar 코드는 기본 [run_all.R](../../02_Code/run_all.R) 밖에 두며, 해당 파일을 직접 실행하면 별도 실행 플래그 없이 수행되는 manual surface로 관리한다.
+The `aging x covid_period` interaction, alternative vitality indices, and additional age-mix and sector-share models are addressed in the appendix or robustness checks. The main empirical narrative focuses on the three core questions above.
+Appendix/sidecar scripts under [`80_optional/**`](../../02_Code/80_optional) are kept separate from the main [run_all.R](../../02_Code/run_all.R). They are managed as a manual execution surface, running without explicit execution flags when the files are run directly.
 
-## 4. 분석 단위와 범위
+## 4. Unit of Analysis and Scope
 
-### 4.1 공간 단위
+### 4.1 Spatial Unit
 
-- 분석 단위는 **서울시 2020년 기준 행정동(`adm_cd`)** 이다.
-- 공간가중행렬과 지도 시각화도 같은 경계를 사용한다.
-- geometry 처리 기준 좌표계는 `EPSG:5179`다.
+- The unit of analysis is the **administrative dong (`adm_cd`) of Seoul, based on the 2020 boundary**.
+- Spatial weight matrices and map visualizations use these exact same boundaries.
+- The reference coordinate reference system (CRS) for geometry processing is `EPSG:5179`.
 
-행정동 수준은 생활권 상권과 주민구성의 상호작용을 비교적 촘촘하게 관찰할 수 있고, 보조 공공데이터와 결합 가능하며, 공간모형에서 해석 가능한 인접 구조를 제공한다.
+The administrative dong level provides a suitably granular view of the interactions between neighborhood commercial areas and resident demographics. It is also compatible with supplementary public data and provides an interpretable adjacency structure for spatial modeling.
 
-### 4.2 시간 단위와 범위
+### 4.2 Temporal Unit and Scope
 
-- canonical panel 구축 범위는 **2019Q1 ~ 2025Q4** 이고, active 분석기간은 **2019Q4 ~ 2025Q4** 이다.
-- active 분석 단위는 `adm_cd x yq` 분기 패널이다.
-- active 시간 키는 `year`, `quarter`, `yq`, `quarter_index`다.
-- canonical model timing contract는 **시차 적용 분기 계약** 이다. 독립변수와 통제변수는 `t-4` 값을 사용한다. Optional SPDM channel path sidecar의 매개변수는 `t-2` 값을 사용한다.
-- 2018년 주민등록인구, 버스정류소, 공시지가 source는 2019년 active panel의 4분기 시차 계산을 위한 lag-support 범위로만 사용한다.
-- 2019Q1~2019Q3는 rolling 4-quarter 활력지표와 시차 변수 검증을 위한 warm-up 구간이며, 본문 ESDA/TWFE/SPDM/GTWR와 reporting 표본에는 포함하지 않는다.
+- The canonical panel covers **2019Q1 to 2025Q4**, while the active analysis period is **2019Q4 to 2025Q4**.
+- The active analysis unit is the `adm_cd x yq` quarterly panel.
+- The active time keys are `year`, `quarter`, `yq`, and `quarter_index`.
+- The canonical model timing contract relies on **lagged quarter variables**. Independent and control variables utilize `t-4` values. The mediator for the optional SPDM channel path sidecar uses `t-2` values.
+- Source data from 2018 for registered resident population, bus stops, and official land prices are exclusively used as the lag-support range to calculate 4-quarter lags for the 2019 active panel.
+- The period from 2019Q1 to 2019Q3 serves as a warm-up phase to construct rolling 4-quarter vitality indicators and lag variables. It is excluded from the main ESDA/TWFE/SPDM/GTWR models and reporting samples.
 
-분기 자료는 active shared panel의 시간축이다. 연도·정적 자료는 같은 값이 반복될 수 있음을 명시하되, 반복값 자체를 숨기지 않고 source precision/QC로 추적한다.
+Quarterly data forms the time axis of the active shared panel. While annual and static data may contain repeated values across quarters, we explicitly retain these repetitions and track them via source precision and QC checks.
 
-### 4.3 데이터 소스
+### 4.3 Data Sources
 
-| 구분 | 기간 | 용도 | 상태 |
+| Category | Period | Purpose | Status |
 | --- | --- | --- | --- |
-| 서울시 상권분석서비스 | 2019Q1~2025Q4 | 분기 base 구축의 핵심 source | active |
-| 행정안전부 주민등록인구현황 | 2018~2025 | 상주인구 규모와 고령 상주인구 비중, 2018은 lag-support | active |
-| 보조 공공데이터 | 2018~2025 가용 연도 | 통제변수, 물리·입지 보조정보, 2018은 lag-support | active |
-| 2020 기준 행정동 경계 | static | 공간 단위, W 구축 | active |
+| Seoul Commercial District Analysis Service | 2019Q1-2025Q4 | Core source for building the quarterly base | active |
+| Ministry of the Interior and Safety Resident Registration Population | 2018-2025 | Resident population size and elderly resident share (2018 is for lag-support) | active |
+| Supplementary Public Data | 2018-2025 available years | Control variables, physical/location auxiliary info (2018 is for lag-support) | active |
+| 2020 Administrative Dong Boundaries | static | Spatial unit, W matrix construction | active |
 
-서울시 상권분석서비스 원천 중 분기 자료는 `adm_cd-yq` 기준으로 직접 투입한다. 연도·정적 자료는 `adm_cd-year` 또는 `adm_cd` 수준에서 정리한 뒤 해당 분기의 quarter-end as-of 값으로 결합한다. 따라서 본문 해석의 기준 자료는 “분기 단위 상권 변동을 보존하되, 저주기 source의 precision을 명시한 shared panel”이다.
+Among the Seoul Commercial District Analysis Service sources, quarterly data is injected directly at the `adm_cd-yq` level. Annual and static data are aggregated at the `adm_cd-year` or `adm_cd` level, then merged into the corresponding quarter using a quarter-end as-of rule. Thus, the reference data for the main text interpretation is a "shared panel that preserves quarterly commercial fluctuations while explicitly noting the precision of lower-frequency sources."
 
-### 4.4 분기화 원칙
+### 4.4 Quarterization Principles
 
-분기 단위 전환은 원천 주기별 발행 규칙과 as-of 규칙을 고정하는 작업이다.
+The transition to a quarterly unit involves standardizing the publication rules and as-of rules for each source frequency.
 
-1. **additive flow**
-   - 매출액, 거래건수처럼 분기 누적 의미가 있는 변수는 분기 합계로 발행한다.
-2. **level / stock / share / density**
-   - 점포수, 유동인구, 비중, 밀도처럼 수준을 나타내는 변수는 분기 대표값 또는 분모가중 분기 비중으로 발행한다.
-   - 월별 source는 분기 내 월평균 또는 분모가중 분기 비중으로 집계한다.
-   - 서울시 상권분석서비스의 Q4 업데이트형 구조 source는 관측 가능한 분기값을 우선 사용하고, 연도·정적 source는 quarter-end as-of 규칙으로 결합한다.
-   - 상주인구 규모와 고령 상주인구 비중은 행정안전부 주민등록인구현황 5세별 월별 자료를 2020 기준 행정동 경계로 정합한 뒤 분기 내 월별 stock 평균과 분모가중 분기 비중으로 산출한다.
-3. **temporal / stability component**
-   - 시간대 entropy와 구조 다양성은 분기 단면에서 계산한다.
-   - 분기 안정성은 현재 분기까지의 rolling 4-quarter 분포로 계산한다.
-4. **annual / static auxiliary**
-   - 연도 또는 정적 자료는 `adm_cd-year` 또는 `adm_cd`에서 정리한 뒤 `adm_cd-yq` 패널에 as-of 방식으로 결합하고, source precision을 기록한다.
-   - 공시지가는 행정동-연도별 면적가중평균을 만든 뒤 같은 연도의 4개 분기에 동일하게 발행한다.
-   - 대중교통 접근성의 버스정류장 source처럼 단일 snapshot과 월별 snapshot이 섞인 자료는 분기별 발행 snapshot과 carry-forward 여부를 QC에 기록한다.
+1. **Additive flow**
+   - Variables that inherently accumulate over a quarter (e.g., total sales, transaction counts) are published as quarterly sums.
+2. **Level / stock / share / density**
+   - Variables indicating levels (e.g., number of stores, floating population, shares, densities) are published as quarterly representative values or denominator-weighted quarterly shares.
+   - Monthly sources are aggregated into quarterly monthly averages or denominator-weighted quarterly shares.
+   - For the Q4-update structure sources from the Seoul Commercial District Analysis Service, observable quarterly values are prioritized, while annual/static sources are merged using the quarter-end as-of rule.
+   - Resident population size and the elderly resident share are matched to the 2020 administrative dong boundaries from the 5-year age group monthly data of the Ministry of the Interior and Safety. They are then calculated as intra-quarter monthly stock averages and denominator-weighted quarterly shares.
+3. **Temporal / stability component**
+   - Time-of-day entropy and structural diversity are calculated within a single quarter cross-section.
+   - Quarterly stability is computed using the rolling 4-quarter distribution leading up to the current quarter.
+4. **Annual / static auxiliary**
+   - Annual or static data is aggregated at the `adm_cd-year` or `adm_cd` level, joined to the `adm_cd-yq` panel using an as-of approach, and its source precision is recorded.
+   - Official land prices are area-weighted averages by administrative dong-year, and the identical value is published across all four quarters of that year.
+   - For data blending a single snapshot and monthly snapshots (e.g., the bus stop source for transit accessibility), the snapshot published per quarter and its carry-forward status are recorded in the QC.
 
-이 원칙은 분기 상권 변동을 보존하면서 저주기 source의 반복값 문제를 명시적으로 관리하기 위한 최소 계약이다. 단, 본 분석 모형의 시간 순서를 분명히 하기 위해 canonical panel에는 등록된 시차 변수만 추가한다. 현재 허용 시차 변수는 `lag4_age60_resident_share`, `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`, `lag4_ln_workplace_worker_pop`, `lag2_age60_floating_share`다.
+These principles constitute the minimal contract for explicitly managing the repeated value issue of low-frequency sources while preserving quarterly commercial fluctuations. To clarify the temporal sequence in our analysis models, only registered lag variables are added to the canonical panel. Currently permitted lag variables are `lag4_age60_resident_share`, `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`, `lag4_ln_workplace_worker_pop`, and `lag2_age60_floating_share`.
 
-## 5. 이론적 해석 틀
+## 5. Theoretical Framework
 
-본 연구는 고령화와 상권 활력의 관계를 아래 네 층위에서 해석한다.
+This study interprets the relationship between aging and commercial vitality through the following four layers.
 
-### 5.1 직접효과
+### 5.1 Direct Effects
 
-거주 기반 고령화는 지역의 소비 리듬, 업종 수요, 이동 패턴, 체류 시간 구조를 바꿀 수 있다. 이 변화는 매출, 점포구성, 시간대 분산, 생존 안정성에 각기 다른 방식으로 반영될 수 있다.
+Residence-based aging can alter the rhythm of local consumption, demand across business sectors, mobility patterns, and duration of stay. These changes can uniquely manifest in sales, store composition, time-of-day variance, and survival stability.
 
-### 5.2 공간 파급효과
+### 5.2 Spatial Spillover Effects
 
-상권은 행정경계 안에서 닫혀 움직이지 않는다. 인접 지역의 소비 구조, 상권 접근성, 생활권 이동은 서로 연결되어 있으므로 특정 지역의 고령화와 활력 변화는 주변 지역으로 확산될 수 있다.
+Commercial districts do not operate in isolation within administrative boundaries. Given that consumption structures, commercial accessibility, and mobility within living zones are interconnected across adjacent areas, aging and vitality changes in one region can ripple outward to surrounding areas.
 
-### 5.3 비공간 기준선과 공간 확장모형의 관계
+### 5.3 Relationship Between Non-Spatial Baseline and Spatial Extension Models
 
-TWFE는 비공간 기준선이다. 지역 고정효과와 분기 고정효과를 통해 불변 특성과 공통 충격을 통제하고, 동일한 quarterly sample 위에서 해석 가능한 baseline을 제공한다. 그러나 잔차에 공간의존이 남는다면 이는 SPDM 도입의 실증적 근거가 된다.
+The TWFE model serves as the non-spatial baseline. By controlling for time-invariant characteristics and common shocks via regional and quarterly fixed effects, it provides an interpretable baseline on the identical quarterly sample. If spatial dependence remains in its residuals, this provides the empirical justification for introducing the SPDM.
 
-### 5.4 국지적 이질성
+### 5.4 Local Heterogeneity
 
-GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타나는지 보여주는 optional local sidecar다. 다만 이는 전역 인과 추정의 대체가 아니라, main resident-only quarterly contract 위에서 국지 패턴을 설명하는 보조 layer다. Floating-only, age-band, sector-share GTWR는 [`80_optional/gtwr`](../../02_Code/80_optional/gtwr) 아래의 appendix sidecar로 두며, 해당 스크립트를 직접 실행할 때 실제 `GWmodel::gtwr()`를 수행한다.
+The GTWR is an optional local sidecar that illustrates how the average effects of the global model vary across regions. Rather than replacing the global causal estimates, it acts as a supplementary layer explaining local patterns atop the main resident-only quarterly contract. Floating-only, age-band, and sector-share GTWR models are designated as appendix sidecars under [`80_optional/gtwr`](../../02_Code/80_optional/gtwr), invoking the actual `GWmodel::gtwr()` when their respective scripts are executed directly.
 
-## 6. 변수 설계
+## 6. Variable Design
 
-### 6.1 핵심 독립변수
+### 6.1 Core Independent Variables
 
-- **main exposure**
+- **Main exposure**
   - `lag4_age60_resident_share`
-- **supporting exposures**
+- **Supporting exposures**
   - `age60_resident_share`
   - `age60_floating_share`
   - `age60_sales_share`
 
-`lag4_age60_resident_share`를 메인 노출변수로 두는 이유는 거주 기반 고령화가 생활권 상권의 구조적 수요 기반을 가장 안정적으로 반영하되, 종속변수와의 동시점 반응을 피하기 위해서다. 원천 `age60_resident_share`는 서울시 상권분석서비스의 10세 단위 상주인구가 아니라 행정안전부 주민등록인구현황의 5세 단위 월별 자료에서 산출한다. `age60_floating_share`와 `age60_sales_share`는 활동 및 소비 측면의 보조 축으로 해석하며, optional SPDM channel path sidecar의 mediator는 `lag2_age60_floating_share`를 사용한다.
-행정안전부 자료에서는 추후 민감도 분석을 위해 `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, `age65plus_resident_share`도 함께 발행하지만, canonical main exposure는 `lag4_age60_resident_share`로 유지한다.
+`lag4_age60_resident_share` serves as the main exposure variable because residence-based aging most stably reflects the structural demand base of a local commercial district, while the 4-quarter lag avoids simultaneous responses with the dependent variables. The source `age60_resident_share` is derived not from the 10-year resident population of the Seoul Commercial District Analysis Service, but from the 5-year monthly data of the Ministry of the Interior and Safety Resident Registration Population. `age60_floating_share` and `age60_sales_share` are interpreted as supplementary axes of activity and consumption. The mediator for the optional SPDM channel path sidecar uses `lag2_age60_floating_share`.
+While the Ministry of the Interior and Safety data also issues `age60_64_resident_share`, `age65_74_resident_share`, `age75plus_resident_share`, and `age65plus_resident_share` for future sensitivity analyses, the canonical main exposure is strictly maintained as `lag4_age60_resident_share`.
 
-### 6.2 종속변수
+### 6.2 Dependent Variables
 
-- **primary outcomes**
+- **Primary outcomes**
   - `vitality_sub_economic`
   - `vitality_sub_social`
   - `vitality_sub_temporal`
   - `vitality_sub_stability`
-- **supplementary composite**
+- **Supplementary composite**
   - `vitality_index_base`
-- **robustness composites**
+- **Robustness composites**
   - `vitality_index_entropy`
   - `vitality_index_pca`
 
-본문 결과표와 해석의 중심은 네 개의 하위 활력지표다. 종합지수는 전체 방향이 일관적인지 확인하는 보조 요약치로 둔다.
-경제적 활력 하위지수는 추정매출 건수와 총 추정매출액을 각각 pooled z-score로 표준화한 뒤 평균해 구성한다. 총 점포수와 점포당 매출액은 패널에는 유지하되, 경제 하위지수 구성요소에서는 제외한다.
-사회적 활력 하위지수는 상권 내부 유동인구 규모와 서울생활인구 기반 외부 유입 인구 규모를 함께 반영한다.
-시간적 활력 하위지수는 하루 안의 시간대 분포와 1년 안의 분기 안정성을 함께 반영한다.
-안정성 하위지수는 구조적 다양성 축과 점포 존속성 축을 동일가중으로 결합한다. 구조적 다양성 축은 업종 다양성 지수의 pooled z-score이고, 점포 존속성 축은 서울 대비 상대 영업월수와 서울시 상권분석서비스 신생기업 3년 생존율(`survival_3y`)을 각각 pooled z-score로 표준화한 뒤 평균한다. `closure_rate`와 `stability_score = -closure_rate`는 폐업압력 진단용 지원 변수로 유지하지만, active 안정성 하위지수 구성요소에서는 제외한다.
-활력지수의 개별 구성요소와 하위지수는 분기별 cross-section 기준이 아니라 active 분석기간인 `2019Q4~2025Q4 adm_cd-yq` 표본의 평균과 표준편차를 기준으로 pooled z-score 표준화한다. 이 기준은 구성요소 간 스케일을 맞추되 분기 간 수준 변화 자체는 지수 안에 유지하기 위한 active contract다.
+The main results tables and interpretations focus on the four primary vitality sub-indices. The composite index acts as a supplementary summary to verify if the overall direction remains consistent.
+The economic vitality sub-index is constructed by calculating the pooled z-scores of estimated transaction counts and total estimated sales, and then averaging them. Total store count and sales per store are retained in the panel but excluded from the economic sub-index components.
+The social vitality sub-index incorporates both the internal floating population size of the commercial district and the external inflow population size based on Seoul Living Population data.
+The temporal vitality sub-index reflects both the time-of-day distribution within a day and the quarterly stability over a year.
+The stability sub-index combines a structural diversity axis and a store persistence axis with equal weights. The structural diversity axis is the pooled z-score of the sector diversity index. The store persistence axis is the average of the pooled z-scores of relative operating months compared to Seoul and the 3-year survival rate of new businesses (`survival_3y`) from the Seoul Commercial District Analysis Service. `closure_rate` and `stability_score = -closure_rate` are kept as supporting diagnostic variables for closure pressure, but are excluded from the active stability sub-index components.
+The individual components and sub-indices of vitality are standardized using pooled z-scores based on the mean and standard deviation of the active analysis period (`2019Q4-2025Q4 adm_cd-yq` sample), rather than cross-sectional quarterly benchmarks. This active contract aligns the scale across components while preserving the level changes across quarters within the indices themselves.
 
-### 6.3 통제변수
+### 6.3 Control Variables
 
-메인 TWFE/SPDM의 기본 control candidate pool은 아래 네 개의 4분기 시차 변수다. `ln_floating_pop`은 사회적 활력 구성요소와 종합 활력지수에 포함되므로 메인 통제변수에서는 사용하지 않는다. `ln_apartment_household_count`, `hospital_count_aux_core`, `mall_count_aux_core`는 `panel_main`에 진단/지원 변수로 남기지만 active TWFE/SPDM/GTWR 통제변수로 투입하지 않는다.
+The baseline control candidate pool for the main TWFE/SPDM consists of the following four 4-quarter lag variables. Since `ln_floating_pop` is included in the social vitality components and the composite vitality index, it is not used as a main control variable. `ln_apartment_household_count`, `hospital_count_aux_core`, and `mall_count_aux_core` remain in `panel_main` as diagnostic/support variables but are not included as active TWFE/SPDM/GTWR controls.
 
 - `lag4_ln_resident_pop`
 - `lag4_ln_land_price_adjusted`
 - `lag4_transit_accessibility`
 - `lag4_ln_workplace_worker_pop`
 
-`ln_land_price_adjusted`는 행정동-연도별 면적가중 공시지가에 한국부동산원 월별 지역별 지가지수의 분기 평균 보정계수를 곱해 만든 지가지수 보정 토지가격 변수다. 법정동 지가지수는 법정동-행정동 공간교차 면적가중치로 행정동 단위에 정합한다. 원 연간 공시지가 로그인 `ln_official_land_price`는 패널에 보존하되 active 통제변수로 쓰지 않는다.
-`ln_workplace_worker_pop`은 서울시 사업체현황 종사자규모별 동별 통계의 행정동별 총 종사자 수를 2020 기준 행정동으로 정합한 뒤 `log1p`를 적용한 값이다. 2018~2019년 `항동`은 2020년 `오류2동`/`항동` 종사자 비율로 분동 전 `오류2동` 값을 배분하고, 2025년은 2024년 최신 관측값을 carry-forward한 as-of 값으로 둔다. main model에는 해당 변수의 4분기 시차값을 투입한다.
+`ln_land_price_adjusted` is an adjusted land price index created by multiplying the area-weighted official land price by administrative dong-year with the quarterly average adjustment coefficient of the Korea Real Estate Board's monthly regional land price index. The land price index by legal dong is mapped to the administrative dong unit using a legal dong-administrative dong spatial intersection area weight. The log of the original annual official land price, `ln_official_land_price`, is preserved in the panel but not used as an active control variable.
+`ln_workplace_worker_pop` is derived by matching the total number of workers per administrative dong (from Seoul's establishment statistics by worker size) to the 2020 administrative dong boundaries and applying `log1p`. For 2018-2019, the value for `Hang-dong` is distributed using the 2020 worker ratio between `Oryu 2-dong` and `Hang-dong` to allocate the pre-split `Oryu 2-dong` value. For 2025, the latest observed value from 2024 is carried forward as an as-of value. The main model utilizes the 4-quarter lag of this variable.
 
-메인 TWFE/SPDM은 finite observation 수와 추정 가능성에 따라 usable subset을 기록한다.
+The main TWFE/SPDM logs a usable subset based on finite observation counts and estimability.
 
-GTWR main sidecar는 local design matrix의 다중공선성 민감도를 고려해 별도 control contract를 둔다.
+The GTWR main sidecar employs a distinct control contract to account for the multicollinearity sensitivity of the local design matrix.
 
-- `lean` 기본값
+- `lean` Default Set
   - `lag4_ln_resident_pop`
   - `lag4_ln_land_price_adjusted`
-- `extended` 선택값
-  - `lean` 두 변수
+- `extended` Optional Set
+  - The two variables from the `lean` set
   - `lag4_transit_accessibility`
   - `lag4_ln_workplace_worker_pop`
 
-`ln_resident_pop`은 행정안전부 주민등록인구현황의 행정동-월별 총인구 stock을 분기 내 평균한 뒤 `log1p`를 적용한 값이다. `transit_accessibility`는 `bus_stop_count_aux`와 `subway_station_count_aux`의 pooled z-score 평균으로 만든 대중교통 접근성 통제변수이며, main model에는 해당 변수의 4분기 시차 composite를 투입한다. 모든 GTWR control set은 complete-case 표본과 GTWR spatiotemporal weight 기반 local condition-number를 별도 진단으로 기록한다. 이 local CN은 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 시공간 거리·커널 가중치에 맞춰 적용한 보조 진단이다.
+`ln_resident_pop` is the `log1p` of the intra-quarter average of the administrative dong-monthly total population stock from the Ministry of the Interior and Safety Resident Registration Population. `transit_accessibility` is a public transit accessibility control variable generated by averaging the pooled z-scores of `bus_stop_count_aux` and `subway_station_count_aux`. The main model injects the 4-quarter lag composite of this variable. Every GTWR control set logs a separate diagnostic for its complete-case sample and the local condition-number based on the GTWR spatiotemporal weights. This local CN is an auxiliary diagnostic applying the `local_CN` calculation convention from `GWmodel::gwr.collin.diagno()` tailored to the spatiotemporal distance and kernel weights of the GTWR.
 
-### 6.4 기간 플래그와 보조 변수
+### 6.4 Period Flags and Auxiliary Variables
 
 - `covid_period`
-  - `2020Q1~2022Q2` 분기 범위를 표시하는 appendix interaction flag다.
-- 추가 age-mix, 대체 활력지수 정의, 표본창 민감도는 robustness 또는 appendix에서 다룬다.
+  - An appendix interaction flag indicating the quarter range `2020Q1-2022Q2`.
+- Additional age-mixes, alternative vitality index definitions, and sample window sensitivities are covered in robustness checks or the appendix.
 
-## 7. 방법론 계층
+## 7. Methodology Stack
 
-active methodology stack은 아래와 같다.
+The active methodology stack is configured as follows:
 
 ### 7.1 ESDA
 
-- 목적: 분포와 공간 자기상관의 존재를 확인한다.
-- 역할: 공간의존과 spillover 논의를 시작하기 위한 탐색 단계다.
-- 핵심 출력: Global Moran's I, Bivariate Moran's I, LISA, EHSA, 분포 지도
+- Purpose: Verify distributions and the presence of spatial autocorrelation.
+- Role: An exploratory step to initiate discussions on spatial dependence and spillovers.
+- Key Outputs: Global Moran's I, Bivariate Moran's I, LISA, EHSA, and distribution maps.
 
 ### 7.2 TWFE
 
-- 목적: 비공간 기준선과 공통 quarterly sample baseline을 제공한다.
-- 역할: main inferential endpoint가 아니라 baseline / spatial-diagnostic layer다.
-- 핵심 추가 기능: 잔차 Moran's I를 통해 공간모형 도입의 정당성을 제시한다.
+- Purpose: Provide a non-spatial baseline and a common quarterly sample baseline.
+- Role: Functions as a baseline/spatial-diagnostic layer, rather than the main inferential endpoint.
+- Key Feature: Justifies the introduction of spatial models via residual Moran's I.
 
 ### 7.3 SPDM
 
-- 목적: 전역적 직접효과와 간접효과를 동시에 추정한다.
-- 역할: active design의 **main global model** 이다.
-- 핵심 보고 방식: coefficient보다 **direct / indirect / total effects** 중심
-- active 구현은 true SDM/SPDM이다. 즉 `W y`, `X`, `W X`를 함께 포함한다.
-- [02_run_spdm_main.R](../../02_Code/03_models/02_run_spdm_main.R)는 `splm::spml()`의 Durbin placeholder에 의존하지 않고, quarterly panel에서 `W lag4_age60_resident_share`와 `W controls`를 직접 생성한 뒤 추정한다.
-- direct / indirect / total effects는 `S = (I - rho W)^(-1)`, `S(beta I + theta W)` 행렬식으로 계산한다.
-- coefficient와 spatial parameter의 표준오차는 `splm::spml()` fitted object의 model-based asymptotic ML `vcov`를 사용한다. impact 표준오차와 신뢰구간은 같은 model-based `vcov`에서 `rho`, `beta`, `theta`를 simulation draw로 생성해 계산하며, 이를 robust SE로 부르지 않는다.
-- [80_optional/spdm/07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R)는 optional mediation-oriented channel path sidecar이다. 같은 quarterly Queen SDM 계약에서 mediator 미포함 `c` 경로, `lag4_age60_resident_share -> lag2_age60_floating_share`의 `a` 경로, `lag2_age60_floating_share -> vitality`의 `b` 경로, mediator를 통제한 `c'` 경로를 같은 outcome별 balanced sample에서 추정하고 `a*b` 간접효과와 `c - c'` 직접효과 약화 진단을 별도 산출물로 기록한다. 기본 추론은 행정동 단위 wild residual bootstrap이며, bootstrap이 비활성화되었거나 유효 draw가 부족할 때만 `delta_independent_approx`를 fallback으로 사용한다.
-- channel path outcome은 유동인구 source와 직접 겹치는 `vitality_sub_social` 단독 지표를 제외하고, `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, `vitality_index_base`를 사용한다. 종합 활력지수는 네 하위지표를 모두 포함하는 기본 정의를 유지하되, 해석에서는 사회적 활력 구성요소가 mediator source와 겹친다는 caveat를 함께 둔다.
+- Purpose: Simultaneously estimate global direct and indirect effects.
+- Role: Acts as the **main global model** of the active design.
+- Core Reporting Focus: Emphasizes **direct / indirect / total effects** over plain coefficients.
+- The active implementation is a true SDM/SPDM, meaning it explicitly includes `W y`, `X`, and `W X` together.
+- [02_run_spdm_main.R](../../02_Code/03_models/02_run_spdm_main.R) does not rely on `splm::spml()`'s Durbin placeholder. Instead, it directly creates and estimates `W lag4_age60_resident_share` and `W controls` from the quarterly panel.
+- Direct, indirect, and total effects are computed using the matrix determinants `S = (I - rho W)^(-1)` and `S(beta I + theta W)`.
+- Standard errors for coefficients and spatial parameters use the model-based asymptotic ML `vcov` from the `splm::spml()` fitted object. Impact standard errors and confidence intervals are calculated by drawing simulations for `rho`, `beta`, and `theta` from the same model-based `vcov`, and these are not termed robust SEs.
+- [80_optional/spdm/07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R) is an optional mediation-oriented channel path sidecar. Within the same quarterly Queen SDM contract, it estimates the non-mediated `c` path, the `a` path (`lag4_age60_resident_share -> lag2_age60_floating_share`), the `b` path (`lag2_age60_floating_share -> vitality`), and the mediator-controlled `c'` path on the identical outcome-specific balanced sample. The `a*b` indirect effect and the attenuation of the direct effect (`c - c'`) are logged as separate outputs. Inference primarily utilizes an administrative dong-level wild residual bootstrap, falling back to `delta_independent_approx` only when the bootstrap is disabled or yields insufficient valid draws.
+- Channel path outcomes utilize `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, and `vitality_index_base`, excluding the standalone `vitality_sub_social` indicator due to direct overlap with the mediator source. The composite vitality index maintains its default definition containing all four sub-indices, but interpretations are caveated noting that the social vitality component overlaps with the mediator source.
 
 ### 7.4 GTWR
 
-- 목적: 전역모형 이후 남는 국지적 이질성을 시각화한다.
-- 역할: **resident-only quarterly main local sidecar** 이며 기본 pipeline에서는 optional이다. Floating-only, age-band, sector-share local GTWR는 [`80_optional/gtwr`](../../02_Code/80_optional/gtwr)의 해당 스크립트를 직접 실행하는 appendix sidecar다.
-- 해석 수준: global causal claim이 아니라 local heterogeneity description
-- bandwidth: main GTWR는 outcome 간 비교 가능성, local coefficient 안정성, bandwidth-selection 결과, sensitivity 진단을 함께 고려해 fixed adaptive `GTWR_ST_BW=60`을 기본으로 사용한다. `bw.gtwr()` full-panel/anchor-quarter 탐색은 [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R)에서만 실행하고, 선택 결과를 main GTWR에 자동 주입하지 않는다. [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R)는 고정 adaptive bandwidth grid `30,60,90,120,180`을 같은 spec에 반복 적용해 baseline `60` 대비 latest-quarter beta agreement, sign flip, local condition-number 변화를 보조표로 기록한다.
-- lamda sensitivity: [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R)가 `GTWR_LAMDA_SENSITIVITY_GRID`의 값별로 GTWR를 재추정하고, baseline latest-quarter beta와의 상관, 절대변화, sign flip, local condition-number 변화를 보조표로 기록한다.
-- control set: 기본값은 `GTWR_CONTROL_SET=lean`이며, `extended`는 대중교통 접근성 composite를 추가하는 민감도/확장 사양으로 사용한다.
-- reporting surface: GTWR local coefficient는 latest quarter beta를 기준으로 요약하고, earliest-to-latest delta는 보조 appendix diagnostic으로만 파생한다.
+- Purpose: Visualize the local heterogeneity remaining after the global model.
+- Role: A **resident-only quarterly main local sidecar**, positioned as optional within the standard pipeline. Floating-only, age-band, and sector-share local GTWR models are appendix sidecars, generated by directly executing their respective scripts in [`80_optional/gtwr`](../../02_Code/80_optional/gtwr).
+- Interpretation Level: Local heterogeneity description rather than a global causal claim.
+- Bandwidth: To accommodate outcome comparability, local coefficient stability, bandwidth-selection results, and sensitivity diagnostics, the main GTWR defaults to a fixed adaptive bandwidth of `GTWR_ST_BW=60`. The `bw.gtwr()` full-panel/anchor-quarter exploration is strictly executed in [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), and its selection results are not automatically injected into the main GTWR. [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R) iteratively applies a fixed adaptive bandwidth grid `30,60,90,120,180` to the same specification, logging the latest-quarter beta agreement, sign flips, and local condition-number shifts compared to the `60` baseline in a supplementary table.
+- Lamda Sensitivity: [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R) re-estimates the GTWR for each value in the `GTWR_LAMDA_SENSITIVITY_GRID`, logging correlations with the baseline latest-quarter betas, absolute shifts, sign flips, and local condition-number changes in a supplementary table.
+- Control Set: Defaults to `GTWR_CONTROL_SET=lean`. The `extended` setting, which adds the transit accessibility composite, is reserved for sensitivity/expanded specifications.
+- Reporting Surface: GTWR local coefficients are summarized based on the latest quarter betas, while earliest-to-latest deltas are only derived as a supplementary appendix diagnostic.
 
-## 8. 본문과 부록의 경계
+## 8. Boundary between Main Text and Appendix
 
 - **Main text**
-  - quarterly panel 구축 논리
-  - 활력지수와 핵심 변수 정의
-  - ESDA 핵심 결과
-  - TWFE baseline과 residual Moran
+  - Logic for constructing the quarterly panel
+  - Definitions of vitality indices and core variables
+  - Key ESDA results
+  - TWFE baseline and residual Moran's I
   - SPDM main impacts
-  - 필요 시 GTWR 요약 지도
+  - Summary GTWR maps (as needed)
 
 - **Appendix**
-  - interaction family
-  - age-mix family
+  - Interaction family
+  - Age-mix family
   - SPDM channel path sidecar
-  - spatial family comparison (`SLX`, `SAR`, `SDM`, `SEM`, `SDEM`, `SARAR/SAC`, `GNS`)
-  - W robustness 상세표
-  - GTWR 추가 sidecar
-  - 세부 QC inventory
+  - Spatial family comparison (`SLX`, `SAR`, `SDM`, `SEM`, `SDEM`, `SARAR/SAC`, `GNS`)
+  - Detailed W robustness tables
+  - Additional GTWR sidecars
+  - Detailed QC inventory
 
-이렇게 두면 본문은 `ESDA -> TWFE -> SPDM main -> GTWR(optional)`의 해석 흐름을 유지하면서도, channel path와 보조 민감도, local sidecar를 부록으로 분리할 수 있다.
+This structure ensures the main text sustains the interpretative flow of `ESDA -> TWFE -> SPDM main -> GTWR (optional)`, while cleanly segregating the channel paths, supplementary sensitivities, and local sidecars into the appendix.
