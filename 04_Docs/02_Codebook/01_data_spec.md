@@ -1,6 +1,6 @@
-# 데이터 명세서
+# Data Specification
 
-## 1) 계층 구조
+## 1) Hierarchical Structure
 
 - Raw: `01_Data/01_Raw_Data`
 - Boundary: `01_Data/02_Boundary`
@@ -9,57 +9,57 @@
 - Panel: `01_Data/03_Processed_Data/03_Panel`
 - Outputs: `03_Output/*`
 
-## 2) 핵심 입력 데이터셋
+## 2) Key Input Datasets
 
-- 서울시 상권분석서비스
-  - `2019Q1~2025Q4` 분기 패널 구축의 핵심 source
-  - 분기 자료는 `adm_cd-yq` 기준으로 직접 발행한다.
-- 보조 공공데이터
-  - 공시지가, 교통, 병의원, 대형유통, 노인시설, 보행환경 등 구조 변수
-- 서울시 사업체현황 종사자규모별 동별 통계
-  - 행정동별 총 종사자 수를 2020 기준 행정동으로 정합해 직장인구 통제변수를 만든다.
-  - 2018~2019년 `항동`은 2020년 `오류2동`/`항동` 종사자 비율로 분동 전 `오류2동` 값을 배분하고, 2025년은 2024년 최신 관측값을 carry-forward한다.
-- 서울생활인구
-  - 관내이동과 대도시권 내외국인 월별 ZIP에서 외부 유입 인구를 산출한다.
-  - 생활인구는 시점 인구이므로 연합계가 아니라 월별 평균 시점인구를 먼저 만들고, 분기 내 월평균의 평균으로 발행한다.
-  - 월 내부 일수가 부족한 원천 ZIP은 관측일 기반 월평균을 해당 월 대표값으로 사용하고, 월별 성공일수와 coverage flag를 manifest에 기록한다.
-- 서울시 상권분석서비스 신생기업 생존율 JSON
-  - 홈페이지 조회 응답인 `selectSurvivalRate.json`을 수집해 1년·3년·5년 신생기업 생존율과 분모·분자를 `adm_cd-yq`로 발행한다.
-  - active 안정성 하위지수에는 3년 생존율(`survival_3y`)을 사용한다.
-- 행정안전부 주민등록인구현황
-  - 5세별 월별 행정동 주민등록인구 CSV에서 상주인구 규모와 고령 상주인구 비중을 산출한다.
-  - 월별 stock은 분기 내 평균으로, 고령비중은 월별 분모가중 분기 비중으로 발행한다.
-  - 원천 행정동명은 2020 기준 서울시 행정동 경계의 `adm_cd`로 매핑하고 분동·개칭은 2020 기준으로 정합한다.
-- 2020 기준 서울시 행정동 경계
-  - 공간가중행렬과 지도 시각화의 공통 기준
-  - `adm_cd`-행정동-자치구-권역생활권 정적 lookup의 원천 기준
+- Seoul Commercial Service
+  - Core source for building the `2019Q1~2025Q4` quarterly panel.
+  - Quarterly data is published directly at the `adm_cd-yq` level.
+- Auxiliary Public Data
+  - Structural variables including official land prices, transportation, medical facilities, large-scale retail stores, senior welfare facilities, and pedestrian environments.
+- Seoul Business Worker Status by Administrative Dong
+  - Total worker counts by administrative dong are mapped to the 2020 administrative boundaries to create a control variable for the workplace population.
+  - For 2018–2019, the pre-division `Oryu 2-dong` values are allocated between `Oryu 2-dong` and `Hang-dong` based on their 2020 worker ratio. For 2025, the latest 2024 observation is carried forward.
+- Seoul Living Population
+  - External inflow population is derived from internal migration and the monthly metropolitan area ZIP records of domestic/foreign populations.
+  - Since the living population is a snapshot count, we first compute the monthly average of the snapshot populations rather than an annual sum, then publish the quarterly average of those monthly averages.
+  - For source ZIPs with insufficient days in a month, the observation-based monthly average is used as the representative value for that month, and the number of successful days along with a coverage flag is recorded in the manifest.
+- Seoul Commercial Service Startup Survival Rate JSON
+  - The 1-year, 3-year, and 5-year startup survival rates, along with their numerators and denominators, are collected from the website's `selectSurvivalRate.json` endpoint and published at the `adm_cd-yq` level.
+  - The active stability sub-index utilizes the 3-year survival rate (`survival_3y`).
+- MOIS Registered Resident Population
+  - The residential population size and the share of the elderly population are calculated from the monthly administrative dong resident population CSVs aggregated by 5-year age groups.
+  - Monthly population stocks are averaged over the quarter, and the elderly share is published as a denominator-weighted quarterly share.
+  - Source administrative dong names are mapped to the 2020 Seoul administrative boundaries (`adm_cd`), with any district divisions or name changes standardized to the 2020 baseline.
+- 2020 Seoul Administrative Dong Boundaries
+  - The common baseline for spatial weight matrices and map visualizations.
+  - The source baseline for the static `adm_cd`-dong-gu-living area lookup.
 
-## 3) 핵심 분석 데이터셋
+## 3) Key Analytical Datasets
 
 - `seoul_quarter_base.parquet`
   - canonical short-run Seoul quarterly base
 - `adm_region_lookup.parquet`
-  - `adm_cd` 기준 행정동명, 자치구명, 5대 권역생활권 정적 lookup
+  - static lookup for administrative dong, gu, and 5 major living areas by `adm_cd`
 - `aux_covariates.parquet`
-  - `adm_cd-yq` 기준 auxiliary public-data integration layer
+  - auxiliary public-data integration layer by `adm_cd-yq`
 - `aux_covariates_lag_support.parquet`
-  - 2018Q1~2025Q4 `adm_cd-yq` 기준 auxiliary lag-support layer
+  - auxiliary lag-support layer for 2018Q1~2025Q4 by `adm_cd-yq`
 - `workplace_worker_population.parquet`
-  - 2018~2025 `adm_cd-year` 기준 직장인구/종사자수 annual as-of layer
+  - annual as-of layer for workplace population/workers for 2018~2025 by `adm_cd-year`
 - `land_price_lpi_bjd_adm_crosswalk.parquet`
-  - 법정동 지가지수를 2020 기준 행정동으로 변환하는 법정동-행정동 면적가중 crosswalk
+  - area-weighted legal-to-administrative dong crosswalk converting legal dong land price indices to 2020 administrative boundaries
 - `land_price_lpi_factor_adm_quarter.parquet`
-  - `adm_cd-yq` 기준 한국부동산원 지가지수 보정계수 layer
+  - Korea Real Estate Board land price index adjustment factor layer by `adm_cd-yq`
 - `living_population_external_inflow.parquet`
-  - `adm_cd-yq` 기준 서울생활인구 외부 유입 인구 layer
+  - Seoul living population external inflow layer by `adm_cd-yq`
 - `golmok_survival_rate.parquet`
-  - `adm_cd-yq` 기준 서울시 상권분석서비스 신생기업 생존율 layer
+  - Seoul Commercial Service startup survival rate layer by `adm_cd-yq`
 - `registered_resident_population.parquet`
-  - `adm_cd-yq` 기준 행정안전부 주민등록인구 기반 상주인구·고령비중 layer
+  - residential population and elderly share layer based on MOIS registered population by `adm_cd-yq`
 - `registered_resident_population_lag_support.parquet`
-  - 2018Q1~2025Q4 `adm_cd-yq` 기준 주민등록인구 lag-support layer
+  - registered resident population lag-support layer for 2018Q1~2025Q4 by `adm_cd-yq`
 - `registered_resident_population_monthly.parquet`
-  - 월별 주민등록인구 중간 layer와 연령합계 검증용 layer
+  - intermediate monthly registered resident population layer used for age-sum validation
 - `medical_source_preagg.parquet`
 - `mall_source_preagg.parquet`
 - `senior_source_preagg.parquet`
@@ -73,65 +73,65 @@
 - `walk_betweenness_local800_len_v1.parquet`
   - static walk-environment cache
 - `panel_merged_base.parquet`
-  - quarter base와 auxiliary covariates 결합 직후의 shared panel
+  - shared panel immediately following the merge of the quarter base and auxiliary covariates
 - `panel_main_pre_vitality.parquet`
-  - shared quarterly derivation과 등록된 model lag contract가 반영된 pre-vitality panel
+  - pre-vitality panel reflecting shared quarterly derivations and the registered model lag contract
 - `panel_main.parquet`
-  - vitality가 추가된 최종 canonical panel
+  - final canonical panel with the vitality index appended
 - `vitality_components.parquet`
-  - vitality sub-index와 composite 구성요소 table
+  - vitality sub-index and composite component table
 - `W_queen.rds`, `W_rook.rds`, `W_knn6.rds`, `W_knn8.rds`
 
-## 4) Active QC 규칙
+## 4) Active QC Rules
 
-- 키 중복: `adm_cd x yq` 0건
-- panel 구축 시간범위: `2019Q1~2025Q4`
-- active 분석기간: `2019Q4~2025Q4`
-- 좌표계: `EPSG:5179`
-- active shared panel에서 `year`, `quarter`, `yq`, `quarter_index` 유지
-- 분기 발행 규칙 점검
-  - `panel_quarter_aggregation_qc.csv` (`FAIL` if quarterly publication rule or coverage breaks)
-- 패널 결합 구조 점검
+- Key Duplication: 0 occurrences of duplicate `adm_cd x yq` keys
+- Panel Construction Time Horizon: `2019Q1~2025Q4`
+- Active Analysis Period: `2019Q4~2025Q4`
+- Coordinate Reference System (CRS): `EPSG:5179`
+- Retention of `year`, `quarter`, `yq`, and `quarter_index` in the active shared panel
+- Quarterly Publication Rule Checks
+  - `panel_quarter_aggregation_qc.csv` (`FAIL` if quarterly publication rules or coverage expectations break)
+- Panel Merge Structure Checks
   - `panel_join_coverage_qc.csv` (`WARN`)
-  - `panel_structural_count_flags.csv` (음수 구조 카운트면 `FAIL`)
-- 공시지가 관측/대체 점검
+  - `panel_structural_count_flags.csv` (`FAIL` if structural counts are negative)
+- Land Price Observation/Imputation Checks
   - `land_price_imputation_qc.csv` (`WARN`)
-- 지가지수 보정 공시지가 점검
-  - `land_price_lpi_raw_match_qc.csv` (`FAIL`, 월별 지가지수 법정동명-법정동 경계 1:1 매칭)
-  - `land_price_lpi_crosswalk_qc.csv` (`FAIL`, 425개 행정동 coverage와 정규화 weight 합계)
-  - `land_price_lpi_adjustment_qc.csv` (`WARN`, 분기별 보정계수와 보정 공시지가 coverage)
-- 직장인구 정합 점검
-  - `workplace_worker_population_qc.csv` (`FAIL`, source 연도별 서울 합계 일치와 425개 행정동 coverage; `WARN`, 2018~2019 `항동` backcast와 2025 carry-forward 건수)
-- 서울생활인구 외부 유입 인구 점검
-  - `living_population_inflow_manifest.csv` (`WARN`, member-level 처리 로그와 month-level coverage flag)
-  - `living_population_inflow_qc.csv` (`WARN`, 연도별 coverage와 값 범위)
-- 신생기업 생존율 점검
-  - `golmok_survival_rate_qc.csv` (`WARN`, 연도 coverage, rate 범위, 작은 코호트 수, 분자/분모 재계산 diff)
-- 주민등록인구 점검
-  - `registered_resident_population_mapping_qc.csv` (`FAIL`, 원천 행정동명-`adm_cd` 미매칭)
-  - `registered_resident_population_qc.csv` (`FAIL`, 12개월 coverage, 고령비중 범위, 핵심 변수 결측; `WARN`, 분동 배분 건수)
-- 활력지수 구성변수 점검
-  - `vitality_component_qc.csv` (`WARN`, 핵심 지수 생성 불가 시 `FAIL`)
-- 처리 산출물 무결성 점검(수동)
+- Land Price Index Adjusted Official Land Price Checks
+  - `land_price_lpi_raw_match_qc.csv` (`FAIL` if monthly land price index legal dong names fail 1:1 matching with legal dong boundaries)
+  - `land_price_lpi_crosswalk_qc.csv` (`FAIL` if the 425 administrative dong coverage or the normalized weight sum is incorrect)
+  - `land_price_lpi_adjustment_qc.csv` (`WARN` for quarterly adjustment factor and adjusted land price coverage)
+- Workplace Population Alignment Checks
+  - `workplace_worker_population_qc.csv` (`FAIL` if annual Seoul totals diverge or 425 administrative dong coverage is unmet; `WARN` for 2018~2019 `Hang-dong` backcasts and 2025 carry-forward counts)
+- Seoul Living Population External Inflow Checks
+  - `living_population_inflow_manifest.csv` (`WARN` for member-level processing logs and month-level coverage flags)
+  - `living_population_inflow_qc.csv` (`WARN` for annual coverage and value ranges)
+- Startup Survival Rate Checks
+  - `golmok_survival_rate_qc.csv` (`WARN` for annual coverage, rate ranges, small cohort counts, and numerator/denominator recomputation diffs)
+- Registered Resident Population Checks
+  - `registered_resident_population_mapping_qc.csv` (`FAIL` if source administrative names fail to map to an `adm_cd`)
+  - `registered_resident_population_qc.csv` (`FAIL` if 12-month coverage is incomplete, elderly share ranges are abnormal, or core variables are missing; `WARN` for dong division allocation counts)
+- Vitality Index Component Checks
+  - `vitality_component_qc.csv` (`WARN`, or `FAIL` if core index generation is impossible)
+- Processed Output Integrity Checks (Manual)
   - `processed_parquet_inventory.csv`
   - `processed_parquet_schema.csv`
   - `processed_parquet_missing_summary.csv`
   - `processed_parquet_qc_checks.csv`
-- 행정동-자치구-권역생활권 lookup 점검
-  - `adm_region_lookup_qc.csv` (`FAIL`, 425개 행정동, 25개 자치구, 5개 권역생활권, 자치구별 행정동 수 불일치)
+- Administrative Dong, Gu, and Living Area Lookup Checks
+  - `adm_region_lookup_qc.csv` (`FAIL` if there is a mismatch in the 425 administrative dongs, 25 gu, 5 living areas, or the number of dongs per gu)
 
 ## 5) Optional Supplementary Surface
 
 - interaction / age-mix / family-comparison appendix scripts
-- `03_run_gtwr_main.R`, 추가 GTWR sidecars, GTWR bandwidth/lamda diagnostic scripts
+- `03_run_gtwr_main.R`, additional GTWR sidecars, GTWR bandwidth/lamda diagnostic scripts
   - manual direct-run local analysis only
 
-위 자산은 canonical default run, active QC, active success 판정의 필수 계약이 아니다.
+The assets above are not mandatory contracts for the canonical default run, active QC, or active success criteria.
 
-## 6) 수동 QC 및 대화형 review helper
+## 6) Manual QC & Interactive Review Helpers
 
 - `02_check_processed_parquet_outputs.R`
-  - `03_Processed_Data` 아래 parquet 전부를 읽어 inventory, schema, missing summary, QC checks를 남기는 full parquet audit이다.
-  - raw quarterly staging과 active quarterly publication layer를 분리해 판정한다.
+  - A full parquet audit that reads all parquets under `03_Processed_Data` and generates an inventory, schema, missing summary, and QC checks.
+  - Assesses the raw quarterly staging layer separately from the active quarterly publication layer.
 - `03_open_outputs_for_rstudio_review.R`
-  - persisted output을 추가로 만들지 않는 interactive review helper다.
+  - An interactive review helper that does not persist any additional outputs.
