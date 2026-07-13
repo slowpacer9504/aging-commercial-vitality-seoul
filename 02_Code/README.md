@@ -27,35 +27,35 @@ Command-line alternative:
 Rscript 02_Code/run_all.R
 ```
 
-`80_optional/preprocess/01_build_living_population_inflow.R` streams large Seoul Living Population ZIP files. For a smoke test without overwriting the canonical output, set `LIVING_POP_SAMPLE_MONTHS=201901`; the script writes sample-tagged output paths.
+`02_Code/80_optional/preprocess/01_build_living_population_inflow.R` streams large Seoul Living Population ZIP files. For a smoke test without overwriting the canonical output, set `LIVING_POP_SAMPLE_MONTHS=201901`; the script writes sample-tagged output paths.
 
 ## Active Canonical Workflow
 
 The active default order is:
 
-- `01_build_adm_region_lookup.R`
-- `02_build_seoul_quarter_base.R`
-- `03_build_auxiliary_covariates.R`
-- `04_build_golmok_survival_rate.R`
-- `05_build_registered_resident_population.R`
-- `06_build_analysis_panel.R`
-- `07_build_vitality_index.R`
-- `01_build_spatial_weights.R`
-- `02_run_esda.R`
-- `01_run_twfe_main.R`
-- `02_run_spdm_main.R`
-- `01_run_spdm_w_robustness.R`
-- `02_run_robustness.R`
-- `01_validate_method_dataset_alignment.R`
-- `01_make_tables_figures.R`
+- `02_Code/01_preprocess/01_build_adm_region_lookup.R`
+- `02_Code/01_preprocess/02_build_seoul_quarter_base.R`
+- `02_Code/01_preprocess/03_build_auxiliary_covariates.R`
+- `02_Code/01_preprocess/04_build_golmok_survival_rate.R`
+- `02_Code/01_preprocess/05_build_registered_resident_population.R`
+- `02_Code/01_preprocess/06_build_analysis_panel.R`
+- `02_Code/01_preprocess/07_build_vitality_index.R`
+- `02_Code/02_esda/01_build_spatial_weights.R`
+- `02_Code/02_esda/02_run_esda.R`
+- `02_Code/03_models/01_run_twfe_main.R`
+- `02_Code/03_models/02_run_spdm_main.R`
+- `02_Code/04_robustness/01_run_spdm_w_robustness.R`
+- `02_Code/04_robustness/02_run_robustness.R`
+- `02_Code/06_qc/01_validate_method_dataset_alignment.R`
+- `02_Code/05_reporting/01_make_tables_figures.R`
 
 Manual optional preprocessing and local-analysis sidecars:
 
-- `80_optional/preprocess/01_build_living_population_inflow.R`
-- `80_optional/spdm/07_run_spdm_channel_path.R`
-- `03_models/03_run_gtwr_main.R`
-- helper implementation in `99_utils/utils_gtwr_main.R`
-- `80_optional/**` scripts are outside `run_all.R`; execute a file directly to run it.
+- `02_Code/80_optional/preprocess/01_build_living_population_inflow.R`
+- `02_Code/80_optional/spdm/07_run_spdm_channel_path.R`
+- `02_Code/03_models/03_run_gtwr_main.R`
+- helper implementation in `02_Code/99_utils/utils_gtwr_main.R`
+- `02_Code/80_optional/**` scripts are outside `run_all.R`; execute a file directly to run it.
 - run SPDM channel path manually with `Rscript 02_Code/80_optional/spdm/07_run_spdm_channel_path.R`
 - run GTWR manually with `Rscript 02_Code/03_models/03_run_gtwr_main.R`
 - control set with `GTWR_CONTROL_SET=lean|extended`; `lean` is the default and `extended` adds transit-accessibility and additional location controls
@@ -69,23 +69,23 @@ Manual optional preprocessing and local-analysis sidecars:
 
 Manual QC / reporting sidecars:
 
-- `06_qc/02_check_processed_parquet_outputs.R`
-- `06_qc/03_open_outputs_for_rstudio_review.R`
-- `05_reporting/02_build_presentation_artifacts.R`
-- `05_reporting/03_build_gtwr_level_artifacts.R`
+- `02_Code/06_qc/02_check_processed_parquet_outputs.R`
+- `02_Code/06_qc/03_open_outputs_for_rstudio_review.R`
+- `02_Code/05_reporting/02_build_presentation_artifacts.R`
+- `02_Code/05_reporting/03_build_gtwr_level_artifacts.R`
 
 ## Directory Roles
 
-- `00_setup`: shared config and package loading
-- `99_utils`: utility helpers
-- `01_preprocess`: active short-run quarterly-panel preprocessing
-- `02_esda`: spatial weights and ESDA
-- `03_models`: canonical TWFE and SPDM models
-- `04_robustness`: SPDM W robustness and supplementary robustness
-- `05_reporting`: tables, figures, presentation, and GTWR artifact builders
-- `06_qc`: active QC plus manual audit helpers
-- `80_optional`: manual direct-run preprocessing, TWFE, SPDM, and GTWR sidecars
-- `90_templates`: preprocessing and modeling templates
+- `00_setup/`: shared config and package loading
+- `99_utils/`: utility helpers
+- `01_preprocess/`: active short-run quarterly-panel preprocessing
+- `02_esda/`: spatial weights and ESDA
+- `03_models/`: canonical TWFE and SPDM models
+- `04_robustness/`: SPDM W robustness and supplementary robustness
+- `05_reporting/`: tables, figures, presentation, and GTWR artifact builders
+- `06_qc/`: active QC plus manual audit helpers
+- `80_optional/`: manual direct-run preprocessing, TWFE, SPDM, and GTWR sidecars
+- `90_templates/`: preprocessing and modeling templates
 
 Retired long-run harmonization and classification branches are no longer part of the project surface. The codebase now assumes a short-run Seoul quarterly panel only.
 
