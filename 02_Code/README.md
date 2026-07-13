@@ -54,7 +54,7 @@ Manual optional preprocessing and local-analysis sidecars:
 - `80_optional/preprocess/01_build_living_population_inflow.R`
 - `80_optional/spdm/07_run_spdm_channel_path.R`
 - `03_models/03_run_gtwr_main.R`
-- helper implementation in `R/utils_gtwr_main.R`
+- helper implementation in `99_utils/utils_gtwr_main.R`
 - `80_optional/**` scripts are outside `run_all.R`; execute a file directly to run it.
 - run SPDM channel path manually with `Rscript 02_Code/80_optional/spdm/07_run_spdm_channel_path.R`
 - run GTWR manually with `Rscript 02_Code/03_models/03_run_gtwr_main.R`
@@ -77,7 +77,7 @@ Manual QC / reporting sidecars:
 ## Directory Roles
 
 - `00_setup`: shared config and package loading
-- `R`: utility helpers
+- `99_utils`: utility helpers
 - `01_preprocess`: active short-run quarterly-panel preprocessing
 - `02_esda`: spatial weights and ESDA
 - `03_models`: canonical TWFE and SPDM models
