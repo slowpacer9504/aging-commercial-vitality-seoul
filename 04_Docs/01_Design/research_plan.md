@@ -6,7 +6,7 @@
 
 2026년 5월 17일 기준 active canonical design은 **연도 패널에서 분기 패널로 전환**되었다. 전환 목적은 상권 매출·점포·유동인구의 분기 변동을 보존하고, 연도·정적 자료는 quarter-end as-of 규칙으로 붙여 단기 시공간 변화를 더 촘촘하게 추정하는 것이다. 따라서 본 연구의 active 분석 단위는 `adm_cd x yq`이며, `year`, `quarter`, `yq`, `quarter_index`를 공통 시간 키로 유지한다.
 
-이 문서는 현재 프로젝트의 active design anchor다. 실행 순서, 출력 계약, QC 규칙은 `research_procedure.md`와 codebook에서 구체화한다.
+이 문서는 현재 프로젝트의 active design anchor다. 실행 순서, 출력 계약, QC 규칙은 [research_procedure.md](research_procedure.md)와 codebook에서 구체화한다.
 
 ## 2. 연구 목적
 
@@ -36,7 +36,7 @@
   - 지역별 계수의 크기와 방향은 어떤 공간적 패턴을 보이는가.
 
 `aging x covid_period` 상호작용, 대체 활력지수, 추가 age-mix와 sector-share 가족은 appendix 또는 robustness로 다룬다. 본문 실증서사의 중심 질문은 위 세 가지다.
-`80_optional/**`의 appendix/sidecar 코드는 기본 `run_all.R` 밖에 두며, 해당 파일을 직접 실행하면 별도 실행 플래그 없이 수행되는 manual surface로 관리한다.
+[`80_optional/**`](../../02_Code/80_optional)의 appendix/sidecar 코드는 기본 [run_all.R](../../02_Code/run_all.R) 밖에 두며, 해당 파일을 직접 실행하면 별도 실행 플래그 없이 수행되는 manual surface로 관리한다.
 
 ## 4. 분석 단위와 범위
 
@@ -109,7 +109,7 @@ TWFE는 비공간 기준선이다. 지역 고정효과와 분기 고정효과를
 
 ### 5.4 국지적 이질성
 
-GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타나는지 보여주는 optional local sidecar다. 다만 이는 전역 인과 추정의 대체가 아니라, main resident-only quarterly contract 위에서 국지 패턴을 설명하는 보조 layer다. Floating-only, age-band, sector-share GTWR는 `80_optional/gtwr` 아래의 appendix sidecar로 두며, 해당 스크립트를 직접 실행할 때 실제 `GWmodel::gtwr()`를 수행한다.
+GTWR는 전역모형의 평균효과가 지역별로 얼마나 다르게 나타나는지 보여주는 optional local sidecar다. 다만 이는 전역 인과 추정의 대체가 아니라, main resident-only quarterly contract 위에서 국지 패턴을 설명하는 보조 layer다. Floating-only, age-band, sector-share GTWR는 [`80_optional/gtwr`](../../02_Code/80_optional/gtwr) 아래의 appendix sidecar로 두며, 해당 스크립트를 직접 실행할 때 실제 `GWmodel::gtwr()`를 수행한다.
 
 ## 6. 변수 설계
 
@@ -199,19 +199,19 @@ active methodology stack은 아래와 같다.
 - 역할: active design의 **main global model** 이다.
 - 핵심 보고 방식: coefficient보다 **direct / indirect / total effects** 중심
 - active 구현은 true SDM/SPDM이다. 즉 `W y`, `X`, `W X`를 함께 포함한다.
-- `02_run_spdm_main.R`는 `splm::spml()`의 Durbin placeholder에 의존하지 않고, quarterly panel에서 `W lag4_age60_resident_share`와 `W controls`를 직접 생성한 뒤 추정한다.
+- [02_run_spdm_main.R](../../02_Code/03_models/02_run_spdm_main.R)는 `splm::spml()`의 Durbin placeholder에 의존하지 않고, quarterly panel에서 `W lag4_age60_resident_share`와 `W controls`를 직접 생성한 뒤 추정한다.
 - direct / indirect / total effects는 `S = (I - rho W)^(-1)`, `S(beta I + theta W)` 행렬식으로 계산한다.
 - coefficient와 spatial parameter의 표준오차는 `splm::spml()` fitted object의 model-based asymptotic ML `vcov`를 사용한다. impact 표준오차와 신뢰구간은 같은 model-based `vcov`에서 `rho`, `beta`, `theta`를 simulation draw로 생성해 계산하며, 이를 robust SE로 부르지 않는다.
-- `80_optional/spdm/07_run_spdm_channel_path.R`는 optional mediation-oriented channel path sidecar이다. 같은 quarterly Queen SDM 계약에서 mediator 미포함 `c` 경로, `lag4_age60_resident_share -> lag2_age60_floating_share`의 `a` 경로, `lag2_age60_floating_share -> vitality`의 `b` 경로, mediator를 통제한 `c'` 경로를 같은 outcome별 balanced sample에서 추정하고 `a*b` 간접효과와 `c - c'` 직접효과 약화 진단을 별도 산출물로 기록한다. 기본 추론은 행정동 단위 wild residual bootstrap이며, bootstrap이 비활성화되었거나 유효 draw가 부족할 때만 `delta_independent_approx`를 fallback으로 사용한다.
+- [80_optional/spdm/07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R)는 optional mediation-oriented channel path sidecar이다. 같은 quarterly Queen SDM 계약에서 mediator 미포함 `c` 경로, `lag4_age60_resident_share -> lag2_age60_floating_share`의 `a` 경로, `lag2_age60_floating_share -> vitality`의 `b` 경로, mediator를 통제한 `c'` 경로를 같은 outcome별 balanced sample에서 추정하고 `a*b` 간접효과와 `c - c'` 직접효과 약화 진단을 별도 산출물로 기록한다. 기본 추론은 행정동 단위 wild residual bootstrap이며, bootstrap이 비활성화되었거나 유효 draw가 부족할 때만 `delta_independent_approx`를 fallback으로 사용한다.
 - channel path outcome은 유동인구 source와 직접 겹치는 `vitality_sub_social` 단독 지표를 제외하고, `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, `vitality_index_base`를 사용한다. 종합 활력지수는 네 하위지표를 모두 포함하는 기본 정의를 유지하되, 해석에서는 사회적 활력 구성요소가 mediator source와 겹친다는 caveat를 함께 둔다.
 
 ### 7.4 GTWR
 
 - 목적: 전역모형 이후 남는 국지적 이질성을 시각화한다.
-- 역할: **resident-only quarterly main local sidecar** 이며 기본 pipeline에서는 optional이다. Floating-only, age-band, sector-share local GTWR는 `80_optional/gtwr`의 해당 스크립트를 직접 실행하는 appendix sidecar다.
+- 역할: **resident-only quarterly main local sidecar** 이며 기본 pipeline에서는 optional이다. Floating-only, age-band, sector-share local GTWR는 [`80_optional/gtwr`](../../02_Code/80_optional/gtwr)의 해당 스크립트를 직접 실행하는 appendix sidecar다.
 - 해석 수준: global causal claim이 아니라 local heterogeneity description
-- bandwidth: main GTWR는 outcome 간 비교 가능성, local coefficient 안정성, bandwidth-selection 결과, sensitivity 진단을 함께 고려해 fixed adaptive `GTWR_ST_BW=60`을 기본으로 사용한다. `bw.gtwr()` full-panel/anchor-quarter 탐색은 `06_select_gtwr_bandwidth.R`에서만 실행하고, 선택 결과를 main GTWR에 자동 주입하지 않는다. `07_run_gtwr_bandwidth_sensitivity.R`는 고정 adaptive bandwidth grid `30,60,90,120,180`을 같은 spec에 반복 적용해 baseline `60` 대비 latest-quarter beta agreement, sign flip, local condition-number 변화를 보조표로 기록한다.
-- lamda sensitivity: `08_run_gtwr_lamda_sensitivity.R`가 `GTWR_LAMDA_SENSITIVITY_GRID`의 값별로 GTWR를 재추정하고, baseline latest-quarter beta와의 상관, 절대변화, sign flip, local condition-number 변화를 보조표로 기록한다.
+- bandwidth: main GTWR는 outcome 간 비교 가능성, local coefficient 안정성, bandwidth-selection 결과, sensitivity 진단을 함께 고려해 fixed adaptive `GTWR_ST_BW=60`을 기본으로 사용한다. `bw.gtwr()` full-panel/anchor-quarter 탐색은 [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R)에서만 실행하고, 선택 결과를 main GTWR에 자동 주입하지 않는다. [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R)는 고정 adaptive bandwidth grid `30,60,90,120,180`을 같은 spec에 반복 적용해 baseline `60` 대비 latest-quarter beta agreement, sign flip, local condition-number 변화를 보조표로 기록한다.
+- lamda sensitivity: [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R)가 `GTWR_LAMDA_SENSITIVITY_GRID`의 값별로 GTWR를 재추정하고, baseline latest-quarter beta와의 상관, 절대변화, sign flip, local condition-number 변화를 보조표로 기록한다.
 - control set: 기본값은 `GTWR_CONTROL_SET=lean`이며, `extended`는 대중교통 접근성 composite를 추가하는 민감도/확장 사양으로 사용한다.
 - reporting surface: GTWR local coefficient는 latest quarter beta를 기준으로 요약하고, earliest-to-latest delta는 보조 appendix diagnostic으로만 파생한다.
 
