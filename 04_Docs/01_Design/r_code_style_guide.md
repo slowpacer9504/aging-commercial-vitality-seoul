@@ -34,7 +34,7 @@ The directory structure should be read as follows to instantly differentiate the
 - `05_reporting`: tables, figures, presentation, and GTWR artifact builders
 - `06_qc`: active QC plus manual audit helpers
 - `80_optional`: manual direct-run preprocessing, TWFE, SPDM, and GTWR sidecars
-- `90_templates`: shared implementation pattern
+- `90_templates`: shared implementation pattern. Refer to [00_template_preprocessing_aging_commerce.R](../../02_Code/90_templates/00_template_preprocessing_aging_commerce.R) for preprocessing scripts and [00_template_modeling_aging_commerce.R](../../02_Code/90_templates/00_template_modeling_aging_commerce.R) for modeling/diagnostics scripts as specific templates.
 - `99_utils`: shared utilities, including GTWR helper logic used by optional sidecars
 
 ## 3. Filenames and Script Roles
