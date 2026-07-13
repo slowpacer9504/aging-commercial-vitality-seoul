@@ -78,7 +78,7 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
   - `GTWR_REFRESH_SPEC_CACHE=TRUE` (clear cache and recompute)
 - **Bandwidth**:
   - `GTWR_BANDWIDTH_STRATEGY`: `fixed` (default), `full_panel_bw_gtwr`, or `anchor_quarter_bw_gtwr`.
-  - `GTWR_ST_BW`: Spatiotemporal bandwidth (default: 480).
+  - `GTWR_ST_BW`: Spatiotemporal bandwidth (default: 60).
   - Search script: `02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R` (Use `GTWR_REFRESH_BW_CACHE=TRUE` to recompute cache).
 
 **Outputs:**
@@ -128,8 +128,6 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 - `06_qc/`: active QC plus manual audit helpers
 - `80_optional/`: manual direct-run preprocessing, TWFE, SPDM, and GTWR sidecars
 - `90_templates/`: preprocessing and modeling templates (`00_template_preprocessing_aging_commerce.R`, `00_template_modeling_aging_commerce.R`)
-
-Retired long-run harmonization and classification branches are no longer part of the project surface. The codebase now assumes a short-run Seoul quarterly panel only.
 
 ## Specification Navigation
 
