@@ -63,6 +63,13 @@
 - `medical_source_preagg.parquet`
 - `mall_source_preagg.parquet`
 - `senior_source_preagg.parquet`
+- `bus_stop_source_preagg.parquet`
+- `subway_station_source_preagg.parquet`
+- `apartment_registry_source_preagg.parquet`
+- `senior_geocode_cache.parquet`
+- `medical_geocode_cache.parquet`
+- `mall_geocode_cache.parquet`
+- `apartment_geocode_cache.parquet`
 - `walk_betweenness_local800_len_v1.parquet`
   - static walk-environment cache
 - `panel_merged_base.parquet`
