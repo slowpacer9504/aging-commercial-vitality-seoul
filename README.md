@@ -29,6 +29,11 @@ This repository is structured as follows to maximize research reproducibility:
 │   └── README.md             # Detailed guide for the analysis code
 │
 ├── 03_Output/                # Model estimation results, reporting tables, and figures (Excluded from Git tracking)
+│   ├── 01_Tables/            # Tabular outputs (estimation models, coefficients, and diagnostics)
+│   ├── 02_Figures/           # Analytical plots (coefficient plots, trend lines, etc.)
+│   ├── 03_Maps/              # Spatial maps (LISA quadrant maps, emerging hotspot maps, etc.)
+│   ├── 04_Logs/              # Quality control validation logs and GTWR spec/bandwidth caches
+│   └── 05_report/            # Presentation-ready reports and slide-ready summaries
 │
 ├── 04_Docs/                  # Research specifications and guidelines
 │   ├── 01_Design/            # Research plan and procedural manual
