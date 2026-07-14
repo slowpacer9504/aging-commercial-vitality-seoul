@@ -4,7 +4,6 @@ This document provides a comprehensive snapshot of all tracked files in the repo
 For detailed information regarding code execution or variables, please refer to `02_Code/README.md` and the documents in `04_Docs/02_Codebook/`.
 
 ```text
-├── .gitignore                                     # Git ignore list
 ├── README.md                                      # Main project overview and guide
 │
 ├── 01_Data/                                       # Data directory (Git untracked except directory structure)

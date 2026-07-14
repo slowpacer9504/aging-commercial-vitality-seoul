@@ -40,7 +40,6 @@ This repository is structured as follows to maximize research reproducibility:
 │   └── 02_Codebook/          # Specifications mapping data specs, variable dictionary, and model specs
 │
 ├── README.md                 # This main guide document
-├── AGENTS.md                 # Agent operation guidelines (Excluded from Git tracking)
 └── R.Rproj                   # RStudio project file
 ```
 
