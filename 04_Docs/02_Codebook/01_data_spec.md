@@ -12,25 +12,32 @@
 ## 2) Key Input Datasets
 
 - Seoul Commercial Service
+  - **Source/Download:** [Seoul Open Data Plaza](https://data.seoul.go.kr/) / [Seoul Commercial District Service Portal](https://golmok.seoul.go.kr/)
   - Core source for building the `2019Q1~2025Q4` quarterly panel.
   - Quarterly data is published directly at the `adm_cd-yq` level.
 - Auxiliary Public Data
+  - **Source/Download:** [LocalData](https://www.localdata.go.kr/) (facilities), [Vworld](https://www.vworld.kr/) (land prices), [Seoul Open Data Plaza](https://data.seoul.go.kr/) (transportation)
   - Structural variables including official land prices, transportation, medical facilities, large-scale retail stores, senior welfare facilities, and pedestrian environments.
 - Seoul Business Worker Status by Administrative Dong
+  - **Source/Download:** [Seoul Open Data Plaza](https://data.seoul.go.kr/)
   - Total worker counts by administrative dong are mapped to the 2020 administrative boundaries to create a control variable for the workplace population.
   - For 2018–2019, the pre-division `Oryu 2-dong` values are allocated between `Oryu 2-dong` and `Hang-dong` based on their 2020 worker ratio. For 2025, the latest 2024 observation is carried forward.
 - Seoul Living Population
+  - **Source/Download:** [Seoul Open Data Plaza](https://data.seoul.go.kr/)
   - External inflow population is derived from internal migration and the monthly metropolitan area ZIP records of domestic/foreign populations.
   - Since the living population is a snapshot count, we first compute the monthly average of the snapshot populations rather than an annual sum, then publish the quarterly average of those monthly averages.
   - For source ZIPs with insufficient days in a month, the observation-based monthly average is used as the representative value for that month, and the number of successful days along with a coverage flag is recorded in the manifest.
 - Seoul Commercial Service Startup Survival Rate JSON
+  - **Source/Download:** [Seoul Commercial District Service Portal](https://golmok.seoul.go.kr/)
   - The 1-year, 3-year, and 5-year startup survival rates, along with their numerators and denominators, are collected from the website's `selectSurvivalRate.json` endpoint and published at the `adm_cd-yq` level.
   - The active stability sub-index utilizes the 3-year survival rate (`survival_3y`).
 - MOIS Registered Resident Population
+  - **Source/Download:** [MOIS Resident Registration Demographics](https://jumin.mois.go.kr/)
   - The residential population size and the share of the elderly population are calculated from the monthly administrative dong resident population CSVs aggregated by 5-year age groups.
   - Monthly population stocks are averaged over the quarter, and the elderly share is published as a denominator-weighted quarterly share.
   - Source administrative dong names are mapped to the 2020 Seoul administrative boundaries (`adm_cd`), with any district divisions or name changes standardized to the 2020 baseline.
 - 2020 Seoul Administrative Dong Boundaries
+  - **Source/Download:** [SGIS (Statistical Geographic Information Service)](https://sgis.kostat.go.kr/)
   - The common baseline for spatial weight matrices and map visualizations.
   - The source baseline for the static `adm_cd`-dong-gu-living area lookup.
 
