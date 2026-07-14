@@ -1,80 +1,80 @@
-# 조인/정합 규칙서
+# Join/Harmonization Rules
 
-## 1) 기본 조인 키
+## 1) Basic Join Keys
 
-- 패널 키: `adm_cd`, `yq`
-- 분기 조인: `adm_cd`, `yq`
-- 연도/as-of 조인: `adm_cd`, `year`를 정리한 뒤 `adm_cd`, `yq` 패널에 결합
-- 정적 조인: `adm_cd`
+- Panel keys: `adm_cd`, `yq`
+- Quarterly join: `adm_cd`, `yq`
+- Year/as-of join: aggregate by `adm_cd`, `year` and then join to the `adm_cd`, `yq` panel
+- Static join: `adm_cd`
 
-## 2) 공간 기준
+## 2) Spatial Standards
 
-- 모든 분석 단위는 2020 기준 서울시 행정동(`adm_cd`)이다.
-- spatial weights와 지도 시각화도 같은 경계를 사용한다.
-- `adm_region_lookup.parquet`는 2020 기준 행정동 경계의 `adm_cd`와 행정동명을 읽고, `adm_cd` 앞 6자리 자치구 prefix로 서울 5대 권역생활권 분류를 결합한 정적 lookup이다.
-- 추가 cross-year boundary reconciliation 단계는 두지 않는다.
+- All analysis units are based on 2020 Seoul administrative dongs (`adm_cd`).
+- Spatial weights and map visualizations use the same boundaries.
+- `adm_region_lookup.parquet` is a static lookup that reads the `adm_cd` and administrative dong names of the 2020 boundaries, combined with the 5 major regional zones in Seoul using the 6-digit prefix of the `adm_cd` (autonomous district).
+- No additional cross-year boundary reconciliation steps are included.
 
-## 3) 서울 상권 raw quarterly publication
+## 3) Seoul Commercial District Raw Quarterly Publication
 
-- 서울 상권 raw 중 분기 source는 `adm_cd-yq` 기준으로 직접 발행한다.
-- additive flow는 분기 합계, level/share는 분기 대표값 또는 분모가중 분기 비중을 사용한다.
-- temporal/stability 구성요소는 분기 단면과 rolling 4-quarter 분포를 이용해 계산한다.
-- 연도·정적 source는 `adm_cd-year` 또는 `adm_cd` 기준으로 정리한 뒤 source precision을 명시하고 quarter-end as-of 규칙으로 결합한다.
-- active base publication 이후에는 표준 시간키 `year`, `quarter`, `yq`, `quarter_index`만 남긴다.
-- canonical quarterly base는 `seoul_quarter_base.parquet`다.
+- Quarterly sources from the Seoul commercial district raw data are directly published based on `adm_cd-yq`.
+- Additive flows use quarterly totals, while levels/shares use quarterly representatives or denominator-weighted quarterly proportions.
+- Temporal/stability components are calculated using the quarterly cross-section and the rolling 4-quarter distribution.
+- Yearly/static sources are aggregated by `adm_cd-year` or `adm_cd`, specifying source precision, and joined using the quarter-end as-of rule.
+- After the active base publication, only the standard time keys `year`, `quarter`, `yq`, and `quarter_index` remain.
+- The canonical quarterly base is `seoul_quarter_base.parquet`.
 
-## 4) Auxiliary covariate 정합
+## 4) Auxiliary Covariate Harmonization
 
-- `03_build_auxiliary_covariates.R`는 auxiliary public-data sources를 `adm_cd-year`, `adm_cd`, 또는 record-level pre-aggregation 단위로 정리한 뒤 `adm_cd-yq` panel에 맞춰 발행한다.
-- 공시지가는 필지 대표점 기반 행정동-연도 면적가중평균을 만든 뒤 원 연간값으로 보존한다.
-- 한국부동산원 월별 지역별 지가지수는 법정동명으로 서울 법정동 경계와 1:1 매칭한 뒤, 법정동-행정동 공간교차 면적가중 crosswalk로 행정동 분기 보정계수 `land_price_lpi_factor`를 만든다. 최종 active 토지가격 통제변수는 연간 공시지가에 이 보정계수를 곱한 `land_price_adjusted`와 그 로그 `ln_land_price_adjusted`다.
-- 서울시 사업체현황 종사자규모별 동별 통계는 행정동명을 2020 기준 `adm_cd`로 정합해 `workplace_worker_population.parquet`를 만들고, `aux_covariates_lag_support`에 결합한다. `.`/`·` 표기 차이는 정규화하고, `상일1동`/`상일2동`은 2020 기준 `상일동`으로 합산하며, `개포3동`은 2020 기준 `일원2동`으로 연결한다. 2018~2019년 `항동`은 2020년 `오류2동`/`항동` 종사자 비율로 분동 전 `오류2동` 값을 배분하고, 2025년은 2024년 관측값을 carry-forward한다.
-- 대중교통 source는 `adm_cd-yq`로 발행한다. 버스정류장 count는 단일 연도 snapshot 반복, 월별 snapshot의 quarter-end latest, carry-forward status를 QC에 기록하고, 지하철역 count는 개통일 규칙의 `open_date <= quarter_end`로 계산한다.
-- 의료, 대형점포, senior source는 record-level pre-aggregation layer를 남기되, active panel에는 분기 as-of count 또는 status만 반영한다.
-- walk-environment cache는 `adm_cd` static layer로 관리한다.
+- [03_build_auxiliary_covariates.R](../../02_Code/01_preprocess/03_build_auxiliary_covariates.R) processes auxiliary public-data sources into `adm_cd-year`, `adm_cd`, or record-level pre-aggregation units and publishes them to fit the `adm_cd-yq` panel.
+- Official land prices are preserved as original annual values after creating administrative dong-year area-weighted averages based on representative parcel points.
+- The Korea Real Estate Board's monthly regional land price index is matched 1:1 with Seoul's legal dong boundaries using legal dong names. An administrative dong quarterly adjustment factor, `land_price_lpi_factor`, is then created using an area-weighted crosswalk of legal dong-administrative dong spatial intersections. The final active land price control variables are `land_price_adjusted` (annual official land price multiplied by this adjustment factor) and its log, `ln_land_price_adjusted`.
+- Seoul business establishment statistics by worker size and dong are matched by administrative dong name to the 2020 `adm_cd` to create `workplace_worker_population.parquet`, which is then joined to `aux_covariates_lag_support`. Differences in dot notations (`.`/`·`) are normalized. `상일1동` and `상일2동` are aggregated into the 2020 `상일동`, and `개포3동` is mapped to the 2020 `일원2동`. For `항동` from 2018-2019, the pre-division values of `오류2동` are distributed using the 2020 worker ratio between `오류2동` and `항동`. For 2025, the 2024 observations are carried forward.
+- Public transit sources are published by `adm_cd-yq`. Bus stop counts repeat single-year snapshots, take the quarter-end latest from monthly snapshots, and record carry-forward status in QC. Subway station counts are calculated based on the opening date rule `open_date <= quarter_end`.
+- Medical, large-scale store, and senior sources retain a record-level pre-aggregation layer, but only the quarterly as-of counts or status are reflected in the active panel.
+- The walk-environment cache is managed as an `adm_cd` static layer.
 
-## 5) Shared panel build
+## 5) Shared Panel Build
 
-- `01_build_living_population_inflow.R`는 서울생활인구 관내이동·대도시권 내외국인 월별 ZIP에서 `living_population_external_inflow.parquet`를 발행한다.
-- 관내이동은 대상 행정동 자치구와 거주지 자치구가 다른 row만 사용하고, 대도시권 자료는 모든 row를 외부 유입으로 사용한다.
-- 생활인구는 시점 인구이므로 일자-시간대 row를 누적하지 않고 `adm_cd-month` 평균 시점인구를 만든 뒤, 같은 분기 월평균을 다시 평균해 `adm_cd-yq` 값으로 결합한다.
-- 일부 월의 ZIP member 수가 부족한 경우 관측된 일자의 월평균을 해당 월 대표값으로 쓰고, `living_population_inflow_manifest.csv`의 `month_success_days`, `month_expected_days`, `month_coverage_flag`로 추적한다.
-- `04_build_golmok_survival_rate.R`는 서울시 상권분석서비스 `selectSurvivalRate.json` 응답에서 `golmok_survival_rate.parquet`를 발행한다.
-- 신생기업 생존율은 `2019`, `2022`, `2025` 기준연도 Q4 요청의 3개년 block을 행정동-분기 row로 as-of 재구성하고, `survival_3y`를 active 안정성 하위지수에 사용한다.
-- 생존율 코호트 분모가 0인 행정동-분기는 임의 대체하지 않고 결측으로 유지하며 `golmok_survival_rate_qc.csv`에 기록한다.
-- `05_build_registered_resident_population.R`는 행정안전부 주민등록인구현황 5세별 월별 CSV에서 active `registered_resident_population.parquet`와 2018Q1~2025Q4 `registered_resident_population_lag_support.parquet`를 발행한다.
-- 주민등록인구는 행정동명과 2020 기준 경계의 `adm_cd`를 매칭하고, `상일제1동 -> 상일동`, `강일동+상일제2동 -> 강일동`, `개포3동 -> 일원2동`, 2025년 `신설동+용두동+용신동 -> 용신동`처럼 분석기간의 분동·개칭을 2020 기준으로 환원한다.
-- 주민등록인구 월별 stock은 분기 평균으로, 고령비중은 월별 분모가중 분기 비중으로 결합한다.
-- 2020년에 `오류제2동`에서 분동된 `항동`은 2018~2019년에 분동 전 `오류제2동`에 포함되어 있었으므로, 2018~2019년 `오류제2동` 원천값을 2020년 `오류제2동`/`항동`의 같은 월·같은 연령대 비율로 배분한다. 이 분동 배분 row는 `registered_boundary_proxy_flag`와 `registered_boundary_proxy_reference_year`로 추적한다.
-- `06_build_analysis_panel.R`는 `seoul_quarter_base`, `aux_covariates`, `living_population_external_inflow`, `golmok_survival_rate`, `registered_resident_population`을 `adm_cd`, `year`, `quarter`, `yq`, `quarter_index` 기준으로 결합하고, lag-support layer에서 등록된 4분기·2분기 시차 변수를 생성한다.
-- 결합 직후 결과는 `panel_merged_base.parquet`, shared derivation 후 결과는 `panel_main_pre_vitality.parquet`로 저장한다.
-- 분기 중첩 변수는 active contract에서 제거한다.
+- [01_build_living_population_inflow.R](../../02_Code/80_optional/preprocess/01_build_living_population_inflow.R) publishes `living_population_external_inflow.parquet` from monthly ZIP files of Seoul living population internal migration and metropolitan area domestic/foreign inflows.
+- Internal migration only uses rows where the destination administrative dong's district differs from the residence district. Metropolitan area data uses all rows as external inflow.
+- Since living population is a point-in-time count, day-time rows are not accumulated; instead, an `adm_cd-month` average point-in-time population is calculated. The monthly averages within the same quarter are then averaged again and joined as `adm_cd-yq` values.
+- If the number of ZIP members for a given month is insufficient, the monthly average of observed days is used as the representative value for that month. This is tracked using `month_success_days`, `month_expected_days`, and `month_coverage_flag` in `living_population_inflow_manifest.csv`.
+- [04_build_golmok_survival_rate.R](../../02_Code/01_preprocess/04_build_golmok_survival_rate.R) publishes `golmok_survival_rate.parquet` from the `selectSurvivalRate.json` response of the Seoul commercial district analysis service.
+- New enterprise survival rates are reconstructed as-of into administrative dong-quarter rows using a 3-year block based on Q4 requests for reference years `2019`, `2022`, and `2025`. `survival_3y` is used in the active stability sub-index.
+- Administrative dong-quarters where the survival rate cohort denominator is 0 are not arbitrarily imputed but kept as missing values and recorded in `golmok_survival_rate_qc.csv`.
+- [05_build_registered_resident_population.R](../../02_Code/01_preprocess/05_build_registered_resident_population.R) publishes the active `registered_resident_population.parquet` and the 2018Q1-2025Q4 `registered_resident_population_lag_support.parquet` from the Ministry of the Interior and Safety's monthly resident population CSVs by 5-year age groups.
+- Resident population matches administrative dong names with the 2020 `adm_cd` boundaries. Changes such as divisions and renamings during the analysis period are standardized to the 2020 baseline (e.g., `상일제1동 -> 상일동`, `강일동+상일제2동 -> 강일동`, `개포3동 -> 일원2동`, 2025's `신설동+용두동+용신동 -> 용신동`).
+- The monthly stock of registered resident population is aggregated into a quarterly average, while the elderly proportion is joined as a denominator-weighted quarterly proportion.
+- Since `항동`, which split from `오류제2동` in 2020, was included in `오류제2동` from 2018-2019, the original 2018-2019 `오류제2동` values are distributed using the same month/age group proportions of the 2020 `오류제2동`/`항동`. These division-distributed rows are tracked with `registered_boundary_proxy_flag` and `registered_boundary_proxy_reference_year`.
+- [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R) merges `seoul_quarter_base`, `aux_covariates`, `living_population_external_inflow`, `golmok_survival_rate`, and `registered_resident_population` based on `adm_cd`, `year`, `quarter`, `yq`, and `quarter_index`. It also creates the registered 4-quarter and 2-quarter lag variables from the lag-support layer.
+- The results immediately after joining are saved as `panel_merged_base.parquet`, and the results after shared derivation are saved as `panel_main_pre_vitality.parquet`.
+- Quarter-overlapping variables are removed from the active contract.
 
-## 6) Shared derived transforms
+## 6) Shared Derived Transforms
 
-- shared quarterly transform은 `adm_cd` 그룹 안에서 `quarter_index`순 정렬 후 계산한다.
-- active shared panel은 동시점 source 변수와 등록된 lag 변수만 유지하며 legacy shift/lead 파생열은 발행하지 않는다.
-- `store_density` 등 공유 파생변수는 `panel_main_pre_vitality` 단계에서 계산한다.
-- `07_build_vitality_index.R`가 최종 `panel_main.parquet`와 `vitality_components.parquet`를 발행한다.
+- Shared quarterly transforms are calculated after sorting by `quarter_index` within the `adm_cd` group.
+- The active shared panel retains only concurrent source variables and registered lag variables; legacy shift/lead derived columns are not published.
+- Shared derived variables such as `store_density` are calculated at the `panel_main_pre_vitality` stage.
+- [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R) publishes the final `panel_main.parquet` and `vitality_components.parquet`.
 
-## 7) Model-side contract
+## 7) Model-side Contract
 
-- `panel_main.parquet`는 모든 active model의 공통 입력이다.
-- appendix sidecar도 동일한 `panel_main` contract에서 출발한다.
-- TWFE의 시간 FE는 `yq`, SPDM의 panel time index도 `yq` 기반 `time_id`다.
-- GTWR는 quarterly resident-only local sidecar다.
+- `panel_main.parquet` is the common input for all active models.
+- The appendix sidecar also starts from the same `panel_main` contract.
+- The time FE of TWFE uses `yq`, and the panel time index of SPDM is also a `time_id` based on `yq`.
+- GTWR is a quarterly resident-only local sidecar.
 
-## 8) 조인 실패 정책
+## 8) Join Failure Policies
 
 - `FAIL`
-  - 필수 키/입력 누락
-  - quarterly publication/as-of rule 위반
-  - 음수 구조 카운트 검출
-  - 핵심 산출물 생성 불가
+  - Missing essential keys/inputs
+  - Violation of quarterly publication/as-of rules
+  - Detection of negative structural counts
+  - Inability to generate core outputs
 - `WARN`
-  - coverage 저하
-  - source-specific partial missing
-  - 선택 보조변수 누락
+  - Coverage degradation
+  - Source-specific partial missing
+  - Missing optional auxiliary variables
 - `MANUAL`
-  - full processed parquet audit
-  - interactive output review
+  - Full processed parquet audit
+  - Interactive output review

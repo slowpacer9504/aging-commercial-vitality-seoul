@@ -1,17 +1,17 @@
-# 모델 명세서
+# Model Specification
 
 ## 0) Canonical vs Supplementary Surface
 
-- active canonical model surface는 `02_run_esda.R -> 01_run_twfe_main.R -> 02_run_spdm_main.R -> 01_run_spdm_w_robustness.R -> 02_run_robustness.R -> 01_make_tables_figures.R`이다.
-- 모든 active canonical model과 reporting은 `2019Q4~2025Q4` 분석 표본을 사용한다. `2019Q1~2019Q3`는 panel 구축 및 rolling/lag warm-up 구간으로만 유지한다.
-- `80_optional/**`의 TWFE, SPDM, GTWR, optional preprocessing scripts는 default run과 required test plan에서 제외되는 manual direct-run surface다. 파일을 직접 실행하면 별도 `RUN_*` 실행 플래그 없이 실제 작업을 수행한다.
-- TWFE channel, interaction, age-mix, sector-share, selection, family-comparison, SPDM channel path, GTWR local appendix 계열은 supplementary/manual 또는 appendix sidecar로 취급한다. SPDM channel path는 `02_Code/80_optional/spdm/07_run_spdm_channel_path.R`를 직접 실행한다.
+- The active canonical model surface is [02_run_esda.R](../../02_Code/02_esda/02_run_esda.R) -> [01_run_twfe_main.R](../../02_Code/03_models/01_run_twfe_main.R) -> [02_run_spdm_main.R](../../02_Code/03_models/02_run_spdm_main.R) -> [01_run_spdm_w_robustness.R](../../02_Code/04_robustness/01_run_spdm_w_robustness.R) -> [02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R) -> [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R).
+- All active canonical models and reporting use the `2019Q4~2025Q4` analysis sample. `2019Q1~2019Q3` is maintained only as a rolling/lag warm-up period for panel construction.
+- TWFE, SPDM, GTWR, and optional preprocessing scripts under `80_optional/**` are part of a manual direct-run surface that is excluded from the default run and required test plans. Executing these files directly will perform the actual tasks without needing a separate `RUN_*` execution flag.
+- The TWFE channel, interaction, age-mix, sector-share, selection, and family-comparison, SPDM channel path, and GTWR local appendix series are treated as supplementary/manual or appendix sidecars. The SPDM channel path is executed directly via [07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R).
 
 ## 1) ESDA
 
-- 목적: 공간의존 존재 여부 확인
-- 입력: `panel_main.parquet`, `W_*.rds`
-- 출력:
+- Objective: Identify the presence of spatial dependence.
+- Inputs: `panel_main.parquet`, `W_*.rds`
+- Outputs:
   - `global_morans_i.csv`
   - `global_morans_i_by_w.csv`
   - `global_bivariate_morans_i.csv`
@@ -25,24 +25,24 @@
   - `univariate_lisa_map__*.png`
   - `bivariate_lisa_map__*.png`
   - `emerging_hotspot_map__*.png`
-- 구현 원칙:
-  - latest quarter cross-section에서 `age60_floating_share`, `age60_resident_share`, `vitality_index_base`, `vitality_sub_*` distribution map을 먼저 저장한다.
-  - `Global Moran's I`, `Global Bivariate Moran's I`, `Univariate LISA`, `Bivariate LISA`, `EHSA`를 quarterly sequence 기준으로 재현 가능하게 실행한다.
-  - Global Moran's I의 p-value는 deterministic seed를 둔 permutation 방식으로 계산한다.
-  - LISA quadrant는 univariate의 경우 `z(x)`와 `W z(x)`, bivariate의 경우 `z(x)`와 `W z(y)`의 부호를 기준으로 분류한다.
-  - bivariate LISA 지도는 계산된 aging 변수와 활력지표의 전체 조합을 저장한다.
-  - EHSA는 `sfdep::emerging_hotspot_analysis()`의 Gi* 관례에 맞춰 queen contiguity에 self-neighbor를 포함한 `queen_include_self` weights를 사용한다.
-  - `age60_resident_share`, `age60_floating_share`, `vitality_sub_*`, `vitality_index_base`가 중심 변수다.
+- Implementation Principles:
+  - Distribution maps for `age60_floating_share`, `age60_resident_share`, `vitality_index_base`, and `vitality_sub_*` from the latest quarter cross-section are saved first.
+  - `Global Moran's I`, `Global Bivariate Moran's I`, `Univariate LISA`, `Bivariate LISA`, and `EHSA` are executed reproducibly based on a quarterly sequence.
+  - The p-values for Global Moran's I are calculated using a permutation approach with a deterministic seed.
+  - LISA quadrants are classified based on the signs of `z(x)` and `W z(x)` for univariate, and `z(x)` and `W z(y)` for bivariate analyses.
+  - Bivariate LISA maps save all combinations of calculated aging variables and vitality indicators.
+  - EHSA uses `queen_include_self` weights (queen contiguity including self-neighbors), following the Gi* convention of `sfdep::emerging_hotspot_analysis()`.
+  - The core variables are `age60_resident_share`, `age60_floating_share`, `vitality_sub_*`, and `vitality_index_base`.
 
-## 3) TWFE 메인 모형
+## 3) TWFE Main Models
 
-- 입력: `panel_main.parquet`, `W_queen.rds`
-- 기본식: `y_it ~ lag4_age60_resident_share + lag4_controls_it | adm_cd + yq`
-- 표준오차: `cluster = ~ adm_cd`
-- 종속변수:
-  - primary: `vitality_sub_economic`, `vitality_sub_social`, `vitality_sub_temporal`, `vitality_sub_stability`
-  - supplementary: `vitality_index_base`
-- 출력:
+- Inputs: `panel_main.parquet`, `W_queen.rds`
+- Base equation: `y_it ~ lag4_age60_resident_share + lag4_controls_it | adm_cd + yq`
+- Standard error: `cluster = ~ adm_cd`
+- Dependent variables:
+  - Primary: `vitality_sub_economic`, `vitality_sub_social`, `vitality_sub_temporal`, `vitality_sub_stability`
+  - Supplementary: `vitality_index_base`
+- Outputs:
   - `twfe_main_models.csv`
   - `twfe_main_models.html`
   - `twfe_main_controls_used.csv`
@@ -52,130 +52,144 @@
   - `twfe_main_residual_moran_summary.csv`
   - `twfe_main_coefplot.png`
   - `twfe_main_coefplot_supplementary.png`
-- 구현 원칙:
-  - TWFE는 baseline / spatial diagnostic layer다.
-  - `ln_floating_pop`은 사회적 활력 구성요소와 종합 활력지수에 포함되므로 메인 통제변수에서 제외한다.
-  - residual Moran output은 필수 산출물이며, p-value는 deterministic seed를 둔 permutation 방식(`permutation_two_sided_abs`)을 기본으로 저장한다.
+- Implementation Principles:
+  - TWFE serves as the baseline / spatial diagnostic layer.
+  - Since `ln_floating_pop` is included in the social vitality component and the composite vitality index, it is excluded from the main control variables.
+  - Residual Moran output is a mandatory deliverable, and p-values are saved using a deterministic seed permutation approach (`permutation_two_sided_abs`) by default.
 
 ## 3B) TWFE Interaction Models
 
-- appendix resident FE COVID interaction family
-- 입력: `panel_main.parquet`, `twfe_main_controls_used.csv`
-- 기간 플래그: `covid_period = 1`은 `2020Q1~2022Q2` 분기 표본이다.
-- 식 구조:
+- Appendix resident FE COVID interaction family
+- Inputs: `panel_main.parquet`, `twfe_main_controls_used.csv`
+- Period flag: `covid_period = 1` represents the `2020Q1~2022Q2` quarterly sample.
+- Equation structure:
   - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls | adm_cd + yq`
 
 ## 3A) TWFE Channel Models
 
-- appendix TWFE channel family
-- 입력: `panel_main.parquet`, `twfe_main_controls_used.csv`
-- 출력:
+- Appendix TWFE channel family
+- Inputs: `panel_main.parquet`, `twfe_main_controls_used.csv`
+- Outputs:
   - `twfe_channel_models.csv`
   - `twfe_channel_controls_used.csv`
-- 구현 원칙:
-  - `lag4_age60_resident_share`와 `lag2_age60_floating_share`를 함께 두는 quarterly appendix contract다.
-  - `x_to_m`과 `y_with_channels`를 같은 분기 패널 계약에서 분리 저장한다.
-  - `y_with_channels`는 outcome별 메인 TWFE control contract를 상속하고, `x_to_m`은 `twfe_main_controls_used.csv`에서 모든 메인 outcome에 공통으로 선택된 control set을 상속한다.
+- Implementation Principles:
+  - This is a quarterly appendix contract that includes both `lag4_age60_resident_share` and `lag2_age60_floating_share`.
+  - `x_to_m` and `y_with_channels` are saved separately within the same quarterly panel contract.
+  - `y_with_channels` inherits the main TWFE control contract by outcome, while `x_to_m` inherits the control set commonly selected across all main outcomes from `twfe_main_controls_used.csv`.
 
 ## 3C) TWFE Age-Mix Experiment
 
-- appendix TWFE age-mix family
-- 실행 조건: `80_optional/twfe/03_run_twfe_age_mix_experiment.R` 직접 실행
-- 입력: `panel_main.parquet`, `registered_resident_population.parquet`
-- 출력:
+- Appendix TWFE age-mix family
+- Execution condition: Run [03_run_twfe_age_mix_experiment.R](../../02_Code/80_optional/twfe/03_run_twfe_age_mix_experiment.R) directly.
+- Inputs: `panel_main.parquet`, `registered_resident_population.parquet`
+- Outputs:
   - `twfe_age_mix_experiment_models.csv`
   - `twfe_age_mix_experiment_controls_used.csv`
   - `twfe_age_mix_experiment_diagnostics.csv`
-- 구현 원칙:
-  - 행정안전부 주민등록인구현황에서 만든 분기 평균 연령대별 주민등록인구를 청년(20~30대), 중년(40~50대), 노년(60세 이상)으로 묶고 `log1p` 변환한 `ln_young_resident_pop`, `ln_middle_resident_pop`, `ln_old_resident_pop`을 모두 노출로 둔다.
-  - 구성비 모형이 아니므로 노년층은 기준범주로 생략하지 않는다.
-  - controls는 `twfe_main_controls_used.csv`의 현재 메인 TWFE control contract를 상속하고, lagged resident scale control인 `lag4_ln_resident_pop`도 유지한다.
+- Implementation Principles:
+  - Using the quarterly average registered resident population by age group from the Ministry of the Interior and Safety, we group them into youth (20s-30s), middle-aged (40s-50s), and elderly (60+). They are log1p-transformed into `ln_young_resident_pop`, `ln_middle_resident_pop`, and `ln_old_resident_pop` and all set as exposures.
+  - Because this is not a compositional model, the elderly group is not omitted as a reference category.
+  - Controls inherit the current main TWFE control contract from `twfe_main_controls_used.csv`, and the lagged resident scale control, `lag4_ln_resident_pop`, is maintained.
+
+## 3D) TWFE Vitality Component Models
+
+- Appendix TWFE vitality components family
+- Execution condition: Run [04_run_twfe_vitality_component_models.R](../../02_Code/80_optional/twfe/04_run_twfe_vitality_component_models.R) directly.
+- Inputs: `panel_main.parquet`
+- Outputs:
+  - `twfe_vitality_component_models.csv`
+  - `twfe_vitality_component_controls_used.csv`
+  - `twfe_vitality_component_diagnostics.csv`
+- Implementation Principles:
+  - An appendix TWFE sidecar using individual vitality component variables (e.g. underlying components of commercial vitality such as sales counts, survival rates, continuity months, time-of-day entropy, etc.) as outcomes.
+  - The exposure variable is fixed as `lag4_age60_resident_share`.
+  - Controls inherit the main TWFE control candidates (`lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, `lag4_transit_accessibility`, `lag4_ln_workplace_worker_pop`) and undergo the same outcome-specific screening.
 
 ## 5) SPDM
 
-- 목표: 직접/간접/총효과
-- 입력: `panel_main.parquet`, `W_queen.rds`
-- 메인 노출변수: `lag4_age60_resident_share`
-- 출력:
+- Objective: Estimate direct, indirect, and total effects.
+- Inputs: `panel_main.parquet`, `W_queen.rds`
+- Main exposure variable: `lag4_age60_resident_share`
+- Outputs:
   - `spdm_main_models.csv`
   - `spdm_impacts.csv`
   - `spdm_controls_used.csv`
   - `spdm_main_diagnostics.csv`
-- 구현 원칙:
-  - main SPDM은 resident-only exposure로 TWFE 메인 사양과 정렬한다.
-  - active main specification은 `y_it = rho W y_it + X_it beta + W X_it theta + adm_cd FE + yq FE + e_it`의 true SDM이다.
-  - `W X` 항은 `W lag4_age60_resident_share`와 outcome별 selected controls의 공간시차항을 quarterly panel에서 직접 생성한다.
-  - 결과 해석의 중심은 direct / indirect / total effects다.
-  - impact는 `S = (I - rho W)^(-1)`와 `S(beta I + theta W)` 행렬식으로 계산하고, simulation 기반 표준오차와 신뢰구간을 저장한다.
-  - coefficient와 spatial parameter의 표준오차는 `splm::spml()` fitted object의 model-based asymptotic ML `vcov`에서 온다. impact SE/CI는 같은 `vcov`를 이용한 simulation 기반 추론이며, active SPDM 산출물에서는 이를 robust SE로 명명하지 않는다.
-  - `ln_floating_pop`은 종속변수 구성요소이므로 main SPDM control contract에 포함하지 않는다.
+- Implementation Principles:
+  - The main SPDM aligns with the TWFE main specification as a resident-only exposure.
+  - The active main specification is a true SDM: `y_it = rho W y_it + X_it beta + W X_it theta + adm_cd FE + yq FE + e_it`.
+  - The `W X` term generates the spatial lags of `lag4_age60_resident_share` and outcome-specific selected controls directly in the quarterly panel.
+  - Interpretation of results focuses on direct, indirect, and total effects.
+  - Impacts are calculated using the matrix expressions `S = (I - rho W)^(-1)` and `S(beta I + theta W)`, saving simulation-based standard errors and confidence intervals.
+  - Standard errors for coefficients and spatial parameters come from the model-based asymptotic ML `vcov` of the `splm::spml()` fitted object. Impact SEs/CIs are simulation-based inferences using the same `vcov`, and are not referred to as robust SEs in active SPDM outputs.
+  - `ln_floating_pop` is a component of the dependent variable, so it is excluded from the main SPDM control contract.
 
 ## 5B) SPDM Interaction Models
 
-- appendix resident SDM COVID interaction family
-- 입력: `panel_main.parquet`, `W_queen.rds`, `spdm_main_controls_used.csv`
-- 기간 플래그: `covid_period = 1`은 `2020Q1~2022Q2` 분기 표본이다.
-- 식 구조:
+- Appendix resident SDM COVID interaction family
+- Inputs: `panel_main.parquet`, `W_queen.rds`, `spdm_main_controls_used.csv`
+- Period flag: `covid_period = 1` represents the `2020Q1~2022Q2` quarterly sample.
+- Equation structure:
   - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls`
 
 ## 5A) SPDM Optional Channel Path Sidecar
 
-- optional/manual SPDM path family
-- 실행 조건: `02_Code/80_optional/spdm/07_run_spdm_channel_path.R` 직접 실행
-- 입력: `panel_main.parquet`, `W_queen.rds`
-- 출력:
+- Optional/manual SPDM path family
+- Execution condition: Run [07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R) directly.
+- Inputs: `panel_main.parquet`, `W_queen.rds`
+- Outputs:
   - `spdm_channel_models.csv`
   - `spdm_channel_impacts.csv`
   - `spdm_channel_controls_used.csv`
   - `spdm_channel_path_effects.csv`
   - `spdm_channel_bootstrap_draws.csv`
   - `spdm_channel_diagnostics.csv`
-- 구현 원칙:
-  - `X = lag4_age60_resident_share`, `M = lag2_age60_floating_share`로 고정한다.
-  - `lag2_age60_floating_share`는 2018 floating source가 없으므로 2019Q1~2019Q2가 warm-up 결측이고, active channel path complete-case sample은 `2019Q4` 이후 분석 표본에서 형성된다.
-  - total-effect equation은 `Y ~ X + controls + W X + W controls`와 spatial lagged outcome을 quarterly Queen SDM으로 추정한다.
-  - mediator equation은 `M ~ X + controls + W X + W controls`와 spatial lagged mediator를 quarterly Queen SDM으로 추정한다.
-  - outcome equation은 `Y ~ X + M + controls + W X + W M + W controls`와 spatial lagged outcome을 quarterly Queen SDM으로 추정한다.
-  - channel outcome은 `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, `vitality_index_base`이다.
-  - `vitality_sub_social`은 유동인구 source와 직접 겹치므로 channel path 단독 outcome에서 제외한다. 단, 종합 활력지수는 네 하위차원 구성 의미를 유지하기 위해 사회적 활성도를 포함한 `vitality_index_base`를 사용하고 mediator source overlap caveat를 기록한다.
-  - `c`, `a`, `b`, `c_prime`의 direct/indirect/total effects와 `a*b` product indirect effect, `c - c_prime` direct attenuation diagnostic을 저장한다.
-  - 기본 `a*b` inference는 행정동 단위 wild residual bootstrap이다. bootstrap이 비활성화되었거나 유효 draw가 부족하면 `delta_independent_approx`를 fallback으로 사용하되, 결과는 완전매개 자동 판정이 아니라 mediation-oriented channel inference로 해석한다.
-  - runtime default는 `RUN_SPDM_CHANNEL_BOOTSTRAP=TRUE`, `SPDM_CHANNEL_BOOTSTRAP_R=1000`, `SPDM_CHANNEL_BOOTSTRAP_CORES=4`, `SPDM_CHANNEL_IMPACT_SIM_R=1000`, `SPDM_CHANNEL_IMPACT_CORES=4`다. macOS/Linux/GCP에서는 병렬 실행, Windows에서는 순차 fallback을 사용한다.
+- Implementation Principles:
+  - Fixed as `X = lag4_age60_resident_share` and `M = lag2_age60_floating_share`.
+  - Since `lag2_age60_floating_share` lacks a 2018 floating source, `2019Q1~2019Q2` are missing warm-ups. The active channel path complete-case sample is formed from the analysis sample after `2019Q4`.
+  - The total-effect equation estimates `Y ~ X + controls + W X + W controls` and the spatially lagged outcome via a quarterly Queen SDM.
+  - The mediator equation estimates `M ~ X + controls + W X + W controls` and the spatially lagged mediator via a quarterly Queen SDM.
+  - The outcome equation estimates `Y ~ X + M + controls + W X + W M + W controls` and the spatially lagged outcome via a quarterly Queen SDM.
+  - Channel outcomes are `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, and `vitality_index_base`.
+  - `vitality_sub_social` directly overlaps with the floating population source, so it is excluded as a standalone channel path outcome. However, to maintain the meaning of the composite vitality index encompassing the four sub-dimensions, `vitality_index_base` (which includes social vitality) is used, and a mediator source overlap caveat is recorded.
+  - Records direct, indirect, and total effects for `c`, `a`, `b`, and `c_prime`, along with the `a*b` product indirect effect and the `c - c_prime` direct attenuation diagnostic.
+  - Default `a*b` inference utilizes a dong-level wild residual bootstrap. If the bootstrap is disabled or yields insufficient valid draws, `delta_independent_approx` is used as a fallback, but the result is interpreted as a mediation-oriented channel inference rather than an automatic full mediation judgment.
+  - Runtime defaults are `RUN_SPDM_CHANNEL_BOOTSTRAP=TRUE`, `SPDM_CHANNEL_BOOTSTRAP_R=1000`, `SPDM_CHANNEL_BOOTSTRAP_CORES=4`, `SPDM_CHANNEL_IMPACT_SIM_R=1000`, and `SPDM_CHANNEL_IMPACT_CORES=4`. It uses parallel execution on macOS/Linux/GCP and sequential fallback on Windows.
 
 ## 5C) SPDM Age-Mix Experiment
 
-- appendix SPDM age-mix family
-- 실행 조건: `80_optional/spdm/02_run_spdm_age_mix_experiment.R` 직접 실행
-- 출력:
+- Appendix SPDM age-mix family
+- Execution condition: Run [02_run_spdm_age_mix_experiment.R](../../02_Code/80_optional/spdm/02_run_spdm_age_mix_experiment.R) directly.
+- Outputs:
   - `spdm_age_mix_experiment_models.csv`
   - `spdm_age_mix_experiment_impacts.csv`
   - `spdm_age_mix_experiment_controls_used.csv`
   - `spdm_age_mix_experiment_diagnostics.csv`
-- 구현 원칙:
-  - 행정안전부 주민등록인구현황에서 만든 분기 평균 연령대별 주민등록인구를 청년(20~30대), 중년(40~50대), 노년(60세 이상)으로 묶고 `log1p` 변환한 `ln_young_resident_pop`, `ln_middle_resident_pop`, `ln_old_resident_pop`을 모두 노출로 둔다.
-  - 구성비 모형이 아니므로 노년층은 기준범주로 생략하지 않는다.
-  - controls는 current SPDM main control candidate를 상속하고, lagged resident scale control인 `lag4_ln_resident_pop`도 유지한다.
-  - age-mix appendix도 `sample_min_yq`, `sample_max_yq`를 갖는 quarterly impact schema를 쓴다.
+- Implementation Principles:
+  - Using the quarterly average registered resident population by age group from the Ministry of the Interior and Safety, we group them into youth (20s-30s), middle-aged (40s-50s), and elderly (60+). They are log1p-transformed into `ln_young_resident_pop`, `ln_middle_resident_pop`, and `ln_old_resident_pop` and all set as exposures.
+  - Because this is not a compositional model, the elderly group is not omitted as a reference category.
+  - Controls inherit the current SPDM main control candidates, and the lagged resident scale control, `lag4_ln_resident_pop`, is maintained.
+  - The age-mix appendix also uses a quarterly impact schema with `sample_min_yq` and `sample_max_yq`.
 
 ## 5D) SPDM Sector-Share Experiment
 
-- appendix SPDM sector-share family
-- 실행 조건: `80_optional/spdm/03_run_spdm_sector_share_experiment.R` 직접 실행
-- 출력:
+- Appendix SPDM sector-share family
+- Execution condition: Run [03_run_spdm_sector_share_experiment.R](../../02_Code/80_optional/spdm/03_run_spdm_sector_share_experiment.R) directly.
+- Outputs:
   - `spdm_sector_share_experiment_models.csv`
   - `spdm_sector_share_experiment_impacts.csv`
   - `spdm_sector_share_experiment_controls_used.csv`
   - `spdm_sector_share_experiment_diagnostics.csv`
   - `spdm_sector_share_experiment_exposure_relations.csv`
-- 구현 원칙:
-  - resident-only, floating-only exposure family를 contemporaneous quarterly contract에서 비교한다.
-  - same-domain total control retention 여부를 diagnostics에 남긴다.
+- Implementation Principles:
+  - Resident-only and floating-only exposure families are compared in a contemporaneous quarterly contract.
+  - Whether the same-domain total control is retained is recorded in the diagnostics.
 
 ## 5E) SPDM W Robustness
 
-- 목표: `queen`, `rook`, `knn6`, `knn8`에서 같은 resident-only quarterly SDM 계약을 재추정해 W 민감도를 점검한다.
-- 표준오차 계약은 main SPDM과 같다. coefficient/spatial parameter는 model-based asymptotic ML SE, impact는 model-based `vcov` simulation SE로 보고한다.
-- 출력:
+- Objective: Check W-matrix sensitivity by re-estimating the same resident-only quarterly SDM contract across `queen`, `rook`, `knn6`, and `knn8`.
+- The standard error contract matches the main SPDM. Coefficients and spatial parameters are reported with model-based asymptotic ML SEs, while impacts are reported with model-based `vcov` simulation SEs.
+- Outputs:
   - `spdm_w_robustness_models.csv`
   - `spdm_w_robustness_impacts.csv`
   - `spdm_w_robustness_controls_used.csv`
@@ -183,61 +197,77 @@
 
 ## 5G) SPDM Family Comparison Sidecar
 
-- appendix용 manual sidecar이며 main SPDM을 대체하지 않는다. 목적은 같은 quarterly Queen sample과 같은 control contract에서 공간패널 family 선택 민감도를 비교하는 것이다.
-- 입력:
+- A manual sidecar for the appendix that does not replace the main SPDM. Its purpose is to compare spatial panel family selection sensitivity using the same quarterly Queen sample and control contract.
+- Inputs:
   - `panel_main.parquet`
   - `W_queen.rds`
   - `spdm_main_diagnostics.csv`
   - `spdm_controls_used.csv`
-- 비교 family:
-  - `twfe_common`: main SPDM 표본으로 다시 적합한 공통표본 TWFE 기준선
-  - `slx`: `W X`를 포함한 two-way FE panel, direct=`beta`, indirect=`theta`, total=`beta + theta`
-  - `sar`: spatial lag panel
-  - `sdm`: main SPDM과 같은 manual `W X` true SDM 구현
-  - `sem`: spatial error panel, direct/indirect/total impact는 `not_applicable`
-  - `sdem`: spatial error panel with manual `W X`, direct=`beta`, indirect=`theta`, total=`beta + theta`
-  - `sarar_sac`: spatial lag + spatial error panel
-  - `gns`: `W y`, manual `W X`, spatial error를 모두 포함한 GNS/SAC-Durbin family
-- 구현 원칙:
-  - main SPDM에서 성공한 `outcome x exposure` 행만 대상으로 한다.
-  - `spdm_main_diagnostics.csv`와 `spdm_controls_used.csv`의 selected control contract가 불일치하면 해당 spec은 실패로 기록하고 재추정하지 않는다.
-  - 모든 family는 main SPDM의 balanced quarterly sample과 `2019Q4~2025Q4` active analysis horizon을 그대로 재구성해 추정한다.
-  - impact가 이론적으로 해석 가능한 `SAR`, `SDM`, `SARAR/SAC`은 가능한 경우 direct/indirect/total을 기록한다.
-  - `SLX`와 `SDEM`은 endogenous `W y` feedback multiplier가 없는 `W X` 효과이므로 `SDM`의 feedback-inclusive matrix impact와 구분해 해석한다.
-  - `GNS`는 spatial error를 포함하지만 평균효과는 `SDM`과 같은 `S = (I - rho W)^(-1)`, `S(beta I + theta W)` matrix impact로 기록한다.
-  - `SEM`은 공간오차 모형이므로 focal coefficient와 error parameter는 비교하되 spatial spillover impact 표기는 하지 않는다.
-- 출력:
+- Comparison families:
+  - `twfe_common`: A common-sample TWFE baseline re-fitted on the main SPDM sample.
+  - `slx`: Two-way FE panel including `W X`, where direct=`beta`, indirect=`theta`, and total=`beta + theta`.
+  - `sar`: Spatial lag panel.
+  - `sdm`: A manual `W X` true SDM implementation identical to the main SPDM.
+  - `sem`: Spatial error panel, where direct/indirect/total impacts are `not_applicable`.
+  - `sdem`: Spatial error panel with manual `W X`, where direct=`beta`, indirect=`theta`, and total=`beta + theta`.
+  - `sarar_sac`: Spatial lag + spatial error panel.
+  - `gns`: A GNS/SAC-Durbin family encompassing `W y`, manual `W X`, and spatial error.
+- Implementation Principles:
+  - Only models where the `outcome x exposure` run succeeded in the main SPDM are targeted.
+  - If the selected control contract between `spdm_main_diagnostics.csv` and `spdm_controls_used.csv` mismatches, the specification is recorded as a failure and not re-estimated.
+  - All families are estimated by exactly reconstructing the balanced quarterly sample and the `2019Q4~2025Q4` active analysis horizon from the main SPDM.
+  - For `SAR`, `SDM`, and `SARAR/SAC` where impacts are theoretically interpretable, direct/indirect/total impacts are recorded when available.
+  - Since `SLX` and `SDEM` reflect `W X` effects without an endogenous `W y` feedback multiplier, they are interpreted distinctly from the feedback-inclusive matrix impacts of `SDM`.
+  - Although `GNS` includes a spatial error, its average effects are recorded with the same `S = (I - rho W)^(-1)`, `S(beta I + theta W)` matrix impacts as `SDM`.
+  - Since `SEM` is a spatial error model, focal coefficients and error parameters are compared, but spatial spillover impacts are not indicated.
+- Outputs:
   - `spdm_family_models.csv`
   - `spdm_family_comparison.csv`
-  - `spatial_family_main_table.csv` (`01_make_tables_figures.R` 실행 시 reporting용 축약표)
+  - `spatial_family_main_table.csv` (Condensed table for reporting when running [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R))
+
+## 5H) SPDM Vitality Component Models
+
+- Appendix SPDM vitality components family
+- Execution condition: Run [06_run_spdm_vitality_component_models.R](../../02_Code/80_optional/spdm/06_run_spdm_vitality_component_models.R) directly.
+- Inputs: `panel_main.parquet`, `W_queen.rds`
+- Outputs:
+  - `spdm_vitality_component_models.csv`
+  - `spdm_vitality_component_impacts.csv`
+  - `spdm_vitality_component_controls_used.csv`
+  - `spdm_vitality_component_diagnostics.csv`
+- Implementation Principles:
+  - An appendix Queen-based true SDM/SPDM sidecar using individual vitality component variables as outcomes.
+  - The main exposure variable is fixed as `lag4_age60_resident_share` (along with its spatial lag `W lag4_age60_resident_share`).
+  - Estimates direct, indirect, and total impacts of resident aging on each underlying vitality component.
+  - Controls inherit the main SPDM control pool and its outcomes-specific selected control configurations.
 
 ## 5F) SPDM Selection Sidecar
 
-- appendix selection family
-- 출력:
+- Appendix selection family
+- Outputs:
   - `spdm_selection_tests.csv`
   - `spdm_selection_family_comparison.csv`
-- 구현 원칙:
-  - SEM, SAR, SDM selection diagnostics를 main queen sample과 같은 quarterly control contract에서 비교한다.
-  - 가족별 비교표는 `sample_min_yq`, `sample_max_yq`를 함께 저장한다.
+- Implementation Principles:
+  - Compares SEM, SAR, and SDM selection diagnostics within the same quarterly control contract as the main queen sample.
+  - The family comparison table also stores `sample_min_yq` and `sample_max_yq`.
 
 ## 6) Robustness
 
-- 목표: outcome-definition, sample-window, W-Moran 민감도 점검
-- 출력:
+- Objective: Check sensitivity to outcome definitions, sample windows, and W-Moran specifications.
+- Outputs:
   - `robustness_summary.csv`
   - `robustness_compare.png`
-- 구현 원칙:
-  - canonical shared panel은 동시점 source 변수와 등록된 model lag 변수만 유지한다.
-  - 미등록 lag/lead family는 만들지 않는다.
-  - sample-window는 `full`(`2019Q4~2025Q4`)과 `pre2025` quarterly window를 비교한다.
+- Implementation Principles:
+  - The canonical shared panel retains only contemporaneous source variables and registered model lag variables.
+  - Unregistered lag/lead families are not created.
+  - Sample windows compare the `full` (`2019Q4~2025Q4`) and `pre2025` quarterly windows.
 
 ## 7) GTWR Main Optional Sidecar
 
-- 목표: resident-only local heterogeneity 설명
-- 입력: `panel_main.parquet`, `2020 기준 서울시 행정동 경계`
-- 실행 조건: `03_models/03_run_gtwr_main.R` 직접 실행
-- 출력:
+- Objective: Explain resident-only local heterogeneity.
+- Inputs: `panel_main.parquet`, `2020 Seoul administrative boundary`
+- Execution condition: Run [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R) directly.
+- Outputs:
   - `gtwr_main_models_<control_set>.csv`
   - `gtwr_local_beta_panel_<control_set>.csv`
   - `gtwr_local_coefficients_<control_set>.csv`
@@ -248,126 +278,127 @@
   - `gtwr_delta_summary_table_<control_set>.csv`
   - `gtwr_delta_rankings_table_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/*.rds`
-- 구현 원칙:
-  - quarterly sample 기준으로 실행한다.
-  - `GTWR_CONTROL_SET=lean`을 기본 통제 사양으로 사용한다.
-  - lean control pool은 `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted` 두 개다.
-  - `GTWR_CONTROL_SET=extended`는 lean control에 `lag4_transit_accessibility`와 `lag4_ln_workplace_worker_pop`을 추가한다.
-  - GTWR extended에서 버스정류장 수와 지하철역 수는 별도 통제변수로 투입하지 않고 `lag4_transit_accessibility` composite로 투입하며, 직장인구 규모는 `lag4_ln_workplace_worker_pop`으로 통제한다.
-  - GTWR spatiotemporal weight 기반 local condition-number를 진단으로 기록한다.
-  - local condition-number는 `GWmodel::gwr.collin.diagno()`의 local_CN 계산 관례를 GTWR의 `st.dist`/`gw.weight` 기반 시공간 가중치에 맞춰 적용한다.
-  - 기본 bandwidth는 fixed `GTWR_ST_BW=60`으로 통일한다.
-  - `adaptive=TRUE` 기준에서 60은 각 추정점 주변 시공간 이웃 관측치 60개를 의미한다.
-  - `03_run_gtwr_main.R`는 `GTWR_BANDWIDTH_STRATEGY`가 fixed가 아니어도 `bw.gtwr()`를 실행하지 않는다.
-  - `bw.gtwr()` full-panel/anchor-quarter 탐색, fixed bandwidth grid 민감도, lamda grid 민감도는 각각 `06_select_gtwr_bandwidth.R`, `07_run_gtwr_bandwidth_sensitivity.R`, `08_run_gtwr_lamda_sensitivity.R`에서만 실행한다.
-  - `07_run_gtwr_bandwidth_sensitivity.R`의 기본 fixed bandwidth grid는 `30,60,90,120,180`이며, baseline은 `GTWR_ST_BW=60`이다.
-  - main summary와 local coefficient table은 latest-quarter local beta를 `estimate_type=latest`로 저장한다.
-  - latest-quarter coefficient coverage를 `latest_missing_n`, `latest_coverage_share`로 기록한다.
-  - earliest-to-latest 변화량은 `gtwr_delta_*` 보조 reporting table로만 파생한다.
-  - outcome-exposure spec별 cache를 먼저 저장하고, final raw GTWR bundle과 control trace는 전체 cache를 집계해 생성한다.
-  - `GTWR_PARALLEL_SPECS`로 병렬 worker 수를 제한하며, `GTWR_RESUME_SPECS=TRUE`일 때 완료 spec cache를 재사용한다.
-  - reporting용 downstream delta table은 horizon-aligned raw output이 있을 때만 파생된다.
+- Implementation Principles:
+  - Executed based on a quarterly sample.
+  - `GTWR_CONTROL_SET=lean` is used as the default control specification.
+  - The lean control pool consists solely of `lag4_ln_resident_pop` and `lag4_ln_land_price_adjusted`.
+  - `GTWR_CONTROL_SET=extended` adds `lag4_transit_accessibility` and `lag4_ln_workplace_worker_pop` to the lean controls.
+  - In GTWR extended, the number of bus stops and subway stations are not input as separate controls but as a `lag4_transit_accessibility` composite, and workplace population size is controlled via `lag4_ln_workplace_worker_pop`.
+  - Records the local condition-number based on GTWR spatiotemporal weights as a diagnostic.
+  - The local condition-number applies the local_CN calculation convention of `GWmodel::gwr.collin.diagno()` adapted to GTWR's `st.dist`/`gw.weight` spatiotemporal weights.
+  - The default bandwidth is uniformly fixed at `GTWR_ST_BW=60`.
+  - Under `adaptive=TRUE`, a bandwidth of 60 means 60 spatiotemporal neighbors around each estimation point.
+  - [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R) does not run `bw.gtwr()` even if `GTWR_BANDWIDTH_STRATEGY` is not fixed.
+  - `bw.gtwr()` full-panel/anchor-quarter search, fixed bandwidth grid sensitivity, and lambda grid sensitivity are only executed in [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R), and [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R), respectively.
+  - The default fixed bandwidth grid for [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R) is `30, 60, 90, 120, 180`, with a baseline of `GTWR_ST_BW=60`.
+  - The main summary and local coefficient tables save the latest-quarter local beta with `estimate_type=latest`.
+  - Latest-quarter coefficient coverage is recorded via `latest_missing_n` and `latest_coverage_share`.
+  - Earliest-to-latest changes are derived solely as `gtwr_delta_*` auxiliary reporting tables.
+  - Spec-specific caches by outcome-exposure are saved first, and the final raw GTWR bundle and control traces are generated by aggregating the entire cache.
+  - `GTWR_PARALLEL_SPECS` limits the number of parallel workers, and completed spec caches are reused when `GTWR_RESUME_SPECS=TRUE`.
+  - Downstream delta tables for reporting are derived only when horizon-aligned raw outputs exist.
 
 ## 7A) GTWR Floating-Only Appendix
 
-- manual quarterly GTWR appendix sidecar
-- 실행 조건: `80_optional/gtwr/01_run_gtwr_floating_only.R` 직접 실행
-- 출력:
+- Manual quarterly GTWR appendix sidecar
+- Execution condition: Run [01_run_gtwr_floating_only.R](../../02_Code/80_optional/gtwr/01_run_gtwr_floating_only.R) directly.
+- Outputs:
   - `gtwr_floating_models_<control_set>.csv`
   - `gtwr_floating_local_beta_panel_<control_set>.csv`
   - `gtwr_floating_local_coefficients_<control_set>.csv`
   - `gtwr_floating_controls_used_<control_set>.csv`
   - `gtwr_floating_frozen_spec_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_spec_cache/<control_set>/floating/*.rds`
-- 구현 원칙:
-  - main outcomes x `age60_floating_share` spec을 `GWmodel::gtwr()`로 실제 추정한다.
-  - control pool은 main GTWR와 같은 `GTWR_CONTROL_SET` 계약을 따른다.
-  - default `run_all.R`과 required test plan에서는 제외되므로 raw output 부재를 failure로 보지 않는다.
+- Implementation Principles:
+  - Actual estimation of main outcomes x `age60_floating_share` specs is performed using `GWmodel::gtwr()`.
+  - The control pool follows the same `GTWR_CONTROL_SET` contract as the main GTWR.
+  - Because it is excluded from the default `run_all.R` and required test plans, the absence of raw output is not considered a failure.
 
 ## 7B) GTWR Age-Band Appendix
 
-- manual quarterly GTWR appendix sidecar
-- 실행 조건: `80_optional/gtwr/02_run_gtwr_age_band.R` 직접 실행
-- 출력:
+- Manual quarterly GTWR appendix sidecar
+- Execution condition: Run [02_run_gtwr_age_band.R](../../02_Code/80_optional/gtwr/02_run_gtwr_age_band.R) directly.
+- Outputs:
   - `gtwr_age_band_models_<control_set>.csv`
   - `gtwr_age_band_local_beta_panel_<control_set>.csv`
   - `gtwr_age_band_local_coefficients_<control_set>.csv`
   - `gtwr_age_band_controls_used_<control_set>.csv`
   - `gtwr_age_band_frozen_spec_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_spec_cache/<control_set>/age_band/*.rds`
-- 구현 원칙:
-  - resident/floating domain별 age20~age50 exposure family와 main outcomes를 `GWmodel::gtwr()`로 실제 추정한다.
-  - output에는 `domain`, `age_band`, `same_domain_total_control`을 함께 저장한다.
-  - control pool은 main GTWR와 같은 `GTWR_CONTROL_SET` 계약을 따른다.
-  - downstream delta summary/rankings는 raw appendix output이 있을 때만 파생된다.
+- Implementation Principles:
+  - Actual estimation is performed using `GWmodel::gtwr()` on age20~age50 exposure families by resident/floating domains and main outcomes.
+  - The output saves `domain`, `age_band`, and `same_domain_total_control` together.
+  - The control pool follows the same `GTWR_CONTROL_SET` contract as the main GTWR.
+  - Downstream delta summaries/rankings are derived only when raw appendix outputs exist.
 
 ## 7C) GTWR Sector-Share Appendix
 
-- manual quarterly GTWR appendix sidecar
-- 실행 조건: `80_optional/gtwr/03_run_gtwr_sector_share.R` 직접 실행
-- 출력:
+- Manual quarterly GTWR appendix sidecar
+- Execution condition: Run [03_run_gtwr_sector_share.R](../../02_Code/80_optional/gtwr/03_run_gtwr_sector_share.R) directly.
+- Outputs:
   - `gtwr_sector_share_models_<control_set>.csv`
   - `gtwr_sector_share_local_beta_panel_<control_set>.csv`
   - `gtwr_sector_share_local_coefficients_<control_set>.csv`
   - `gtwr_sector_share_controls_used_<control_set>.csv`
   - `gtwr_sector_share_frozen_spec_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_spec_cache/<control_set>/sector_share/*.rds`
-- 구현 원칙:
-  - sector-share outcomes에서 resident-only/floating-only exposure family를 `GWmodel::gtwr()`로 실제 추정한다.
-  - output에는 `exposure_family`, `same_domain_total_control`을 함께 저장한다.
-  - control pool은 main GTWR와 같은 `GTWR_CONTROL_SET` 계약을 따른다.
+- Implementation Principles:
+  - Actual estimation is performed using `GWmodel::gtwr()` on resident-only/floating-only exposure families against sector-share outcomes.
+  - The output saves `exposure_family` and `same_domain_total_control` together.
+  - The control pool follows the same `GTWR_CONTROL_SET` contract as the main GTWR.
 
 ## 7D) GWR Delta Appendix
 
-- manual quarterly appendix sidecar
-- 출력:
+- Execution condition: Run [04_run_gwr_delta.R](../../02_Code/80_optional/gtwr/04_run_gwr_delta.R) directly.
+- Manual quarterly appendix sidecar
+- Outputs:
   - `gwr_delta_main_models.csv`
   - `gwr_delta_local_coefficients.csv`
   - `gwr_delta_floating_models.csv`
   - `gwr_delta_floating_local_coefficients.csv`
   - `gwr_delta_controls_used.csv`
-- 구현 원칙:
-  - delta window metadata는 active analysis horizon인 `2019Q4~2025Q4`에서 파생한다.
-  - early window는 active horizon의 첫 3개 calendar year에 해당하는 `2019Q4~2021Q4`, late window는 마지막 3개 calendar year에 해당하는 `2023Q1~2025Q4`로 기록한다.
-  - raw output schema는 `sample_min_yq`, `sample_max_yq`, `early_*_yq`, `late_*_yq`, `early_n_quarter`, `late_n_quarter`를 함께 기록하며, legacy compatibility를 위해 `early_*_year`, `late_*_year`, `window_n_year`도 유지한다.
+- Implementation Principles:
+  - Delta window metadata is derived from the active analysis horizon, `2019Q4~2025Q4`.
+  - The early window is recorded as the first 3 calendar years of the active horizon (`2019Q4~2021Q4`), and the late window as the last 3 calendar years (`2023Q1~2025Q4`).
+  - The raw output schema logs `sample_min_yq`, `sample_max_yq`, `early_*_yq`, `late_*_yq`, `early_n_quarter`, and `late_n_quarter`, while `early_*_year`, `late_*_year`, and `window_n_year` are retained for legacy compatibility.
 
 ## 7E) GTWR Bandwidth Selection Diagnostic
 
-- manual quarterly diagnostic
-- 실행 조건: `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr` 또는 `anchor_quarter_bw_gtwr`
-- 출력:
+- Manual quarterly diagnostic
+- Execution condition: `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr` or `anchor_quarter_bw_gtwr`
+- Outputs:
   - `gtwr_bandwidth_selection_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_bandwidth_cache/<control_set>/main/*.rds`
-- 구현 원칙:
-  - resident-only main GTWR spec의 `bw.gtwr()` 탐색 결과만 저장한다.
-  - 선택 결과는 main GTWR에 자동 적용하지 않고, 필요한 경우 `GTWR_ST_BW`로 명시 적용한다.
+- Implementation Principles:
+  - Only the `bw.gtwr()` search results for resident-only main GTWR specs are saved.
+  - The selection results are not automatically applied to the main GTWR; they must be explicitly applied via `GTWR_ST_BW` if needed.
 
 ## 7F) GTWR Bandwidth Sensitivity Diagnostic
 
-- manual quarterly diagnostic
-- 실행 조건: `80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R` 직접 실행
-- 출력:
+- Manual quarterly diagnostic
+- Execution condition: Run [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R) directly.
+- Outputs:
   - `gtwr_bandwidth_sensitivity_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_bandwidth_sensitivity_cache/<control_set>/main/*.rds`
-- 구현 원칙:
-  - baseline `gtwr_main_models_<control_set>.csv`와 `gtwr_local_coefficients_<control_set>.csv`를 먼저 요구한다.
-  - fixed bandwidth grid를 spec별로 재추정하고, baseline latest-quarter beta 대비 상관, 절대차이, sign flip, local condition-number 민감도를 저장한다.
+- Implementation Principles:
+  - Requires baseline `gtwr_main_models_<control_set>.csv` and `gtwr_local_coefficients_<control_set>.csv` first.
+  - The fixed bandwidth grid is re-estimated by spec, and the sensitivity regarding correlation, absolute difference, sign flip, and local condition-number relative to the baseline latest-quarter beta is saved.
 
 ## 7G) GTWR Lamda Sensitivity Diagnostic
 
-- manual quarterly diagnostic
-- 실행 조건: `80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R` 직접 실행
-- 출력:
+- Manual quarterly diagnostic
+- Execution condition: Run [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R) directly.
+- Outputs:
   - `gtwr_lamda_sensitivity_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_lamda_sensitivity_cache/<control_set>/main/*.rds`
-- 구현 원칙:
-  - baseline `gtwr_main_models_<control_set>.csv`와 `gtwr_local_coefficients_<control_set>.csv`를 먼저 요구한다.
-  - fixed main bandwidth에서 lamda grid를 spec별로 재추정하고, baseline latest-quarter beta 대비 상관, 절대차이, sign flip, local condition-number 민감도를 저장한다.
+- Implementation Principles:
+  - Requires baseline `gtwr_main_models_<control_set>.csv` and `gtwr_local_coefficients_<control_set>.csv` first.
+  - The lamda grid is re-estimated by spec using the fixed main bandwidth, and sensitivity regarding correlation, absolute difference, sign flip, and local condition-number relative to the baseline latest-quarter beta is saved.
 
 ## 7X) GTWR Experiment Appendix
 
-- manual quarterly appendix sidecar
-- 출력:
+- Manual quarterly appendix sidecar
+- Outputs:
   - `gtwr_experiment_main_models_<control_set>.csv`
   - `gtwr_experiment_local_beta_panel_<control_set>.csv`
   - `gtwr_experiment_local_coefficients_<control_set>.csv`
@@ -375,25 +406,25 @@
   - `gtwr_experiment_controls_used_state_<control_set>.csv`
   - `gtwr_experiment_registry_<control_set>.csv`
   - `gtwr_experiment_ranked_candidates_<control_set>.csv`
-- 구현 원칙:
-  - bandwidth/control strategy grid를 quarterly local contract에서 정리하는 manual appendix다.
-  - canonical pipeline은 이 appendix를 자동 실행하지 않는다.
+- Implementation Principles:
+  - This is a manual appendix that organizes bandwidth/control strategy grids within a quarterly local contract.
+  - The canonical pipeline does not automatically run this appendix.
 
 ## 8) Reporting and Presentation
 
-- `01_make_tables_figures.R`
-  - always-on descriptive/reporting outputs plus optional appendix tables
-  - `descriptive_statistics.csv`는 변수별 확장 기술통계표로 작성한다. aging exposure, vitality outcome, robustness composite, vitality component, main control을 대상으로 유효 관측치, 결측, 평균, 표준편차, 최솟값, p25, 중앙값, p75, 최댓값, 유효 분기 범위, 행정동 수를 보고한다.
-  - `main_variable_correlation_matrix.csv`와 `main_variable_correlation_pairs.csv`는 SPDM/GTWR 등 본분석 변수의 Pearson 상관을 `2019Q4~2025Q4` active analysis 관측치 기준으로 계산한다. 포함 범위는 main exposure, channel mediator, supporting aging exposure, primary/supplementary outcome, TWFE/SPDM/GTWR control pool이다.
-  - GTWR reporting은 latest summary/rankings를 main surface로 쓰고 delta summary/rankings는 appendix diagnostic으로만 쓴다.
-- `02_Code/05_reporting/02_build_presentation_artifacts.R`
-  - presentation-only sidecar that derives slide-ready artifacts from canonical outputs
-  - publishes `presentation_spdm_channel_path_diagram.csv` and `presentation_spdm_channel_path_diagram.png` as a slide-left visual when the optional `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` channel path outputs exist
-- `02_Code/05_reporting/03_build_gtwr_level_artifacts.R`
-  - optional quarterly GTWR level reporting sidecar
-  - reads existing `gtwr_local_beta_panel_<control_set>.csv` and related GTWR tables without rerunning GTWR
-  - builds artifacts for both available `extended` and `lean` GTWR source families by default; `GTWR_LEVEL_CONTROL_SET=lean` or `extended` can force one family
-  - writes reporting artifacts with strict `lean` or `extended` suffixes only; legacy mode tags are not accepted
-  - publishes early/latest/delta triptych maps, quarterly local-beta trajectories, living-area/gu regional summaries, sign-transition tables, representative district trajectories, and earliest-to-latest delta diagnostics
+- [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R)
+  - Always-on descriptive/reporting outputs plus optional appendix tables.
+  - `descriptive_statistics.csv` is created as an expanded descriptive statistics table by variable. It reports valid observations, missing values, mean, standard deviation, minimum, p25, median, p75, maximum, valid quarter range, and the number of dongs for aging exposures, vitality outcomes, robustness composites, vitality components, and main controls.
+  - `main_variable_correlation_matrix.csv` and `main_variable_correlation_pairs.csv` calculate the Pearson correlation for main analysis variables (SPDM/GTWR) based on active analysis observations from `2019Q4~2025Q4`. The scope includes main exposures, channel mediators, supporting aging exposures, primary/supplementary outcomes, and TWFE/SPDM/GTWR control pools.
+  - GTWR reporting uses the latest summary/rankings as the main surface, while delta summary/rankings are used solely as appendix diagnostics.
+- [02_build_presentation_artifacts.R](../../02_Code/05_reporting/02_build_presentation_artifacts.R)
+  - A presentation-only sidecar that derives slide-ready artifacts from canonical outputs.
+  - Publishes `presentation_spdm_channel_path_diagram.csv` and `presentation_spdm_channel_path_diagram.png` as a slide-left visual when the optional `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` channel path outputs exist.
+- [03_build_gtwr_level_artifacts.R](../../02_Code/05_reporting/03_build_gtwr_level_artifacts.R)
+  - Optional quarterly GTWR level reporting sidecar.
+  - Reads existing `gtwr_local_beta_panel_<control_set>.csv` and related GTWR tables without rerunning GTWR.
+  - Builds artifacts for both available `extended` and `lean` GTWR source families by default; `GTWR_LEVEL_CONTROL_SET=lean` or `extended` can force one family.
+  - Writes reporting artifacts with strict `lean` or `extended` suffixes only; legacy mode tags are not accepted.
+  - Publishes early/latest/delta triptych maps, quarterly local-beta trajectories, living-area/gu regional summaries, sign-transition tables, representative district trajectories, and earliest-to-latest delta diagnostics.
 
-reporting은 source input이 있는 optional appendix artifact만 선택적으로 붙일 수 있으며, absence 자체를 failure로 해석하지 않는다.
+Reporting selectively attaches only those optional appendix artifacts that have source inputs, and their absence itself is not interpreted as a failure.
