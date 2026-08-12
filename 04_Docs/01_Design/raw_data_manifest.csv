@@ -1,0 +1,370 @@
+source_folder,file_path,file_name,size_bytes,access_date,file_timestamp_version,md5
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_법정동_LSMD_ADM_SECT_UMD(EPSG5186)/LSMD_ADM_SECT_UMD_11_202503.cst,LSMD_ADM_SECT_UMD_11_202503.cst,6,2026-01-27,,ecaaa25f20f2ac6c7eb0734f92644cb1
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_법정동_LSMD_ADM_SECT_UMD(EPSG5186)/LSMD_ADM_SECT_UMD_11_202503.dbf,LSMD_ADM_SECT_UMD_11_202503.dbf,57602,2026-01-27,,a0d311d5212b656fa2420bb687641625
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_법정동_LSMD_ADM_SECT_UMD(EPSG5186)/LSMD_ADM_SECT_UMD_11_202503.fix,LSMD_ADM_SECT_UMD_11_202503.fix,5617,2026-01-27,,7ea129ca1f9f9f2b07dd63275c835643
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_법정동_LSMD_ADM_SECT_UMD(EPSG5186)/LSMD_ADM_SECT_UMD_11_202503.prj,LSMD_ADM_SECT_UMD_11_202503.prj,789,2026-01-27,,12c69e88c8ce18c1464ee8e0bd2974e4
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_법정동_LSMD_ADM_SECT_UMD(EPSG5186)/LSMD_ADM_SECT_UMD_11_202503.shp,LSMD_ADM_SECT_UMD_11_202503.shp,2382708,2026-01-27,,93ea43acd9961565f6f1ea303ddf73ef
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_법정동_LSMD_ADM_SECT_UMD(EPSG5186)/LSMD_ADM_SECT_UMD_11_202503.shx,LSMD_ADM_SECT_UMD_11_202503.shx,3836,2026-01-27,,e5d8185c1e9083d24b6b62b89690ff2f
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_시군구_LARD_ADM_SECT_SGG(EPSG5186)/LARD_ADM_SECT_SGG_11_202502.dbf,LARD_ADM_SECT_SGG_11_202502.dbf,3161,2025-02-02,,a129a265d6ed97158b0ed34043c45fbe
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_시군구_LARD_ADM_SECT_SGG(EPSG5186)/LARD_ADM_SECT_SGG_11_202502.fix,LARD_ADM_SECT_SGG_11_202502.fix,313,2025-02-02,,769be94addc603d49d1a2904475207dc
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_시군구_LARD_ADM_SECT_SGG(EPSG5186)/LARD_ADM_SECT_SGG_11_202502.prj,LARD_ADM_SECT_SGG_11_202502.prj,789,2025-02-02,,12c69e88c8ce18c1464ee8e0bd2974e4
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_시군구_LARD_ADM_SECT_SGG(EPSG5186)/LARD_ADM_SECT_SGG_11_202502.shp,LARD_ADM_SECT_SGG_11_202502.shp,488412,2025-02-02,,fad78ceaf268d3714e0247f7cf281e90
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울_시군구_LARD_ADM_SECT_SGG(EPSG5186)/LARD_ADM_SECT_SGG_11_202502.shx,LARD_ADM_SECT_SGG_11_202502.shx,300,2025-02-02,,e93714555caa3f7710442415dfaca94d
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울시 상권분석서비스(영역-행정동)/서울시 상권분석서비스(영역-행정동).cpg,서울시 상권분석서비스(영역-행정동).cpg,5,2023-10-20,,ae3b3df9970b49b6523e608759bc957d
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울시 상권분석서비스(영역-행정동)/서울시 상권분석서비스(영역-행정동).dbf,서울시 상권분석서비스(영역-행정동).dbf,65219,2023-10-20,,bfcd9e715aefd435a4b0b1a008867239
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울시 상권분석서비스(영역-행정동)/서울시 상권분석서비스(영역-행정동).prj,서울시 상권분석서비스(영역-행정동).prj,417,2023-10-20,,70cfb65b16970886375613f419b0de43
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울시 상권분석서비스(영역-행정동)/서울시 상권분석서비스(영역-행정동).shp,서울시 상권분석서비스(영역-행정동).shp,3313916,2023-10-20,,056cc06d7b39138a5293f268d95f8702
+01_Seoul,01_Data/02_Boundary/01_Seoul/서울시 상권분석서비스(영역-행정동)/서울시 상권분석서비스(영역-행정동).shx,서울시 상권분석서비스(영역-행정동).shx,3500,2023-10-20,,7889cc3c2d54662ac5219c2747a80645
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(길단위인구-행정동).csv,서울시 상권분석서비스(길단위인구-행정동).csv,2804983,2026-04-19,,bd210548a64f3a93c33b123d6d3cfc91
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(상권변화지표-행정동).csv,서울시 상권분석서비스(상권변화지표-행정동).csv,769413,2026-04-19,,b52a5ab60f2d23eb297ba6913c4d3859
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(상주인구-행정동).csv,서울시 상권분석서비스(상주인구-행정동).csv,2314615,2026-04-19,,09fab6b9e4caca695db0edf74c90ff94
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(소득소비-행정동).csv,서울시 상권분석서비스(소득소비-행정동).csv,2076402,2026-04-19,,577bbd3a98af4bc809605f3e687793d1
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(아파트-행정동).csv,서울시 상권분석서비스(아파트-행정동).csv,1243232,2026-04-19,,249d04beb49785aa38eaadfc3536a820
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(점포-행정동)/서울시 상권분석서비스(점포-행정동)_2019년.csv,서울시 상권분석서비스(점포-행정동)_2019년.csv,11203596,2025-06-04,,0c7c2b11364662d5c94c84e6565004de
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(점포-행정동)/서울시 상권분석서비스(점포-행정동)_2020년.csv,서울시 상권분석서비스(점포-행정동)_2020년.csv,11416440,2025-06-04,,1be1de992b900a8b959061590e8ebf03
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(점포-행정동)/서울시 상권분석서비스(점포-행정동)_2021년.csv,서울시 상권분석서비스(점포-행정동)_2021년.csv,11322049,2025-06-04,,5483bf6539a029e46c4539152ba1aca9
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(점포-행정동)/서울시 상권분석서비스(점포-행정동)_2022년.csv,서울시 상권분석서비스(점포-행정동)_2022년.csv,11342074,2025-06-04,,afcce2749fb31af4c3b2287657f6bb9d
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(점포-행정동)/서울시 상권분석서비스(점포-행정동)_2023년.csv,서울시 상권분석서비스(점포-행정동)_2023년.csv,11396805,2025-06-04,,6150dda8917bb05b7c89c81847a0a025
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(점포-행정동)/서울시 상권분석서비스(점포-행정동)_2024년.csv,서울시 상권분석서비스(점포-행정동)_2024년.csv,11373391,2025-06-04,,f64675adf815fb13c51b3bcd70935a11
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(점포-행정동)/서울시 상권분석서비스(점포-행정동)_2025년.csv,서울시 상권분석서비스(점포-행정동)_2025년.csv,11380991,2026-04-19,,ad60c4b920b316f29b3d0a23862674cf
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(직장인구-행정동).csv,서울시 상권분석서비스(직장인구-행정동).csv,1756356,2026-04-19,,ba0c4327da95d559d64a8b1c21acff30
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(집객시설-행정동).csv,서울시 상권분석서비스(집객시설-행정동).csv,907259,2026-04-19,,a4924d8e8f0d4c8af19f437ab17bde05
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(추정매출-행정동)/서울시 상권분석서비스(추정매출-행정동)_2019년.csv,서울시 상권분석서비스(추정매출-행정동)_2019년.csv,29372408,2025-06-04,,98feb58ebc0301821c9b29d932132a2c
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(추정매출-행정동)/서울시 상권분석서비스(추정매출-행정동)_2020년.csv,서울시 상권분석서비스(추정매출-행정동)_2020년.csv,29651957,2025-06-04,,1efddafe6f3b3ed6b26c48dea27d59e4
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(추정매출-행정동)/서울시 상권분석서비스(추정매출-행정동)_2021년.csv,서울시 상권분석서비스(추정매출-행정동)_2021년.csv,31484454,2025-06-04,,3dbae8a439c6eb23d8d60b265ca945e2
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(추정매출-행정동)/서울시 상권분석서비스(추정매출-행정동)_2022년.csv,서울시 상권분석서비스(추정매출-행정동)_2022년.csv,31230374,2025-06-04,,af385c2c625145ebe03c9dec7cc3133f
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(추정매출-행정동)/서울시 상권분석서비스(추정매출-행정동)_2023년.csv,서울시 상권분석서비스(추정매출-행정동)_2023년.csv,30905205,2025-06-04,,393b19ea38e27ec967d6d9e8a54c20bf
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(추정매출-행정동)/서울시 상권분석서비스(추정매출-행정동)_2024년.csv,서울시 상권분석서비스(추정매출-행정동)_2024년.csv,30516335,2025-06-04,,a18e7140cdffb6b36e4bfcab4158229c
+01_Seoul_Commercial_District_Administrative_Dong,01_Data/01_Raw_Data/01_Seoul_Commercial_District_Administrative_Dong/서울시 상권분석서비스(추정매출-행정동)/서울시 상권분석서비스(추정매출-행정동)_2025년.csv,서울시 상권분석서비스(추정매출-행정동)_2025년.csv,30118149,2026-04-19,,cfe7f76f8be96060540e2211f5a6dea1
+02_Commercial_District,01_Data/02_Boundary/02_Commercial_District/서울시 상권분석서비스(영역-상권).cpg,서울시 상권분석서비스(영역-상권).cpg,5,2023-10-20,,ae3b3df9970b49b6523e608759bc957d
+02_Commercial_District,01_Data/02_Boundary/02_Commercial_District/서울시 상권분석서비스(영역-상권).dbf,서울시 상권분석서비스(영역-상권).dbf,800636,2023-10-20,,0abe4157a4c165c253d59278ae067bf0
+02_Commercial_District,01_Data/02_Boundary/02_Commercial_District/서울시 상권분석서비스(영역-상권).prj,서울시 상권분석서비스(영역-상권).prj,417,2023-10-20,,70cfb65b16970886375613f419b0de43
+02_Commercial_District,01_Data/02_Boundary/02_Commercial_District/서울시 상권분석서비스(영역-상권).shp,서울시 상권분석서비스(영역-상권).shp,3642228,2023-10-20,,72f226e7b9bf2f879934e5c9f1a507b3
+02_Commercial_District,01_Data/02_Boundary/02_Commercial_District/서울시 상권분석서비스(영역-상권).shx,서울시 상권분석서비스(영역-상권).shx,13300,2023-10-20,,f38a8bfd9dcf0a34c98a3157d7a2325d
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201901.zip,INNER_PEOPLE_201901.zip,174413779,2026-05-01,,05d207d621b5cbf6d77afd01f1233595
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201902.zip,INNER_PEOPLE_201902.zip,164030011,2026-05-01,,5f56daa61acb9af4fc6d98d2ca39ce7d
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201903.zip,INNER_PEOPLE_201903.zip,177524255,2026-05-01,,d73689324d9613b3d5a8be6166b902f7
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201904.zip,INNER_PEOPLE_201904.zip,199338551,2026-05-01,,e034a7557801d9245f2135edaa1bc555
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201905.zip,INNER_PEOPLE_201905.zip,199851398,2026-05-01,,210627904233f5abc080e492b0f31b69
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201906.zip,INNER_PEOPLE_201906.zip,176354349,2026-05-01,,1ed213b7f27d35cbcbc7294cd815cc0f
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201907.zip,INNER_PEOPLE_201907.zip,195038979,2026-05-01,,746106c04a163a42ab0bc6577d610f86
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201908.zip,INNER_PEOPLE_201908.zip,199698647,2026-05-01,,939b6e5bcba255300b9f269c12d5a5d9
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201909.zip,INNER_PEOPLE_201909.zip,175196109,2026-05-01,,1faf8c5a8fcc3ce58fc6a35e6fa1e2b5
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201910.zip,INNER_PEOPLE_201910.zip,122887729,2026-05-01,,aeeb9b2d54704a3f5a3f8343c6c48637
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201911.zip,INNER_PEOPLE_201911.zip,193030746,2026-05-01,,201e72e4ffec5d3760cf866672c6dc4f
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_201912.zip,INNER_PEOPLE_201912.zip,179946329,2026-05-01,,60abef2e3bbd6ac870045e46165f43dd
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202001.zip,INNER_PEOPLE_202001.zip,313173557,2026-05-01,,30deb86f27bc2cc1677f358dc4e14667
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202002.zip,INNER_PEOPLE_202002.zip,284216001,2026-05-01,,4b32f774913d8d27afb59276a11e9d51
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202003.zip,INNER_PEOPLE_202003.zip,295019060,2026-05-01,,6d883ac33f055555266646edc642a2e8
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202004.zip,INNER_PEOPLE_202004.zip,290160670,2026-05-01,,d3857822dbb982f1f10b1ebf8cdef452
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202005.zip,INNER_PEOPLE_202005.zip,300360761,2026-05-01,,29870ab89e108bab67c8a93bef36144a
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202006.zip,INNER_PEOPLE_202006.zip,296010218,2026-05-01,,c03680bd43f750914e6066c9ba212ecc
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202007.zip,INNER_PEOPLE_202007.zip,304586089,2026-05-01,,43484ec990dea51c76881ab813827eea
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202008.zip,INNER_PEOPLE_202008.zip,295574291,2026-05-01,,0681067b1be21adac61eb48c37d22dc8
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202009.zip,INNER_PEOPLE_202009.zip,284789176,2026-05-01,,06f29a67fb59bd9784f8894b6823bb3a
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202010.zip,INNER_PEOPLE_202010.zip,301223536,2026-05-01,,cc25e2d4fc25b1eef19889538a9aec84
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202011.zip,INNER_PEOPLE_202011.zip,312644121,2026-05-01,,74e0d29a32a38d7edb003d14e72f4e55
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202012.zip,INNER_PEOPLE_202012.zip,303748049,2026-05-01,,24a1a306e1e8264b6be35f896f8d1350
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202101.zip,INNER_PEOPLE_202101.zip,303967951,2026-05-01,,a8ceca6f383057aeee71da067c77bada
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202102.zip,INNER_PEOPLE_202102.zip,283578697,2026-05-01,,69528889530e98e0a7eb9c8bce05b48b
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202103.zip,INNER_PEOPLE_202103.zip,318116898,2026-05-01,,01c6f0b7db71542ba221c1c48d3e5b43
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202104.zip,INNER_PEOPLE_202104.zip,316684197,2026-05-01,,06fba176d9bcef367fe6feabed6eac28
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202105.zip,INNER_PEOPLE_202105.zip,320661155,2026-05-01,,75a34f277abe8aa409452e8ba90ada3e
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202106.zip,INNER_PEOPLE_202106.zip,313609829,2026-05-01,,165edb0ad3ec303a9fe1e341e6b9a1bd
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202107.zip,INNER_PEOPLE_202107.zip,314642150,2026-05-01,,f05f12e14e3beb22320801dc0243245d
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202108.zip,INNER_PEOPLE_202108.zip,309729756,2026-05-01,,08968aaef475e76220e67cf35f20f529
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202109.zip,INNER_PEOPLE_202109.zip,302274056,2026-05-01,,6620232b9db982fef027f8d84b7fe420
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202110.zip,INNER_PEOPLE_202110.zip,311936427,2026-05-01,,c0334fef7f9a7ea80b4480117d2d4397
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202111.zip,INNER_PEOPLE_202111.zip,313791610,2026-05-01,,18cd14f2167f8417aea777ddcd42b882
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202112.zip,INNER_PEOPLE_202112.zip,315828843,2026-05-01,,ee4bd82922ab3158b8cf66aec0ba095c
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202201.zip,INNER_PEOPLE_202201.zip,311391873,2026-05-01,,ab8e9647ce04ec95d786985549d85aaf
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202202.zip,INNER_PEOPLE_202202.zip,280171771,2026-05-01,,6d99b4ed01cd7b79e383d0cac3795eed
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202203.zip,INNER_PEOPLE_202203.zip,309462745,2026-05-01,,fbdc3ee45df88fd73118b4a695428b87
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202204.zip,INNER_PEOPLE_202204.zip,314794858,2026-05-01,,f137d4d2a3e09d0e188781866e4b44e1
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202205.zip,INNER_PEOPLE_202205.zip,329067799,2026-05-01,,ae22ef10dec96681340d6e2f49bc94a9
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202206.zip,INNER_PEOPLE_202206.zip,316028508,2026-05-01,,77300961e9f4ee4ffe4744737b731e1d
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202207.zip,INNER_PEOPLE_202207.zip,319338867,2026-05-01,,40b5a4d3dd5f905e54285bd47aeab63a
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202208.zip,INNER_PEOPLE_202208.zip,317732319,2026-05-01,,edc27e71c4585c0a45737cebd5bd82fe
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202209.zip,INNER_PEOPLE_202209.zip,310510286,2026-05-01,,cb217151d9050e258654df585cbb6c6b
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202210.zip,INNER_PEOPLE_202210.zip,315727897,2026-05-01,,8d9b29a1d10b1fd1ef03911a143ca5e3
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202211.zip,INNER_PEOPLE_202211.zip,311335629,2026-05-01,,023816792b30c14777b4b7b086e3ef27
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202212.zip,INNER_PEOPLE_202212.zip,318288795,2026-05-01,,aab0906d7ea409e686e7d3f597dd3a19
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202301.zip,INNER_PEOPLE_202301.zip,311038733,2026-05-01,,701d3b1aab4646a643e6690a741e9949
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202302.zip,INNER_PEOPLE_202302.zip,285039320,2026-05-01,,ccd0e150c06607eedc27e03d2446424f
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202303.zip,INNER_PEOPLE_202303.zip,314654004,2026-05-01,,1a56a7a501859a248aa959af03f48ea2
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202304.zip,INNER_PEOPLE_202304.zip,289851852,2026-05-01,,99850b7d9f1bd0b5b4449e085e1a7938
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202305.zip,INNER_PEOPLE_202305.zip,319628088,2026-05-01,,0eb14b3e2f2287a042a94e6f73e5ec7a
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202306.zip,INNER_PEOPLE_202306.zip,308526497,2026-05-01,,fe0ef84733ed23175c6aa637861ca382
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202307.zip,INNER_PEOPLE_202307.zip,302905367,2026-05-01,,46c56bd843b6edab9232ecc5a0e3efe1
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202308.zip,INNER_PEOPLE_202308.zip,276316727,2026-05-01,,d5c90fdac5ccb38a110feffb12deec01
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202309.zip,INNER_PEOPLE_202309.zip,306262813,2026-05-01,,473f5f0d8a1e10cf5682b9887550d7c5
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202310.zip,INNER_PEOPLE_202310.zip,311856034,2026-05-01,,4f5d5733d59dc8a0eb41f34fb8538130
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202311.zip,INNER_PEOPLE_202311.zip,313813572,2026-05-01,,2a9e4d9cd07277374ef9db75f7d163cf
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202312.zip,INNER_PEOPLE_202312.zip,324175514,2026-05-01,,ba0cf7e10ff99e9def90bd7da588c0fa
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202401.zip,INNER_PEOPLE_202401.zip,314823425,2026-05-01,,0624a0b620c9c483aef14273e9952da1
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202402.zip,INNER_PEOPLE_202402.zip,276284869,2026-05-01,,ac994105bd164750f3df7148edd53e87
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202403.zip,INNER_PEOPLE_202403.zip,314574272,2026-05-01,,c2429968e1f6d00db04e7b96f8df5d08
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202404.zip,INNER_PEOPLE_202404.zip,312316415,2026-05-01,,9d28a0d02731e806a12c8b12785e216f
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202405.zip,INNER_PEOPLE_202405.zip,314396170,2026-05-01,,1cb27542951d47988e685b7d702d355a
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202406.zip,INNER_PEOPLE_202406.zip,317499675,2026-05-01,,561f971d84e7a7108016c06284e10d17
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202407.zip,INNER_PEOPLE_202407.zip,293239258,2026-05-01,,fd1d7607576b3b7b360e108ed7340264
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202408.zip,INNER_PEOPLE_202408.zip,295415042,2026-05-01,,9459ba00462a1c85bcacac4e1fc587c0
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202409.zip,INNER_PEOPLE_202409.zip,286125776,2026-05-01,,03cf84b283dff0472ab545103c1c188a
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202410.zip,INNER_PEOPLE_202410.zip,294467497,2026-05-01,,e5e9dc01108362309e95bf0b92212eed
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202411.zip,INNER_PEOPLE_202411.zip,293560492,2026-05-01,,8236065d83412c63675beefba8cce03e
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202412.zip,INNER_PEOPLE_202412.zip,298657214,2026-05-01,,7f00940291d2b9267051b3c7522cab68
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202501.zip,INNER_PEOPLE_202501.zip,288529558,2026-05-01,,1bbbc1d55942e23c445321cf8b5c789c
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202502.zip,INNER_PEOPLE_202502.zip,263250815,2026-05-01,,d5c3832138eae80ae90a71e55ad5ead3
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202503.zip,INNER_PEOPLE_202503.zip,337471624,2026-05-01,,d01cd9ce22b0cd8293d7cfe7767ea6f7
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202504.zip,INNER_PEOPLE_202504.zip,337461729,2026-05-01,,a3443b076d41d6d5c50bb41e8ba6e276
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202505.zip,INNER_PEOPLE_202505.zip,340332753,2026-05-01,,fb478efd2e90630d9e4d18ad6355a9ae
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202506.zip,INNER_PEOPLE_202506.zip,329707597,2026-05-01,,0f615376341011146c92837f6c3a350f
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202507.zip,INNER_PEOPLE_202507.zip,318256608,2026-05-01,,1a9856ccad821953ba070896c2b7a806
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202508.zip,INNER_PEOPLE_202508.zip,338818743,2026-05-01,,b3cc1587990519d09617f7db1d455237
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202509.zip,INNER_PEOPLE_202509.zip,334651519,2026-05-01,,0eafc531f2759b3ba9bf3b27f176394f
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202510.zip,INNER_PEOPLE_202510.zip,335828839,2026-05-01,,e2d3d2165999780ee696a477f9dc766a
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202511.zip,INNER_PEOPLE_202511.zip,329395568,2026-05-01,,95bdb5a500e8ec529f4282281ccaf753
+02_서울생활인구_관내이동,01_Data/01_Raw_Data/02_서울생활인구_관내이동/INNER_PEOPLE_202512.zip,INNER_PEOPLE_202512.zip,339638154,2026-05-01,,bc8642b8a3a9f536308d648dc312024d
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2018/AL_11_D150_20181129.cpg,AL_11_D150_20181129.cpg,8,2018-11-29,,d4b299cd3ba4cd2135a5fdf61709d6bc
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2018/AL_11_D150_20181129.dbf,AL_11_D150_20181129.dbf,553631394,2018-11-29,,20237e677629d5692bb1a5a34ba60d78
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2018/AL_11_D150_20181129.prj,AL_11_D150_20181129.prj,456,2018-11-29,,0acccbcced00fcac766bb3c0edec3119
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2018/AL_11_D150_20181129.shp,AL_11_D150_20181129.shp,209238948,2018-11-29,,e0478f681a0e37b94b9d4922c6323007
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2018/AL_11_D150_20181129.shx,AL_11_D150_20181129.shx,7636388,2018-11-29,,a73d46e2e611405c47d4d9a9dfbe769c
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2019/AL_11_D150_20190415.cpg,AL_11_D150_20190415.cpg,8,2019-04-15,,d4b299cd3ba4cd2135a5fdf61709d6bc
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2019/AL_11_D150_20190415.dbf,AL_11_D150_20190415.dbf,551615894,2019-04-15,,014bee6ff5bdc60e9c13aad7d1ca98a4
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2019/AL_11_D150_20190415.prj,AL_11_D150_20190415.prj,456,2019-04-15,,0acccbcced00fcac766bb3c0edec3119
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2019/AL_11_D150_20190415.shp,AL_11_D150_20190415.shp,208826376,2019-04-15,,132ad915082b5f9434dc75c67d94e520
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2019/AL_11_D150_20190415.shx,AL_11_D150_20190415.shx,7608588,2019-04-15,,1272845465762eb65d4b5ea91a078de0
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2020/AL_11_D150_20200324.cpg,AL_11_D150_20200324.cpg,8,2020-03-24,,d4b299cd3ba4cd2135a5fdf61709d6bc
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2020/AL_11_D150_20200324.dbf,AL_11_D150_20200324.dbf,546363414,2020-03-24,,0acad7d7f8f8c0a453f2adaa9284d7ae
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2020/AL_11_D150_20200324.prj,AL_11_D150_20200324.prj,456,2020-03-24,,0acccbcced00fcac766bb3c0edec3119
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2020/AL_11_D150_20200324.shp,AL_11_D150_20200324.shp,206974092,2020-03-24,,be23caf6e73a0103d514003f056f6afa
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2020/AL_11_D150_20200324.shx,AL_11_D150_20200324.shx,7536140,2020-03-24,,a36cd815a2c1bfcc33bb37b487ea453d
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2021/AL_11_D150_20210520.cpg,AL_11_D150_20210520.cpg,8,2021-05-20,,d4b299cd3ba4cd2135a5fdf61709d6bc
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2021/AL_11_D150_20210520.dbf,AL_11_D150_20210520.dbf,537303814,2021-05-20,,198ae8f8db5ea3567b304cf3c9e98ec8
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2021/AL_11_D150_20210520.prj,AL_11_D150_20210520.prj,456,2021-05-20,,0acccbcced00fcac766bb3c0edec3119
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2021/AL_11_D150_20210520.shp,AL_11_D150_20210520.shp,203752500,2021-05-20,,d58a088249081c0d9b60bf6407f231b6
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2021/AL_11_D150_20210520.shx,AL_11_D150_20210520.shx,7411180,2021-05-20,,a1ca4265e9471cf0c3c3ffc835adbeba
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2022/AL_11_D150_20220307.cpg,AL_11_D150_20220307.cpg,8,2022-03-07,,d4b299cd3ba4cd2135a5fdf61709d6bc
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2022/AL_11_D150_20220307.dbf,AL_11_D150_20220307.dbf,533848754,2022-03-07,,1e5b6178b093407b9cb0f0d21d63e46e
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2022/AL_11_D150_20220307.prj,AL_11_D150_20220307.prj,456,2022-03-07,,0acccbcced00fcac766bb3c0edec3119
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2022/AL_11_D150_20220307.shp,AL_11_D150_20220307.shp,202728680,2022-03-07,,753a52b7a8a36e6735b455b276c68843
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2022/AL_11_D150_20220307.shx,AL_11_D150_20220307.shx,7363524,2022-03-07,,05c080eddf096ac6fe2c089c2ba7a45d
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2023/AL_11_D150_20230330.cpg,AL_11_D150_20230330.cpg,8,2023-03-30,,d4b299cd3ba4cd2135a5fdf61709d6bc
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2023/AL_11_D150_20230330.dbf,AL_11_D150_20230330.dbf,527784854,2023-03-30,,929f4110c744d419bca1422eb34d8888
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2023/AL_11_D150_20230330.prj,AL_11_D150_20230330.prj,456,2023-03-30,,0acccbcced00fcac766bb3c0edec3119
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2023/AL_11_D150_20230330.shp,AL_11_D150_20230330.shp,201319260,2023-03-30,,a4081b7b12cbdcc6f56aa3c921005099
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2023/AL_11_D150_20230330.shx,AL_11_D150_20230330.shx,7279884,2023-03-30,,b185ff57ed19e7f83768243730da9e18
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2024/AL_D150_11_20240125.dbf,AL_D150_11_20240125.dbf,561005193,2024-01-20,,3f6d8b20f7c57b5e17baa8226ea1c1ad
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2024/AL_D150_11_20240125.fix,AL_D150_11_20240125.fix,10858165,2024-01-20,,44c159fbed0bc0b69d1e2047e95528e1
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2024/AL_D150_11_20240125.prj,AL_D150_11_20240125.prj,553,2024-01-20,,1b66543900506a63755b95881340fa47
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2024/AL_D150_11_20240125.shp,AL_D150_11_20240125.shp,200430512,2024-01-20,,9d1ae354d9802b7a9f0170a8927491dd
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2024/AL_D150_11_20240125.shx,AL_D150_11_20240125.shx,7238868,2024-01-20,,84a75768127e12dfd09a509e4dc3ae9f
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2025/AL_D150_11_20250121.cpg,AL_D150_11_20250121.cpg,5,2025-01-21,,ae3b3df9970b49b6523e608759bc957d
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2025/AL_D150_11_20250121.dbf,AL_D150_11_20250121.dbf,559580434,2025-01-21,,df528405a6254f0900b836144a7aca14
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2025/AL_D150_11_20250121.prj,AL_D150_11_20250121.prj,422,2025-01-21,,e7ba62d971c4c7a433bc0f4da1cc60da
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2025/AL_D150_11_20250121.shp,AL_D150_11_20250121.shp,200159752,2025-01-21,,23d16fbcbcec2e2322809efe03fc3123
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2025/AL_D150_11_20250121.shx,AL_D150_11_20250121.shx,7220484,2025-01-21,,14f158b8d5ee82b56de171b3d84040a6
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2026/AL_D150_11_20260210.dbf,AL_D150_11_20260210.dbf,558137073,2026-02-05,,129826cb76d2c986579908d1459d0428
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2026/AL_D150_11_20260210.fix,AL_D150_11_20260210.fix,10802653,2026-02-05,,721829db4690cfdcabe9216cd499f87e
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2026/AL_D150_11_20260210.prj,AL_D150_11_20260210.prj,553,2026-02-05,,1b66543900506a63755b95881340fa47
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2026/AL_D150_11_20260210.shp,AL_D150_11_20260210.shp,199791500,2026-02-05,,adb625abfad1d7b4bc77310a97a9bfad
+03_Land_Price,01_Data/02_Boundary/03_Land_Price/2026/AL_D150_11_20260210.shx,AL_D150_11_20260210.shx,7201860,2026-02-05,,5dd10ecbc7120b7340607d5af1c90786
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201901.zip,METRO_PEOPLE_201901.zip,272437235,2026-05-01,,124fda8efe8d110a3a71ffbfbd91a365
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201902.zip,METRO_PEOPLE_201902.zip,247776047,2026-05-01,,d92a718b5cc3e00ecea13f88b2154302
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201903.zip,METRO_PEOPLE_201903.zip,227515584,2026-05-01,,a85c5fd14b6bc516fe9beeff3304a8a8
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201904.zip,METRO_PEOPLE_201904.zip,253938062,2026-05-01,,28731999eda42c55c91998fb6ca0c5fb
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201905.zip,METRO_PEOPLE_201905.zip,260912322,2026-05-01,,a77577f1a6a486f337e669ce663bfe5a
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201906.zip,METRO_PEOPLE_201906.zip,250523873,2026-05-01,,8cfb29baf19131dce53e8bad9f080aa9
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201907.zip,METRO_PEOPLE_201907.zip,258132561,2026-05-01,,079258b4b3c630f6eb84761fcb9d47c0
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201908.zip,METRO_PEOPLE_201908.zip,263264981,2026-05-01,,308c203779344864dc78e04910ba69ec
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201909.zip,METRO_PEOPLE_201909.zip,269364636,2026-05-01,,8e5e97fc20f1ea145ad607bfc873f546
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201910.zip,METRO_PEOPLE_201910.zip,154112200,2026-05-01,,bfafb40103136da0c921aac8ba4dc816
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201911.zip,METRO_PEOPLE_201911.zip,252959979,2026-05-01,,39a08b051681f2e4659f0bc3a8d61fc3
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_201912.zip,METRO_PEOPLE_201912.zip,232858982,2026-05-01,,c23fb89a948341fc733fa7236980e82f
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202001.zip,METRO_PEOPLE_202001.zip,236140107,2026-05-01,,bba8dce5b42d3a59df857701e094829d
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202002.zip,METRO_PEOPLE_202002.zip,250317432,2026-05-01,,92a225fdc8a187c3bd67fd3758806f2a
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202003.zip,METRO_PEOPLE_202003.zip,338307585,2026-05-01,,d34cd95d3966867c313415aeac95f1aa
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202004.zip,METRO_PEOPLE_202004.zip,335375797,2026-05-01,,ec8e53efaa32d63f9d6c7fd0c035befe
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202005.zip,METRO_PEOPLE_202005.zip,313574912,2026-05-01,,4717630184473798b9bdeece043c0e9f
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202006.zip,METRO_PEOPLE_202006.zip,339632050,2026-05-01,,ab638a8932e69a1ed03c225c97838545
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202007.zip,METRO_PEOPLE_202007.zip,321034186,2026-05-01,,df7e09dc0404bc4f0a433657e907b3e4
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202008.zip,METRO_PEOPLE_202008.zip,333425212,2026-05-01,,9a4be9416de320cd44330243eda378b6
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202009.zip,METRO_PEOPLE_202009.zip,327476252,2026-05-01,,06a6879b5e65d8c1250c5d3cb48529f4
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202010.zip,METRO_PEOPLE_202010.zip,367205307,2026-05-01,,407ddbf2b803cf1457d1e1bc96d624b3
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202011.zip,METRO_PEOPLE_202011.zip,339331245,2026-05-01,,286a148e6b4a46756e4e960690972482
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202012.zip,METRO_PEOPLE_202012.zip,307794583,2026-05-01,,a9d96dc637c92a654ec5aac9a0d40f9c
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202101.zip,METRO_PEOPLE_202101.zip,334140646,2026-05-01,,4717cf36d88bedc2ffe09767b9ddf8ef
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202102.zip,METRO_PEOPLE_202102.zip,325772232,2026-05-01,,30f0dcb2e960fcc54ebe30e33942cfd7
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202103.zip,METRO_PEOPLE_202103.zip,366270368,2026-05-01,,4b4da389752bd27a7549c92b64b15a3d
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202104.zip,METRO_PEOPLE_202104.zip,341183925,2026-05-01,,27100bcf275a4fde8f360c56e3cd61c7
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202105.zip,METRO_PEOPLE_202105.zip,349239528,2026-05-01,,8a51232198ff3c3806efea30186dfdc4
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202106.zip,METRO_PEOPLE_202106.zip,340260691,2026-05-01,,118abee2fb041dfbb50d2b892c88e25d
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202107.zip,METRO_PEOPLE_202107.zip,337557602,2026-05-01,,89898562db7516337537caa612946219
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202108.zip,METRO_PEOPLE_202108.zip,333594252,2026-05-01,,0fd36abb5f3651bd348f0d4f6e738baf
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202109.zip,METRO_PEOPLE_202109.zip,337286933,2026-05-01,,c687cc897f2bc122853c93524524a1e7
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202110.zip,METRO_PEOPLE_202110.zip,348123701,2026-05-01,,7436ca58d65d70519026ab9b59d5daa5
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202111.zip,METRO_PEOPLE_202111.zip,354584227,2026-05-01,,580a7c028eca17b2a1338317c570ee18
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202112.zip,METRO_PEOPLE_202112.zip,351321854,2026-05-01,,b7f6091e05432fa04a9539ce32169ede
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202201.zip,METRO_PEOPLE_202201.zip,358228390,2026-05-01,,f5f281aafef1d5298b3060719418aac7
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202202.zip,METRO_PEOPLE_202202.zip,314337206,2026-05-01,,d114e92cdda673620a0324510e160365
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202203.zip,METRO_PEOPLE_202203.zip,344453766,2026-05-01,,35bc6595af9359284b0799adf7c47804
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202204.zip,METRO_PEOPLE_202204.zip,343448382,2026-05-01,,90de86d50fde1c0b37b67e2a07a6b8eb
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202205.zip,METRO_PEOPLE_202205.zip,370794260,2026-05-01,,ab2565123e1a3944b907cfaf8766b489
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202206.zip,METRO_PEOPLE_202206.zip,356185348,2026-05-01,,97d1abca083f9c8d819b9c75b16fb4a7
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202207.zip,METRO_PEOPLE_202207.zip,366354199,2026-05-01,,823f95db9e69ccd6220b68582576759c
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202208.zip,METRO_PEOPLE_202208.zip,362313831,2026-05-01,,90a33919c085f511353a2c49f5a53816
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202209.zip,METRO_PEOPLE_202209.zip,364909940,2026-05-01,,aaaf48d994655299d137bf3c5e519646
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202210.zip,METRO_PEOPLE_202210.zip,364536492,2026-05-01,,93cf22430665d91bfc9a91c55e350555
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202211.zip,METRO_PEOPLE_202211.zip,357851844,2026-05-01,,77ba4d912cc46ef74d6f78f1a2666c1e
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202212.zip,METRO_PEOPLE_202212.zip,377645751,2026-05-01,,42e232ead37274408c177c093f73fc80
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202301.zip,METRO_PEOPLE_202301.zip,383321379,2026-05-01,,cff5e89bfc303dbaf9e8b93d0dc386ca
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202302.zip,METRO_PEOPLE_202302.zip,342784632,2026-05-01,,0e3692397f44e6a1d26828e94625fe2b
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202303.zip,METRO_PEOPLE_202303.zip,369909175,2026-05-01,,e68225dc52aad2e2038e5a61070c5620
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202304.zip,METRO_PEOPLE_202304.zip,323727714,2026-05-01,,fca0cc3b5f9c29ed2146fa77724fbb31
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202305.zip,METRO_PEOPLE_202305.zip,363563533,2026-05-01,,5917d2a65283e56f3d5e0f28390440c4
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202306.zip,METRO_PEOPLE_202306.zip,351680213,2026-05-01,,47f536b40adb3c43614343a3a77f268b
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202307.zip,METRO_PEOPLE_202307.zip,359818077,2026-05-01,,289fc95ce931c8c7a8d30d537398d961
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202308.zip,METRO_PEOPLE_202308.zip,58416840,2026-05-01,,7dab0901234d598affab035940860eda
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202309.zip,METRO_PEOPLE_202309.zip,369663141,2026-05-01,,792bf414b8c08595b6e323a0fe231a7b
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202310.zip,METRO_PEOPLE_202310.zip,367309479,2026-05-01,,e9f2180bc37bf7ded92bd18a0c2f97fe
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202311.zip,METRO_PEOPLE_202311.zip,392124646,2026-05-01,,09229bd89c07e10f0016ae485cd16b71
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202312.zip,METRO_PEOPLE_202312.zip,432937706,2026-05-01,,62aa6e951dba92af60c5697a846480b7
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202401.zip,METRO_PEOPLE_202401.zip,421778645,2026-05-01,,d279c85f75cccbff8ac6f00b9eb15773
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202402.zip,METRO_PEOPLE_202402.zip,363041433,2026-05-01,,2c687617b9a8ac2c27d814f53c9cc186
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202403.zip,METRO_PEOPLE_202403.zip,412186399,2026-05-01,,158428f2dc3209d97dd8bbd7c64dec6d
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202404.zip,METRO_PEOPLE_202404.zip,374401952,2026-05-01,,84fcfb6fbcf3877a5ba5f6419c32b200
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202405.zip,METRO_PEOPLE_202405.zip,364525224,2026-05-01,,7f08f91b957bc3f3b4208662f554cde9
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202406.zip,METRO_PEOPLE_202406.zip,375181093,2026-05-01,,4e80563c473a660b39dffeafdc1d9563
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202407.zip,METRO_PEOPLE_202407.zip,397541007,2026-05-01,,189e3b58f7032b4b27936e68611bbcac
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202408.zip,METRO_PEOPLE_202408.zip,406796711,2026-05-01,,6ad35b002c2ebb35c51db2cbba4dad9f
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202409.zip,METRO_PEOPLE_202409.zip,394370725,2026-05-01,,df8a6e47684f6d41a1e45e79fee5bf4e
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202410.zip,METRO_PEOPLE_202410.zip,387021269,2026-05-01,,2268525bea9cd3ea263ddc768bef8eb7
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202411.zip,METRO_PEOPLE_202411.zip,353774134,2026-05-01,,25d2652e955a14e30ced434a585e35df
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202412.zip,METRO_PEOPLE_202412.zip,320309088,2026-05-01,,d23b560f6a99e83a7bf6b84961becb66
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202501.zip,METRO_PEOPLE_202501.zip,402624369,2026-05-01,,de6bfd7ac2eb0e325b29a220b1cd1126
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202502.zip,METRO_PEOPLE_202502.zip,351083060,2026-05-01,,226799e8b1132aa4b506436ae4e0fcbc
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202503.zip,METRO_PEOPLE_202503.zip,392560149,2026-05-01,,91ec5cdea7a141891119e59e990c8b85
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202504.zip,METRO_PEOPLE_202504.zip,369341060,2026-05-01,,5f3ed662f02b5dfb76e0e6ee6ef647c0
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202505.zip,METRO_PEOPLE_202505.zip,380875341,2026-05-01,,615ec059f2b8424e1a8ff9d9b1bf644f
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202506.zip,METRO_PEOPLE_202506.zip,365022061,2026-05-01,,af36ffcd97f70e344c481c24099b734e
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202507.zip,METRO_PEOPLE_202507.zip,358942495,2026-05-01,,89fcdb49af32e4b86bcffadfd80e62a9
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202508.zip,METRO_PEOPLE_202508.zip,382412106,2026-05-01,,dcbe7b0901a081fa6bab2ac4c282cbb3
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202509.zip,METRO_PEOPLE_202509.zip,374845823,2026-05-01,,16733295d00795cb979032c34af45268
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202510.zip,METRO_PEOPLE_202510.zip,390917641,2026-05-01,,108a533d602cd7cf736655e955e20d55
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202511.zip,METRO_PEOPLE_202511.zip,375721111,2026-05-01,,21db6a1572fabab03dc2ccc8ca3c5b34
+03_서울생활인구_대도시권_내외국인,01_Data/01_Raw_Data/03_서울생활인구_대도시권_내외국인/METRO_PEOPLE_202512.zip,METRO_PEOPLE_202512.zip,392669230,2026-05-01,,dcab261e330f016a0f42d0bf08af5407
+04_Park,01_Data/02_Boundary/04_Park/UPIS_SHP_ZON216.dbf,UPIS_SHP_ZON216.dbf,500578,2023-11-10,,de6af39a614c5444f33726a6f95e7f09
+04_Park,01_Data/02_Boundary/04_Park/UPIS_SHP_ZON216.prj,UPIS_SHP_ZON216.prj,456,2023-06-26,,0acccbcced00fcac766bb3c0edec3119
+04_Park,01_Data/02_Boundary/04_Park/UPIS_SHP_ZON216.shp,UPIS_SHP_ZON216.shp,1574052,2023-06-26,,240513048c05ff91a1377edabd36709e
+04_Park,01_Data/02_Boundary/04_Park/UPIS_SHP_ZON216.shx,UPIS_SHP_ZON216.shx,15204,2023-06-26,,916fe69e1e84a82e7e8b623996d17d15
+"04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)","01_Data/01_Raw_Data/04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)/101_DT_1B04005N_20251220155053.csv",101_DT_1B04005N_20251220155053.csv,1191775,2025-12-20,2025-12-20 155053,41e357327c61611fa0b4abb4c1e66b04
+"04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)","01_Data/01_Raw_Data/04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)/101_DT_1B04005N_20251220155201.csv",101_DT_1B04005N_20251220155201.csv,1191508,2025-12-20,2025-12-20 155201,4f8d8140f4c80088f3ee39bd18f969d2
+"04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)","01_Data/01_Raw_Data/04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)/101_DT_1B04005N_20251220155301.csv",101_DT_1B04005N_20251220155301.csv,1192086,2025-12-20,2025-12-20 155301,72fdb9e05d828987fd404ab8183bb154
+"04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)","01_Data/01_Raw_Data/04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)/101_DT_1B04005N_20251220155333.csv",101_DT_1B04005N_20251220155333.csv,1195438,2025-12-20,2025-12-20 155333,bc896d436932a2857dd3bcf3d61170e8
+"04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)","01_Data/01_Raw_Data/04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)/101_DT_1B04005N_20251220155356.csv",101_DT_1B04005N_20251220155356.csv,1195186,2025-12-20,2025-12-20 155356,28687ece27c7480818e8a5f2214196fc
+"04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)","01_Data/01_Raw_Data/04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)/101_DT_1B04005N_20251220155421.csv",101_DT_1B04005N_20251220155421.csv,1192009,2025-12-20,2025-12-20 155421,ac58ea527d5e0fc8878eb5be6f6e25cc
+"04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)","01_Data/01_Raw_Data/04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)/101_DT_1B04005N_20260320142941.csv",101_DT_1B04005N_20260320142941.csv,1196658,2026-03-20,2026-03-20 142941,1f72b12ffc36a9905a28542234c60679
+"04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)","01_Data/01_Raw_Data/04_주민등록인구현황_행정구역(읍면동)별:5세별 주민등록인구(2019~2025, 월)/101_DT_1B04005N_20260520110409.csv",101_DT_1B04005N_20260520110409.csv,1191650,2026-05-20,2026-05-20 110409,ac265bf7dc838f331ffe8ccfb1609c44
+05_서울시_공동주택_아파트_정보,01_Data/01_Raw_Data/05_서울시_공동주택_아파트_정보/서울시 공동주택 아파트 정보.csv,서울시 공동주택 아파트 정보.csv,1421937,2026-05-03,,069e7cf1bcefc361d191d6a1e89966d9
+05_수치표고모델(DEM)_90M,01_Data/02_Boundary/05_수치표고모델(DEM)_90M/한반도90m_GRS80.img,한반도90m_GRS80.img,549609090,2015-06-02,,73d00473e90da73653a5c017bf767db2
+06_한국부동산원_전국지가변동률조사,01_Data/01_Raw_Data/06_한국부동산원_전국지가변동률조사/(월) 지역별 지가지수.csv,(월) 지역별 지가지수.csv,390112,2026-05-20,,097adcad1a6283750870d74f31952c9d
+07_서울시_사업체현황(종사자규모별:동별)_통계,01_Data/01_Raw_Data/07_서울시_사업체현황(종사자규모별:동별)_통계/%EC%82%AC%EC%97%85%EC%B2%B4%ED%98%84%ED%99%A9%28%EC%A2%85%EC%82%AC%EC%9E%90%EA%B7%9C%EB%AA%A8%EB%B3%84_%EB%8F%99%EB%B3%84%29_20260521173322.csv,%EC%82%AC%EC%97%85%EC%B2%B4%ED%98%84%ED%99%A9%28%EC%A2%85%EC%82%AC%EC%9E%90%EA%B7%9C%EB%AA%A8%EB%B3%84_%EB%8F%99%EB%B3%84%29_20260521173322.csv,31189,2026-05-21,2026-05-21 173322,e07ebea8bf0b199565c1fb3bdf7ad889
+08_서울시_대규모점포_인허가_정보,01_Data/01_Raw_Data/08_서울시_대규모점포_인허가_정보/서울시 대규모점포 인허가 정보.csv,서울시 대규모점포 인허가 정보.csv,417697,2026-04-25,,050f4afd3b1ecb7a11de19788f0c02be
+09_서울시_병의원_인허가_정보,01_Data/01_Raw_Data/09_서울시_병의원_인허가_정보/서울시 병원 인허가 정보.csv,서울시 병원 인허가 정보.csv,352131,2026-04-25,,d0a6a298f84ea20e295376e0b4d44834
+09_서울시_병의원_인허가_정보,01_Data/01_Raw_Data/09_서울시_병의원_인허가_정보/서울시 의원 인허가 정보.csv,서울시 의원 인허가 정보.csv,17678882,2026-04-25,,ece6f5b1de220601ef495d4de888f19f
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/(서울시경로당)현황3644(25.6월말 기준).xlsx,(서울시경로당)현황3644(25.6월말 기준).xlsx,2894484,2025-10-16,,7f193935a8a298658e109ea566b0f6a9
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2019 노인복지시설 현황/1_2019_목차_이용안내_총괄표.hwp,1_2019_목차_이용안내_총괄표.hwp,1930240,2025-12-06,,477bc8d7ed75997a1fb1acf3667d1179
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2019 노인복지시설 현황/1_2019_목차_이용안내_총괄표.pdf,1_2019_목차_이용안내_총괄표.pdf,1398585,2025-12-06,,335883850597981d4d58d12347860f57
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2019 노인복지시설 현황/2_2019년_통계본문.hwp,2_2019년_통계본문.hwp,6114816,2025-12-06,,391b6fca0ae4ceaae8a5b4488c9d7c73
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2019 노인복지시설 현황/2_2019년_통계본문.pdf,2_2019년_통계본문.pdf,6028429,2025-12-06,,2caa9e4621699ae1b02e76617d5befaa
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2019 노인복지시설 현황/3_2019년_통계부록.hwp,3_2019년_통계부록.hwp,6606848,2025-12-06,,b9f0e909dcc017e594c9a52405aebe54
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2019 노인복지시설 현황/3_2019년_통계부록.pdf,3_2019년_통계부록.pdf,4326566,2025-12-06,,e1886522b3620c82595dc9f724e7efac
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2019 노인복지시설 현황/시군구별 총괄표 현황(2019).xlsx,시군구별 총괄표 현황(2019).xlsx,148878,2025-12-06,,699c58d7b043e7d18de378895238e098
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2019 노인복지시설 현황/연도별 노인복지시설 현황 및 광역시도별 총괄표 현황(2019).xlsx,연도별 노인복지시설 현황 및 광역시도별 총괄표 현황(2019).xlsx,38730,2025-12-06,,6f958d89180f087d6f628ae5f9f2452b
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2020 노인복지시설 현황/1. 2020_목차_이용안내_총괄표.hwp,1. 2020_목차_이용안내_총괄표.hwp,1921536,2025-12-06,,a7cfab1a93fc819769f09c857e953f39
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2020 노인복지시설 현황/1. 2020_목차_이용안내_총괄표.pdf,1. 2020_목차_이용안내_총괄표.pdf,1035010,2025-12-06,,1a5943ccc0d1173fa565cd6e2f794dc2
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2020 노인복지시설 현황/2. 2020년_통계본문.hwp,2. 2020년_통계본문.hwp,6852608,2025-12-06,,935c86ffdaed6ab145fd733d3f7369c2
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2020 노인복지시설 현황/2. 2020년_통계본문.pdf,2. 2020년_통계본문.pdf,5493985,2025-12-06,,2c6b005e3dd840f18ae94056db77395d
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2020 노인복지시설 현황/3. 2020년_통계부록.hwp,3. 2020년_통계부록.hwp,7517184,2025-12-06,,bb1cba03228bd5101ef2fee70da61291
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2020 노인복지시설 현황/3. 2020년_통계부록.pdf,3. 2020년_통계부록.pdf,7476186,2025-12-06,,48f60ce1dab54bb19b7773a14d908f72
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2020 노인복지시설 현황/4. 2020 노인복지시설 현황 총괄표(광역시.도).xlsx,4. 2020 노인복지시설 현황 총괄표(광역시.도).xlsx,39655,2025-12-06,,a1ed33c023886eff110fbfb5300ad7fc
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2020 노인복지시설 현황/5. 2020 노인복지시설 현황 총괄표(시.군.구).xlsx,5. 2020 노인복지시설 현황 총괄표(시.군.구).xlsx,149309,2025-12-06,,d378fb6f0bdd745edddd32ed33c0ebef
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2021 노인복지시설 현황/1._2021_목차_이용안내_총괄표.hwp,1._2021_목차_이용안내_총괄표.hwp,2066432,2025-12-06,,56a38a51aeac7980f4476f0394d683b1
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2021 노인복지시설 현황/1._2021_목차_이용안내_총괄표.pdf,1._2021_목차_이용안내_총괄표.pdf,1372445,2025-12-06,,c1582da9b5b292834ad7b582f0f56e46
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2021 노인복지시설 현황/2._2021_통계본문.hwp,2._2021_통계본문.hwp,8731136,2025-12-06,,b5e320ba7e6fcd0b0f7b303510e49003
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2021 노인복지시설 현황/2._2021_통계본문.pdf,2._2021_통계본문.pdf,4695491,2025-12-06,,dee1c00697a178d02b387fe9e7a871a3
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2021 노인복지시설 현황/2021 노인복지시설 현황 총괄표(광역시.도).xlsx,2021 노인복지시설 현황 총괄표(광역시.도).xlsx,41164,2025-12-06,,b01b61aaeb575b3329a050c2306a00a4
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2021 노인복지시설 현황/2021 노인복지시설 현황 총괄표(시.군.구).xlsx,2021 노인복지시설 현황 총괄표(시.군.구).xlsx,158964,2025-12-06,,c9bfb150e8ed2a14796de7330078b82d
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2021 노인복지시설 현황/3._2021_통계_부록.hwp,3._2021_통계_부록.hwp,7102464,2025-12-06,,dc35a1532d902b15e0da171d60b2af8d
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2021 노인복지시설 현황/3._2021_통계_부록.pdf,3._2021_통계_부록.pdf,4895701,2025-12-06,,85f081ea01def51b502aee9871fb9417
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2022 노인복지시설 현황/1._2022_목차_이용안내_총괄표_.hwp,1._2022_목차_이용안내_총괄표_.hwp,2064896,2025-12-06,,4b1a6a5a4ae1ca586d6602434888c018
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2022 노인복지시설 현황/1._2022_목차_이용안내_총괄표_.pdf,1._2022_목차_이용안내_총괄표_.pdf,1451865,2025-12-06,,b8917ec76975262daf7c941133fe6852
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2022 노인복지시설 현황/2.20202_통계본문_.hwp,2.20202_통계본문_.hwp,9897472,2025-12-06,,4ec7fac3895f8e1dbaab3c5191865ad0
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2022 노인복지시설 현황/2.20202_통계본문_.pdf,2.20202_통계본문_.pdf,5296636,2025-12-06,,a3e9347c33af0eecab8f71ff0b5bf2ba
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2022 노인복지시설 현황/2022_목차_이용안내_총괄표(시.군.구)_.xlsx,2022_목차_이용안내_총괄표(시.군.구)_.xlsx,161620,2025-12-06,,19c2852bb50b3306988e94331467f44d
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2022 노인복지시설 현황/2022_목차_이용안내_총괄표_.xlsx,2022_목차_이용안내_총괄표_.xlsx,38987,2025-12-06,,1293e1d15c3f74082a46a11e84fef2cc
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2022 노인복지시설 현황/3._2022_통계_부록_.hwp,3._2022_통계_부록_.hwp,6705664,2025-12-06,,70cd9b4a6ad9fe12fabd160e46be5cc6
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2022 노인복지시설 현황/3._2022_통계_부록_.pdf,3._2022_통계_부록_.pdf,4745495,2025-12-06,,f9b63de4da3af0c713056e4bce9c0d39
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2023 노인복지시설 현황/1._2023_목차_이용안내_총괄표.hwp,1._2023_목차_이용안내_총괄표.hwp,1965568,2023-07-13,,27f19e9268fda4e598e19c88ab17d885
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2023 노인복지시설 현황/1._2023_목차_이용안내_총괄표.pdf,1._2023_목차_이용안내_총괄표.pdf,1392932,2023-07-13,,a1a2da7012e1a5a1a3c3c567d1ac9fb3
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2023 노인복지시설 현황/2023_목차_이용안내_총괄표(시.군.구)_최종.xlsx,2023_목차_이용안내_총괄표(시.군.구)_최종.xlsx,159643,2023-07-13,,8429ffa16ad5c8d62ade1af9171e9004
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2023 노인복지시설 현황/2023_목차_이용안내_총괄표_최종.xlsx,2023_목차_이용안내_총괄표_최종.xlsx,38363,2023-07-17,,6134a7ef5421aa06ff007f359aeca0f8
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2023 노인복지시설 현황/2_2023_통계본문.hwp,2_2023_통계본문.hwp,12010496,2023-07-13,,ff9b858db801e24b4bcb2ad0fc3bfebe
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2023 노인복지시설 현황/2_2023_통계본문.pdf,2_2023_통계본문.pdf,5779336,2023-07-13,,82233f2469e05ee02636dec230ef4ccb
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2023 노인복지시설 현황/3._2023_통계_부록.hwp,3._2023_통계_부록.hwp,6251008,2023-07-13,,befc3e3d428bb6cde392e4de53006b16
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2023 노인복지시설 현황/3._2023_통계_부록.pdf,3._2023_통계_부록.pdf,4018456,2023-07-13,,688662d188172051e860bd4f5c9a2507
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2024 노인복지시설 현황/0._2024_목차_이용안내_총괄표(시.군.구)_12.16.xlsx,0._2024_목차_이용안내_총괄표(시.군.구)_12.16.xlsx,160118,2024-12-16,,a167dd243e523e568a6451489fc69b57
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2024 노인복지시설 현황/0._2024_목차_이용안내_총괄표_12.16.xlsx,0._2024_목차_이용안내_총괄표_12.16.xlsx,39736,2024-12-16,,dae2b4b39d8ca1eb43b8d5e2a8b4e135
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2024 노인복지시설 현황/1._2024_목차_이용안내_총괄표_12.16.hwpx,1._2024_목차_이용안내_총괄표_12.16.hwpx,3305485,2024-12-16,,f58193a0c6c2f1be150b1745612f5a22
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2024 노인복지시설 현황/1._2024_목차_이용안내_총괄표_12.16.pdf,1._2024_목차_이용안내_총괄표_12.16.pdf,1232922,2024-12-16,,838d57bfcc8190387abd9024f601cefe
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2024 노인복지시설 현황/2._2024_통계본문_12.16.hwpx,2._2024_통계본문_12.16.hwpx,12259927,2024-12-16,,2d0642990bc5ad604a33ba06874fbde7
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2024 노인복지시설 현황/2._2024_통계본문_12.16.pdf,2._2024_통계본문_12.16.pdf,14370350,2024-12-16,,c72c04ccded3b79444e378e09dedeeaf
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2024 노인복지시설 현황/3._2024_통계_부록_12.16.hwpx,3._2024_통계_부록_12.16.hwpx,5174560,2024-12-16,,970fd65194bf17c7f85b498a0bdb0627
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2024 노인복지시설 현황/3._2024_통계_부록_12.16.pdf,3._2024_통계_부록_12.16.pdf,8137705,2024-12-16,,62f6bcad653e3a3423f1f43d9d42c8bf
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2025 노인복지시설 현황/2025 노인복지시설 현황.hwpx,2025 노인복지시설 현황.hwpx,16624109,2025-10-14,,17592cda487c35a77f04f2c07d9a7da9
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2025 노인복지시설 현황/2025 노인복지시설 현황.pdf,2025 노인복지시설 현황.pdf,24297248,2025-12-06,,7ab554ad7f1274ec196a20f10fc3c4a8
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2025 노인복지시설 현황/2025 노인복지시설현황_서울특별시/노인의료복지시설.xlsx,노인의료복지시설.xlsx,140595,2025-10-15,,43e98f73e45db28d8f255de96c7381f8
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/노인복지시설 현황/2025 노인복지시설 현황/2025 노인복지시설현황_서울특별시/노인주거복지시설.xlsx,노인주거복지시설.xlsx,21612,2025-10-15,,150e57517efc813b452fe576165c3d33
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/서울시 사회복지시설(노인여가복지시설) 목록.csv,서울시 사회복지시설(노인여가복지시설) 목록.csv,37246,2025-10-17,,cc33d240fedc6cb296b0ea3e561cb427
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/서울시 사회복지시설(노인의료복지시설) 목록.csv,서울시 사회복지시설(노인의료복지시설) 목록.csv,101869,2025-10-17,,d4eba64bbb4af4fed2fd875f805e5a85
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/서울시 사회복지시설(노인일자리지원기관) 목록.csv,서울시 사회복지시설(노인일자리지원기관) 목록.csv,4431,2025-10-17,,311e2831908a97bb183c0aa550ff5cc0
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/서울시 사회복지시설(노인주거복지시설) 목록.csv,서울시 사회복지시설(노인주거복지시설) 목록.csv,5352,2025-10-17,,d31ff62f9f2d80f7a3ee7ea08e49eb9b
+10_노인복지시설,01_Data/01_Raw_Data/10_노인복지시설/서울시 사회복지시설(재가노인복지시설) 목록.csv,서울시 사회복지시설(재가노인복지시설) 목록.csv,402575,2025-10-17,,d5271d738efa0291f300c1bf13ac3a47
+11_서울시_역사_마스터_정보,01_Data/01_Raw_Data/11_서울시_역사_마스터_정보/서울시 역사마스터 정보_EPSG4326.csv,서울시 역사마스터 정보_EPSG4326.csv,40287,2025-10-13,,9c8f2f3db18a348570320018b67c62c5
+12_서울시_버스정류소_위치_정보,01_Data/01_Raw_Data/12_서울시_버스정류소_위치_정보/2021년각월1일기준_서울시버스정류소위치정보.csv,2021년각월1일기준_서울시버스정류소위치정보.csv,10149868,2026-03-03,,8782287cb9941bb8144d89e3da403d3b
+12_서울시_버스정류소_위치_정보,01_Data/01_Raw_Data/12_서울시_버스정류소_위치_정보/2022년각월1일기준_서울시버스정류소위치정보.csv,2022년각월1일기준_서울시버스정류소위치정보.csv,10207814,2026-03-03,,7abab11a274ca12ad2fbdf62111aa11f
+12_서울시_버스정류소_위치_정보,01_Data/01_Raw_Data/12_서울시_버스정류소_위치_정보/2023년각월1일기준_서울시버스정류소위치정보.csv,2023년각월1일기준_서울시버스정류소위치정보.csv,10236127,2026-03-03,,c83579a024b5af59879580c3af7103a3
+12_서울시_버스정류소_위치_정보,01_Data/01_Raw_Data/12_서울시_버스정류소_위치_정보/2024년1~4월1일기준_서울시버스정류소위치정보.csv,2024년1~4월1일기준_서울시버스정류소위치정보.csv,3436299,2026-03-03,,2709605a7120e65294f86ad139b2d4de
+12_서울시_버스정류소_위치_정보,01_Data/01_Raw_Data/12_서울시_버스정류소_위치_정보/서울시 버스정류소 위치 데이터(20180502).xlsx,서울시 버스정류소 위치 데이터(20180502).xlsx,532669,2026-05-20,,f911ceba70126cecc2e7bc056033eece
+12_서울시_버스정류소_위치_정보,01_Data/01_Raw_Data/12_서울시_버스정류소_위치_정보/서울시 버스정류소 좌표 데이터(2019.07.10).xlsx,서울시 버스정류소 좌표 데이터(2019.07.10).xlsx,705619,2026-03-03,,25df5c3a302b2a75d1634ecfa837ddfb
+12_서울시_버스정류소_위치_정보,01_Data/01_Raw_Data/12_서울시_버스정류소_위치_정보/서울시 버스정류소 좌표 데이터(2020.12.31).xlsx,서울시 버스정류소 좌표 데이터(2020.12.31).xlsx,694448,2026-03-03,,692bbec58c4b5252b132e64480e3e83d
+12_서울시_버스정류소_위치_정보,01_Data/01_Raw_Data/12_서울시_버스정류소_위치_정보/서울시버스정류소위치정보(20250204).xlsx,서울시버스정류소위치정보(20250204).xlsx,743564,2026-03-03,,8473ad58564d49d7c48d5be4537a38e9
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로(현황)_EPSG5174/C_UQ151/C_UQ151.dbf,C_UQ151.dbf,96459979,2025-07-31,,cccf59b1c8c16e0db3e01a2676cd0cea
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로(현황)_EPSG5174/C_UQ151/C_UQ151.prj,C_UQ151.prj,766,2025-07-31,,82121dcb2fa4a7e3da84537ae65223ab
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로(현황)_EPSG5174/C_UQ151/C_UQ151.shp,C_UQ151.shp,461382628,2025-07-31,,71b4cb092adf9cc2c3bfa2230343c479
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로(현황)_EPSG5174/C_UQ151/C_UQ151.shx,C_UQ151.shx,2085708,2025-07-31,,193b806a5749c30d6556fcd24e03a804
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로(현황)_EPSG5174/Z_UPIS_C_UQ151.xlsx,Z_UPIS_C_UQ151.xlsx,11360,2025-10-11,,87914d4cc58306cf13bf5c3359f4bcf1
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로(현황)_EPSG5174/브이월드_도로(현황).webarchive,브이월드_도로(현황).webarchive,2353080,2025-10-11,,b612e26535753d481fd019b7b9dbabf1
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로(현황)_EPSG5174/스크린샷 2025-10-11 오후 11.24.12.png,스크린샷 2025-10-11 오후 11.24.12.png,393208,2025-10-11,,da9fff24a11178cd38a195818ca3e8a0
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로(현황)_EPSG5174/스크린샷 2025-10-11 오후 11.24.56.png,스크린샷 2025-10-11 오후 11.24.56.png,91785,2025-10-11,,23c41100b02babea693c8d3a94e7f2ab
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로구간_EPSG5179/(도로명주소)도로구간_서울/TL_SPRD_MANAGE_11_202509.dbf,TL_SPRD_MANAGE_11_202509.dbf,62660143,2025-09-01,,dc461c7d65bd43bf51575a2643c60fc2
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로구간_EPSG5179/(도로명주소)도로구간_서울/TL_SPRD_MANAGE_11_202509.prj,TL_SPRD_MANAGE_11_202509.prj,632,2025-09-15,,9fff533b29bbb0ab39dcbdf8f73d0038
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로구간_EPSG5179/(도로명주소)도로구간_서울/TL_SPRD_MANAGE_11_202509.shp,TL_SPRD_MANAGE_11_202509.shp,15414344,2025-09-01,,0fe8928628234eb5cf0eb52c2c799be9
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로구간_EPSG5179/(도로명주소)도로구간_서울/TL_SPRD_MANAGE_11_202509.shx,TL_SPRD_MANAGE_11_202509.shx,533940,2025-09-01,,e4127146efff14232154592cba40c9ce
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로구간_EPSG5179/Z_KAIS_TL_SPRD_MANAGE.xlsx,Z_KAIS_TL_SPRD_MANAGE.xlsx,161823,2025-10-11,,7ad4718052aca296c9260d3c2d5788cc
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로구간_EPSG5179/도로명주소전자지도활용가이드.pdf,도로명주소전자지도활용가이드.pdf,1154628,2025-10-11,,e0116bbdba4302ecd0f6338dbacab802
+13_도로,01_Data/01_Raw_Data/13_도로/브이월드_도로구간_EPSG5179/브이월드_(도로명주소)도로구간.webarchive,브이월드_(도로명주소)도로구간.webarchive,2349168,2025-12-05,,defda61724ef56bae1cbd597c694ddc9
+14_보도,01_Data/01_Raw_Data/14_보도/서울시 자치구별 도보 네트워크 공간정보/도보네트워크_링크노드유형코드.xlsx,도보네트워크_링크노드유형코드.xlsx,12510,2025-12-05,,50a7358dab2eab86f205ae15a35c73ae
+14_보도,01_Data/01_Raw_Data/14_보도/서울시 자치구별 도보 네트워크 공간정보/서울시 자치구별 도보 네트워크 공간정보.csv,서울시 자치구별 도보 네트워크 공간정보.csv,100494538,2025-12-05,,21c98f5b66639d9c34f05c7f564d7e3e
+14_보도,01_Data/01_Raw_Data/14_보도/서울시 자치구별 도보 네트워크 공간정보/서울열린데이터광장_서울시 자치구별 도보 네트워크 공간정보.webarchive,서울열린데이터광장_서울시 자치구별 도보 네트워크 공간정보.webarchive,9103896,2025-12-05,,c16496cbbd41ab1845064fec54b6e9e8
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/N3L_A0033320/N3L_A0033320.dbf,N3L_A0033320.dbf,67730997,2024-04-19,,0cf0717c09589309ef3b1ee925037de3
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/N3L_A0033320/N3L_A0033320.prj,N3L_A0033320.prj,435,2024-04-19,,3573e291adf54c6c35a5f92abc941422
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/N3L_A0033320/N3L_A0033320.sbn,N3L_A0033320.sbn,6884068,2024-04-19,,fcc28fdeadde6623989f00cd4006d4c2
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/N3L_A0033320/N3L_A0033320.sbx,N3L_A0033320.sbx,98108,2024-04-19,,63cb8147f451e03e01c0ec142e2bf4e8
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/N3L_A0033320/N3L_A0033320.shp,N3L_A0033320.shp,263104636,2024-04-19,,de85e63808f33f074a34d52362feba43
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/N3L_A0033320/N3L_A0033320.shx,N3L_A0033320.shx,6528364,2024-04-19,,105f6e49b5920110dc18b15772a6f019
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/N3L_A0033320/N3L_A0033320.xml,N3L_A0033320.xml,20461,2024-04-19,,a6218adf9d9a95a35a29283b75590299
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/데이터베이스설계서_인도(보도).png,데이터베이스설계서_인도(보도).png,497791,2025-12-06,,493d55a4e0d8ec19e86d46d363f430e0
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/브이월드_인도(보도).webarchive,브이월드_인도(보도).webarchive,2836138,2025-12-06,,784b2bd40327873951d921cb487e58eb
+14_보도,01_Data/01_Raw_Data/14_보도/인도(보도)/연속수치지형도 데이터 설명서 Ver 5.1.1.pdf,연속수치지형도 데이터 설명서 Ver 5.1.1.pdf,755629,2025-12-06,,5d101eac8e4a9fac4837aab4ef997eb7

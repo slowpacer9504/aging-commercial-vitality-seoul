@@ -67,7 +67,35 @@ Rscript 02_Code/run_all.R
 
 ---
 
-## 3. Documentation Reference
+## 3. Data Availability
+
+The original data used in this study are **public open data** from Korean government agencies and are **not included in this repository** because of their large size (50+ GB) and public-data terms of use. The analysis code is fully reproducible once the raw data are placed in `01_Data/`.
+
+### 3.1 Where to Obtain the Raw Data
+
+| Source | Portal / Download |
+| --- | --- |
+| Seoul Commercial District Analysis Service (sales, stores, floating population, survival rates) | [golmok.seoul.go.kr](https://golmok.seoul.go.kr/) / [data.seoul.go.kr](https://data.seoul.go.kr/) |
+| Seoul Living Population (internal movement, metro area) | [data.seoul.go.kr](https://data.seoul.go.kr/) |
+| MOIS Resident Registration Population (5-year age groups by dong) | [jumin.mois.go.kr](https://jumin.mois.go.kr/) |
+| Seoul business status by worker size, apartments, large retail stores, hospitals, subway stations, bus stops | [data.seoul.go.kr](https://data.seoul.go.kr/) |
+| Official land prices, facilities, pedestrian environment | [vworld.kr](https://www.vworld.kr/) / [localdata.go.kr](https://www.localdata.go.kr/) |
+| 2020 Seoul administrative dong boundaries | [SGIS](https://sgis.kostat.go.kr/) |
+
+Detailed dataset-level specifications (source names, download URLs, granularity, temporal coverage, access dates, versions, and QC rules) are documented in:
+* **Data Specification**: [01_data_spec.md](04_Docs/02_Codebook/01_data_spec.md)
+* **Machine-readable dataset catalog**: [01_data_spec_datasets.csv](04_Docs/02_Codebook/01_data_spec_datasets.csv)
+
+### 3.2 Acquisition Record and Integrity
+
+Every raw file is cataloged with its access date (file mtime), embedded version timestamp, size, and MD5 checksum in:
+* **Raw data manifest**: [raw_data_manifest.csv](04_Docs/01_Design/raw_data_manifest.csv)
+
+> **Note**: `01_Data/**` and `03_Output/**` are excluded from Git tracking (see the local `.gitignore`). Reproducing the pipeline requires obtaining the raw data from the sources above; the manifest and codebook document exactly which files the analysis expects and how to verify them.
+
+---
+
+## 4. Documentation Reference
 
 For detailed theoretical backgrounds, variable definitions, and model equations of the research, please refer to the following documents:
 

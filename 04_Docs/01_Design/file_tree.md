@@ -130,6 +130,7 @@ For detailed information regarding code execution or variables, please refer to 
     │
     ├── 01_Design/
     │   ├── r_code_style_guide.md                  # R coding conventions
+    │   ├── raw_data_manifest.csv                  # Raw data acquisition record (file, size, access date, version, MD5)
     │   ├── research_plan.md                       # Active research goals and framing
     │   └── research_procedure.md                  # Project procedure pipeline
     │
