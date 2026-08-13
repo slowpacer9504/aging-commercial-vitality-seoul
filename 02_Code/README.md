@@ -76,7 +76,7 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 
 **Execution Options (Environment Variables):**
 - **Control Set**: `GTWR_CONTROL_SET=lean` (default) or `extended` (adds transit & location controls).
-- **Parallelization**: `GTWR_PARALLEL_SPECS=<n>`
+- **Parallelization**: `GTWR_PARALLEL_SPECS=<n>` (default: `5`)
 - **Caching**:
   - `GTWR_RESUME_SPECS=TRUE` (default: `TRUE`; resume from completed cache — set `FALSE` to force a fresh run)
   - `GTWR_REFRESH_SPEC_CACHE=TRUE` (clear cache and recompute; default: `FALSE`)
@@ -124,11 +124,11 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 
 ## Directory Roles
 
-- `00_setup/`: shared config and package loading (`config.R`, `packages.R`, `install_packages.R`)
+- `00_setup/`: shared config and package loading (`config.R`, `packages.R`, `install_packages.R`, plus `senior_geocode_manual_fix.csv`)
 - `99_utils/`: utility helpers (`utils_age_mix.R`, `utils_esda_maps.R`, `utils_gtwr_main.R`, `utils_io.R`, `utils_model.R`, `utils_qc.R`, `utils_spatial.R`, `utils_spdm.R`, `utils_transform.R`)
 - `01_preprocess/`: active short-run quarterly-panel preprocessing
 - `02_esda/`: spatial weights and ESDA
-- `03_models/`: canonical TWFE and SPDM models
+- `03_models/`: canonical TWFE and SPDM models, plus the manual GTWR main (`03_run_gtwr_main.R`)
 - `04_robustness/`: SPDM W robustness and supplementary robustness
 - `05_reporting/`: tables, figures, presentation, and GTWR artifact builders
 - `06_qc/`: active QC plus manual audit helpers
@@ -137,9 +137,9 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 
 ## Specification Navigation
 
-- Spec hub: `04_Docs/02_Codebook/00_spec_index.md`
-- Data spec: `04_Docs/02_Codebook/01_data_spec.md`
-- Variable dictionary: `04_Docs/02_Codebook/02_variable_dictionary.md`
-- Join / harmonization rules: `04_Docs/02_Codebook/03_join_harmonization_rules.md`
-- Model spec: `04_Docs/02_Codebook/04_model_spec.md`
-- Spec-to-code map: `04_Docs/02_Codebook/99_spec_to_code_map.csv`
+- Spec hub: [00_spec_index.md](../04_Docs/02_Codebook/00_spec_index.md)
+- Data spec: [01_data_spec.md](../04_Docs/02_Codebook/01_data_spec.md)
+- Variable dictionary: [02_variable_dictionary.md](../04_Docs/02_Codebook/02_variable_dictionary.md)
+- Join / harmonization rules: [03_join_harmonization_rules.md](../04_Docs/02_Codebook/03_join_harmonization_rules.md)
+- Model spec: [04_model_spec.md](../04_Docs/02_Codebook/04_model_spec.md)
+- Spec-to-code map: [99_spec_to_code_map.csv](../04_Docs/02_Codebook/99_spec_to_code_map.csv)
