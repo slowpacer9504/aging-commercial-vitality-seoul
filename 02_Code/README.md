@@ -4,6 +4,8 @@ This directory contains the core R scripts for the end-to-end data pipeline, spa
 
 ## Quick Start
 
+The same steps as the main [README Quick Start](../README.md#1-quick-start) are reproduced here so this directory guide stays self-contained.
+
 1. Open `R.Rproj` so `here::here()` resolves the project root correctly.
 2. Install packages once on a new machine:
 
@@ -74,8 +76,8 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 - **Control Set**: `GTWR_CONTROL_SET=lean` (default) or `extended` (adds transit & location controls).
 - **Parallelization**: `GTWR_PARALLEL_SPECS=<n>`
 - **Caching**:
-  - `GTWR_RESUME_SPECS=TRUE` (resume from completed cache)
-  - `GTWR_REFRESH_SPEC_CACHE=TRUE` (clear cache and recompute)
+  - `GTWR_RESUME_SPECS=TRUE` (default: `TRUE`; resume from completed cache — set `FALSE` to force a fresh run)
+  - `GTWR_REFRESH_SPEC_CACHE=TRUE` (clear cache and recompute; default: `FALSE`)
 - **Bandwidth**:
   - `GTWR_BANDWIDTH_STRATEGY`: `fixed` (default), `full_panel_bw_gtwr`, or `anchor_quarter_bw_gtwr`.
   - `GTWR_ST_BW`: Spatiotemporal bandwidth (default: 60).
@@ -108,6 +110,8 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 - `02_Code/80_optional/gtwr/05_run_gtwr_experiment.R`
 - `02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R`
 - `02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R`
+
+> Note: `06_select_gtwr_bandwidth.R` is a bandwidth *search* utility rather than an experiment runner; it is documented under the GTWR local-analysis section above.
 
 ### Manual QC & Reporting Sidecars
 
