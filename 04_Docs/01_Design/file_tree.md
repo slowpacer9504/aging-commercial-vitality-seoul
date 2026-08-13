@@ -5,16 +5,18 @@ For detailed information regarding code execution or variables, please refer to 
 
 ```text
 ├── .Rprofile                                      # Activates renv project library on startup
+├── .gitignore                                     # Git ignore rules (data, outputs, secrets, renv library)
 ├── LICENSE                                        # MIT license
 ├── README.md                                      # Main project overview and guide
 ├── R.Rproj                                        # RStudio project file
 ├── renv.lock                                      # Pinned package versions (renv)
 │
 ├── renv/                                          # renv project library (library/ is gitignored)
+│   ├── .gitignore                                 # renv internal ignore rules
 │   ├── activate.R                                 # renv activation script
 │   └── settings.json                              # renv settings (snapshot.type = "all")
 │
-├── 01_Data/                                       # Data directory (Git untracked except directory structure)
+├── 01_Data/                                       # Data directory (not Git-tracked; local only, shown for reference)
 │   ├── 01_Raw_Data/                               # Raw public datasets (01~14)
 │   │   ├── 01_Seoul_Commercial_District_Administrative_Dong/
 │   │   ├── 02_서울생활인구_관내이동/
@@ -126,7 +128,7 @@ For detailed information regarding code execution or variables, please refer to 
 │       ├── utils_spdm.R
 │       └── utils_transform.R
 │
-├── 03_Output/                                     # Output artifacts (Git untracked except directory structure)
+├── 03_Output/                                     # Output artifacts (not Git-tracked; local only, shown for reference)
 │   ├── 01_Tables/                                 # Statistical tables (CSVs, HTMLs)
 │   ├── 02_Figures/                                # Model diagnostics and coefficient plots (PNGs)
 │   ├── 03_Maps/                                   # Local coefficient spatial distribution maps (PNGs)
@@ -134,9 +136,8 @@ For detailed information regarding code execution or variables, please refer to 
 │   └── 05_report/                                 # Publication-ready presentation materials
 │
 └── 04_Docs/                                       # Design docs and Codebooks
-    ├── file_tree.md                               # Project file tree (this file)
-    │
     ├── 01_Design/
+    │   ├── file_tree.md                           # Project file tree (this file)
     │   ├── figure_1_1_research_framework_en.png   # English research framework figure (raster)
     │   ├── figure_1_1_research_framework_en.svg   # English research framework figure (vector)
     │   ├── r_code_style_guide.md                  # R coding conventions
