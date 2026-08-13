@@ -8,41 +8,36 @@ The diagram below reproduces `03_Output/05_report/figure_1_1_research_framework_
 
 ```mermaid
 %%{init: {'theme': 'base', 'flowchart': {'padding': 20}, 'themeVariables': { 'primaryColor': '#ffffff', 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'textColor': '#000000', 'clusterBkg': 'none', 'clusterBorder': '#aaaaaa'}}}%%
-graph TD
-    %% [1] Theoretical Background & Mechanism
-    subgraph Theoretical ["<b>Theoretical Background & Mechanism</b>"]
+flowchart TD
+    subgraph Theoretical ["THEORETICAL BACKGROUND & MECHANISM"]
         direction LR
-        A["<div style='text-align:center;'>Population Aging Deepening</div>"] --> B["<div style='text-align:center;'><b>Changes in Elderly Consumption & Mobility Behavior</b><div style='text-align:left;'>• Reliance on Local Living Zones (Aging in Place)<br/>• Repeat Consumption of Essential Goods & Daily Services<br/>• Daytime-Centered, Dispersed Usage Patterns</div></div>"]
-        B --> C["<div style='text-align:center;'>Functional Reorganization of Neighborhood<br/>Commercial Districts & Commercial Vitality Change</div>"]
+        A["Population Aging Deepening"]
+        B["CHANGES IN ELDERLY CONSUMPTION & MOBILITY BEHAVIOR<br/>- Reliance on Local Living Zones (Aging in Place)<br/>- Repeat Consumption of Essential Goods & Daily Services<br/>- Daytime-Centered, Dispersed Usage Patterns"]
+        C["FUNCTIONAL REORGANIZATION OF NEIGHBORHOOD<br/>COMMERCIAL DISTRICTS & COMMERCIAL VITALITY CHANGE"]
+        A --> B --> C
     end
 
-    %% [2] Empirical Analysis Framework
-    subgraph Empirical ["<b>Empirical Analysis Framework</b>"]
-        X["<div style='text-align:center;'><b>[Independent Variable]</b><br/>Elderly Resident Share (t-4)</div>"] 
-        Z["<div style='text-align:center;'><b>[Control Variables]</b><br/>Resident Population, Worker Population, Official Land Price,<br/>Transit Accessibility (t-4)</div>"]
-        
+    subgraph Empirical ["EMPIRICAL ANALYSIS FRAMEWORK"]
+        direction LR
+        subgraph EmpiricalLeft
+            direction TB
+            X["INDEPENDENT VARIABLE<br/>Elderly Resident Share (t-4)"]
+            Z["CONTROL VARIABLES<br/>Resident Population, Worker Population,<br/>Official Land Price, Transit Accessibility (t-4)"]
+        end
+        Y["DEPENDENT VARIABLE: COMMERCIAL VITALITY INDEX<br/>1. Economic Vitality (Sales / Sales Count)<br/>2. Social Vitality (Floating Population / External Inflow)<br/>3. Temporal Sustainability (Time-of-Day / Quarterly Stability)<br/>4. Structural Stability (Industry Diversity / Store Survival)"]
         X -->|Hypothesis Testing| Y
         Z -.->|Factor Control| Y
-        
-        Y["<div style='text-align:center;'><b>[Dependent Variable: Commercial Vitality Index]</b><div style='text-align:left;'>① Economic Vitality (Sales / Sales Count)<br/>② Social Vitality (Floating Population / External Inflow)<br/>③ Temporal Sustainability (Time-of-Day / Quarterly Stability)<br/>④ Structural Stability (Industry Diversity / Store Survival)</div></div>"]
     end
 
-    %% Link
+    M["ANALYTICAL METHODS<br/>1. ESDA: Spatial Autocorrelation Diagnostics<br/>2. SPDM: Spatial Direct & Spillover Effects Estimation<br/>3. GTWR: Local Spatiotemporal Heterogeneity Exploration"]
+
+    N["RESULTS & IMPLICATIONS<br/>- Identification of Multidimensional Commercial Vitality Reorganization,<br/>Not Simple Decline<br/>- Aging-Friendly Policy Directions for Sustainable Urban Vitality"]
+
     Theoretical -->|Empirical Linkage| Empirical
+    Empirical --> M
+    M --> N
 
-    %% [3] Analytical Methods
-    Empirical --> M["<div style='text-align:center;'><b>[Analytical Methods]</b><div style='text-align:left;'>1. ESDA: Spatial Autocorrelation Diagnostics<br/>2. SPDM: Spatial Direct & Spillover Effects Estimation<br/>3. GTWR: Local Spatiotemporal Heterogeneity Exploration</div></div>"]
-
-    %% [4] Results & Implications
-    M --> N["<div style='text-align:center;'><b>[Results & Implications]</b><div style='text-align:left;'>• Identification of Multidimensional Commercial Vitality Reorganization,<br/>Not Simple Decline<br/>• Aging-Friendly Policy Directions for Sustainable Urban Vitality</div></div>"]
-
-    %% Style settings
-    classDef default fill:#ffffff,stroke:#333333,stroke-width:1px,color:#000000;
-    classDef var fill:#f9f9f9,stroke:#333333,stroke-width:1.5px,color:#000000;
-    
-    class A,B,C default;
-    class X,Y,Z,M,N var;
-    
+    style EmpiricalLeft fill:none,stroke:none
     style Theoretical fill:none,stroke:#666666,stroke-width:1.5px,stroke-dasharray: 5 5
     style Empirical fill:none,stroke:#666666,stroke-width:1.5px,stroke-dasharray: 5 5
 ```
