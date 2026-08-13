@@ -6,7 +6,7 @@ This project is an analysis codebase and research specification package designed
 
 The figure below summarizes the conceptual pathway from population aging to neighborhood commercial vitality and the empirical methods used to estimate it (English rendering of `03_Output/05_report/figure_1_1_research_framework_clean`):
 
-![Research framework](figures/figure_1_1_research_framework_en.png)
+![Research framework](04_Docs/01_Design/figure_1_1_research_framework_en.png)
 
 > **Figure 1.** Research framework: theoretical background and mechanism (top), empirical analysis framework (middle), and analytical methods with results and implications (bottom).
 
@@ -81,10 +81,9 @@ This repository is structured as follows to maximize research reproducibility:
 │   └── 05_report/            # Presentation-ready reports and slide-ready summaries
 │
 ├── 04_Docs/                  # Research specifications and guidelines
-│   ├── 01_Design/            # Research plan and procedural manual
+│   ├── 01_Design/            # Research plan and procedural manual (incl. English research framework figure)
 │   └── 02_Codebook/          # Specifications mapping data specs, variable dictionary, and model specs
 │
-├── figures/                  # Repository-level figures referenced from the README (English rendering of the research framework)
 ├── README.md                 # This main guide document
 └── R.Rproj                   # RStudio project file
 ```
