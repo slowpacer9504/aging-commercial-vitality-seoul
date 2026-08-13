@@ -4,7 +4,7 @@ This project is an analysis codebase and research specification package designed
 
 ## Research Framework
 
-The figure below summarizes the conceptual pathway from population aging to neighborhood commercial vitality and the empirical methods used to estimate it (English rendering of `03_Output/05_report/figure_1_1_research_framework_clean`):
+The figure below summarizes the conceptual pathway from population aging to neighborhood commercial vitality and the empirical methods used to estimate it (an English rendering of the Korean research framework figure):
 
 ![Research framework](04_Docs/01_Design/figure_1_1_research_framework_en.png)
 
@@ -18,7 +18,7 @@ This analysis uses the `here` package to automatically recognize the project roo
 
 ### 1.1 Package Installation
 
-Package versions are pinned with [renv](https://rstudio.github.io/renv/). `renv.lock` records the exact package versions used to run the analysis, and `.Rprofile` activates the project library automatically when the project opens in RStudio.
+Package versions are pinned with [renv](https://rstudio.github.io/renv/) at **R 4.5.3**. `renv.lock` records the exact package versions used to run the analysis, and `.Rprofile` activates the project library automatically when the project opens in RStudio.
 
 To restore the pinned environment (recommended for reproducibility):
 ```R
@@ -93,8 +93,12 @@ This repository is structured as follows to maximize research reproducibility:
 │   ├── 01_Design/            # Research plan and procedural manual (incl. English research framework figure)
 │   └── 02_Codebook/          # Specifications mapping data specs, variable dictionary, and model specs
 │
+├── .Rprofile                 # Activates the renv project library on startup
+├── .gitignore                # Git ignore rules (data, outputs, secrets, renv library)
+├── LICENSE                   # MIT license
 ├── README.md                 # This main guide document
 ├── renv.lock                 # Pinned package versions for reproducible environment (renv)
+├── renv/                     # renv project library (auto-managed; library/ is gitignored)
 └── R.Rproj                   # RStudio project file
 ```
 
@@ -124,7 +128,7 @@ Detailed dataset-level specifications (source names, download URLs, granularity,
 Every raw file is cataloged with its access date (file mtime), embedded version timestamp, size, and MD5 checksum in:
 * **Raw data manifest**: [raw_data_manifest.csv](04_Docs/01_Design/raw_data_manifest.csv)
 
-> **Note**: `01_Data/**` and `03_Output/**` are excluded from Git tracking (see the local `.gitignore`). Reproducing the pipeline requires obtaining the raw data from the sources above; the manifest and codebook document exactly which files the analysis expects and how to verify them.
+> **Note**: `01_Data/**` and `03_Output/**` are excluded from Git tracking (see `.gitignore`). Reproducing the pipeline requires obtaining the raw data from the sources above; the manifest and codebook document exactly which files the analysis expects and how to verify them.
 
 ---
 
@@ -136,3 +140,9 @@ For detailed theoretical backgrounds, variable definitions, and model equations 
 * **Step-by-step Procedure**: [research_procedure.md](04_Docs/01_Design/research_procedure.md)
 * **Project File Tree**: [file_tree.md](04_Docs/01_Design/file_tree.md)
 * **Variable and Model Specification Hub**: [00_spec_index.md](04_Docs/02_Codebook/00_spec_index.md)
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
