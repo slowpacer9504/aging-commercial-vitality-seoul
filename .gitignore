@@ -1,0 +1,24 @@
+.Rhistory
+.RData
+.Rproj.user/
+.DS_Store
+*.Rproj.user
+
+# Large project data and generated artifacts are not Git-tracked.
+01_Data/**
+03_Output/**
+.positai
+
+# Tooling and environment
+.antigravitycli/
+.omo
+.codegraph
+.playwright-mcp
+.env
+.Renviron
+
+# Agent operating instructions (kept local-only, not published)
+AGENTS.md
+
+# Internal research logs
+04_Docs/03_Log/
