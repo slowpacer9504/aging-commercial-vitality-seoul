@@ -1,5 +1,7 @@
 # Research Procedure
 
+> **Last updated**: 2026-08-13
+
 ## 0. Document Purpose
 
 This document is a detailed procedural guide explaining how the active research design is actually executed. It is not merely a checklist of execution order, but a reproducible summary of how the quarterly panel construction, spatial diagnostics, TWFE, SPDM, and GTWR are logically connected.
@@ -88,7 +90,7 @@ The common execution principles are as follows:
 - Models do not create separate slim panel files; they only read method-specific views of `panel_main`.
 - Therefore, the practical handoff between preprocessing and modeling is firmly established through the single `panel_main.parquet` file.
 
-### 2.1A [01_build_adm_region_lookup.R](../../02_Code/01_preprocess/01_build_adm_region_lookup.R): Build Administrative Dong-District-Living Area Lookup
+### 2.2 [01_build_adm_region_lookup.R](../../02_Code/01_preprocess/01_build_adm_region_lookup.R): Build Administrative Dong-District-Living Area Lookup
 
 The purpose of this step is to create a static lookup linking `adm_cd`, administrative dong names, autonomous district names, and the 5 major regional living areas, based on the 2020 Seoul administrative dong boundaries. While this lookup is not directly fed into the statistical models of the analysis panel, it serves as a foundational asset to reuse the same regional classifications in mapping administrative dong names from resident population sources, aggregating GTWR results by region, performing QC, and generating reporting outputs.
 
@@ -103,7 +105,7 @@ Core outputs are as follows:
 
 This step does not modify the raw boundary sources. Autonomous districts are identified by the first 6 digits of `adm_cd`, and the Seoul 5 major regional living areas classification table is joined.
 
-### 2.2 [02_build_seoul_quarter_base.R](../../02_Code/01_preprocess/02_build_seoul_quarter_base.R): Build Seoul Commercial District Quarterly Base
+### 2.3 [02_build_seoul_quarter_base.R](../../02_Code/01_preprocess/02_build_seoul_quarter_base.R): Build Seoul Commercial District Quarterly Base
 
 The purpose of this step is to integrate the raw tables of the Seoul Commercial District Analysis Service by source and create a quarterly base panel that serves as the reference grid for all subsequent analyses.
 
@@ -129,7 +131,7 @@ The core outputs of this step are as follows:
 
 Crucially, by standardizing the source quarter codes during the raw provenance stage, **only the standard `year`, `quarter`, `yq`, and `quarter_index` remain after the active base.**
 
-### 2.3 [03_build_auxiliary_covariates.R](../../02_Code/01_preprocess/03_build_auxiliary_covariates.R): Organize Supplementary Public Data as `adm_cd-yq` Covariates
+### 2.4 [03_build_auxiliary_covariates.R](../../02_Code/01_preprocess/03_build_auxiliary_covariates.R): Organize Supplementary Public Data as `adm_cd-yq` Covariates
 
 The purpose of this step is to build a set of auxiliary variables that can be directly attached to the commercial district quarterly base. First, `base_quarter` is defined by reading the `adm_cd-yq` combinations actually present in `seoul_quarter_base.parquet`, and all supplementary sources are organized according to this standard.
 
@@ -156,7 +158,7 @@ Public transit accessibility sources track quarterly source precision separately
 
 Medical facilities and large-scale retail are no longer included in the active control pool. While record-level pre-aggregation is maintained, they remain in the active panel strictly as permit-based as-of diagnostic variables.
 
-### 2.4 [01_build_living_population_inflow.R](../../02_Code/80_optional/preprocess/01_build_living_population_inflow.R): Build External Inflow Population based on Seoul Living Population
+### 2.5 [01_build_living_population_inflow.R](../../02_Code/80_optional/preprocess/01_build_living_population_inflow.R): Build External Inflow Population based on Seoul Living Population (Optional)
 
 The purpose of this step is to create an external inflow population layer on an `adm_cd-yq` basis by reading the monthly Seoul Living Population ZIP sources without fully extracting them. Because the social dimension of commercial vitality should reflect the scale of population flowing in from external living areas, not just simple internal floating populations, this output is managed as an optional preprocessing layer but is joined to the final panel if it exists.
 
@@ -181,7 +183,7 @@ Main outputs are as follows:
 - `living_population_inflow_qc.csv`
   - QC for quarterly finite coverage and value ranges
 
-### 2.5 [04_build_golmok_survival_rate.R](../../02_Code/01_preprocess/04_build_golmok_survival_rate.R): Build Newly Established Firm Survival Rate
+### 2.6 [04_build_golmok_survival_rate.R](../../02_Code/01_preprocess/04_build_golmok_survival_rate.R): Build Newly Established Firm Survival Rate
 
 The purpose of this step is to directly call the `selectSurvivalRate.json` response from the Seoul Commercial District Analysis Service website to construct a newly established firm survival rate layer on an `adm_cd-yq` basis. Because it parses and saves the JSON response used for webpage inquiries instead of performing PDF/OCR extraction, it can preserve not only the survival rates but also the number of surviving firms and cohort denominators.
 
@@ -196,9 +198,9 @@ Main outputs are as follows:
 - `golmok_survival_rate_qc.csv`
   - QC for key uniqueness, quarterly coverage, rate ranges, numerator/denominator recalculation diffs, and small cohort sizes
 
-`survival_3y` is used in the store continuity axis of the active stability sub-index. Administrative dong-quarters with a survival rate denominator of 0 are not arbitrarily replaced but kept as `NA`, and the missing values and small cohort counts are logged in the QC file.
+`survival_3y` is used in the store persistence axis of the active stability sub-index. Administrative dong-quarters with a survival rate denominator of 0 are not arbitrarily replaced but kept as `NA`, and the missing values and small cohort counts are logged in the QC file.
 
-### 2.6 [05_build_registered_resident_population.R](../../02_Code/01_preprocess/05_build_registered_resident_population.R): Build Registered Resident Population
+### 2.7 [05_build_registered_resident_population.R](../../02_Code/01_preprocess/05_build_registered_resident_population.R): Build Registered Resident Population
 
 The purpose of this step is to match the monthly 5-year age group CSV files of the Ministry of the Interior and Safety's resident registration population status to the 2020 Seoul administrative dong codes, generating the resident population scale and the share of the elderly resident population. The resident population from the Seoul Commercial District Analysis Service is not used as the source for the active main exposure and `ln_resident_pop`.
 
@@ -219,7 +221,7 @@ Main outputs are as follows:
 - `registered_resident_population_qc.csv`
   - QC for quarterly coverage, 3-month coverage, split distribution counts, elderly share ranges, and age sum diffs
 
-### 2.7 [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R): Join Common Analysis Panel and Create Common Derived Variables
+### 2.8 [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R): Join Common Analysis Panel and Create Common Derived Variables
 
 The purpose of this step is to join `seoul_quarter_base`, `aux_covariates`, `living_population_external_inflow`, `golmok_survival_rate`, and `registered_resident_population`; generate canonical lag variables from `aux_covariates_lag_support` and `registered_resident_population_lag_support`; create common derived variables and QCs shared by all downstream analyses at once; and publish `panel_main_pre_vitality`, the state just before calculating the final vitality indices.
 
@@ -269,7 +271,7 @@ Key QCs for this stage are as follows:
 - `panel_structural_count_flags.csv`
 - `missing_data_log.csv`
 
-### 2.8 [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R): Vitality Index Construction and `panel_main` Publication
+### 2.9 [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R): Vitality Index Construction and `panel_main` Publication
 
 The purpose of this step is to calculate the vitality indices using `panel_main_pre_vitality` as input and publish `panel_main.parquet`, the final canonical shared panel.
 
@@ -285,9 +287,9 @@ The components are grouped into four sub-dimensions:
 - `vitality_sub_temporal`
   - `sales_time_entropy`, `floating_time_entropy`, `sales_quarter_stability`, `floating_quarter_stability`
 - `vitality_sub_stability`
-  - diversity axis: `diversity_index`
-  - continuity axis: `operating_months_rel_seoul`, `survival_3y`
-  - final subindex: Equal-weighted average of pooled-z diversity axis and pooled-z continuity axis
+  - structural diversity axis: `diversity_index`
+  - store persistence axis: `operating_months_rel_seoul`, `survival_3y`
+  - final subindex: Equal-weighted average of pooled-z structural diversity axis and pooled-z store persistence axis
 
 Additionally, the following supplementary composites are created:
 
@@ -297,7 +299,7 @@ Additionally, the following supplementary composites are created:
 
 The standardization baseline is the active analysis period sample, `2019Q4-2025Q4 adm_cd-yq`. [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R) standardizes individual components using pooled z-scores to create sub-indices, which are then standardized again via pooled z-scores to calculate the composites. Cross-sectional standardization per quarter is not used in the active workflow.
 
-### 2.8 [01_build_spatial_weights.R](../../02_Code/02_esda/01_build_spatial_weights.R): Spatial Weights Matrix Construction
+### 2.10 [01_build_spatial_weights.R](../../02_Code/02_esda/01_build_spatial_weights.R): Spatial Weights Matrix Construction
 
 This step constructs the common spatial contract using the 2020 base Seoul administrative dong boundaries.
 
@@ -306,7 +308,7 @@ This step constructs the common spatial contract using the 2020 base Seoul admin
 
 All models and map visualizations must share the same `adm_cd` ordering and same-boundary contract.
 
-### 2.9 [02_run_esda.R](../../02_Code/02_esda/02_run_esda.R): Quarterly Spatial Diagnostics
+### 2.11 [02_run_esda.R](../../02_Code/02_esda/02_run_esda.R): Quarterly Spatial Diagnostics
 
 ESDA is the stage to confirm the presence of spatial patterns before estimating models.
 
@@ -317,7 +319,7 @@ ESDA is the stage to confirm the presence of spatial patterns before estimating 
 - EHSA is calculated using the quarterly sequence. Following the Gi* convention in `sfdep::emerging_hotspot_analysis()`, EHSA uses `queen_include_self` weights that include self-neighbors in the queen contiguity.
 - Key variables are `age60_resident_share`, `age60_floating_share`, `vitality_sub_*`, and `vitality_index_base`.
 
-### 2.10 [01_run_twfe_main.R](../../02_Code/03_models/01_run_twfe_main.R): Quarterly TWFE Baseline
+### 2.12 [01_run_twfe_main.R](../../02_Code/03_models/01_run_twfe_main.R): Quarterly TWFE Baseline
 
 TWFE provides non-spatial baselines and residual Moran diagnostics.
 
@@ -334,7 +336,7 @@ Required outputs are as follows:
 - `twfe_main_residual_moran.csv`
 - `twfe_main_residual_moran_by_yq.csv`
 
-### 2.11 [02_run_spdm_main.R](../../02_Code/03_models/02_run_spdm_main.R): Quarterly SPDM Main Model
+### 2.13 [02_run_spdm_main.R](../../02_Code/03_models/02_run_spdm_main.R): Quarterly SPDM Main Model
 
 SPDM is the main global model of the active design.
 
@@ -353,7 +355,7 @@ Core outputs are as follows:
 - `spdm_controls_used.csv`
 - `spdm_main_diagnostics.csv`
 
-### 2.12 [07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R): Optional SPDM Channel Path Sidecar
+### 2.14 [07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R): Optional SPDM Channel Path Sidecar
 
 This step is an optional mediation-oriented channel sidecar executed only when directly running [02_Code/80_optional/spdm/07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R). It tests the `lag4_age60_resident_share -> lag2_age60_floating_share -> commercial vitality` pathway over the quarterly Queen SDM. By fixing `lag4_age60_resident_share` as `X` and `lag2_age60_floating_share` as the mediator `M`, it estimates the total-effect equation, mediator equation, and outcome equation simultaneously on identical balanced samples for each vitality outcome.
 
@@ -376,15 +378,15 @@ Core outputs are as follows:
 - `spdm_channel_bootstrap_draws.csv`
 - `spdm_channel_diagnostics.csv`
 
-### 2.13 [01_run_spdm_w_robustness.R](../../02_Code/04_robustness/01_run_spdm_w_robustness.R): W Sensitivity Check
+### 2.15 [01_run_spdm_w_robustness.R](../../02_Code/04_robustness/01_run_spdm_w_robustness.R): W Sensitivity Check
 
 This step iteratively estimates the same resident-only quarterly SDM contract across `queen`, `rook`, `knn6`, and `knn8`. Its purpose is to check sensitivity to the choice of W matrix.
 
-### 2.14 [05_run_spdm_family_comparison_sidecar.R](../../02_Code/80_optional/spdm/05_run_spdm_family_comparison_sidecar.R): Spatial Family Comparison
+### 2.16 [05_run_spdm_family_comparison_sidecar.R](../../02_Code/80_optional/spdm/05_run_spdm_family_comparison_sidecar.R): Spatial Family Comparison
 
 This step is a manual sidecar for the appendix. It reconstructs the exact quarterly Queen sample and selected control contract of the main SPDM, then compares `TWFE`, `SLX`, `SAR`, `SDM`, `SEM`, `SDEM`, `SARAR/SAC`, and `GNS` under identical conditions. The effects for `SLX` and `SDEM` are reported as `W X` effects without the endogenous `W y` feedback multiplier, saved as `direct=beta`, `indirect=theta`, and `total=beta+theta`. `GNS` is the most general appendix sensitivity family incorporating `W y`, `W X`, and spatial errors, with its average effects recorded via the SDM matrix impact method.
 
-### 2.15 [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R): Optional Quarterly Local Sidecar
+### 2.17 [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R): Optional Quarterly Local Sidecar
 
 GTWR main is a quarterly resident-only local sidecar.
 
@@ -419,7 +421,7 @@ Additional GTWR appendix sidecars share the same quarterly panel, `GWmodel::gtwr
 - [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R): Direct execution runs lamda grid sensitivity against the resident-only main baseline output.
 - [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R) derives latest-minus-earliest delta summaries/rankings whenever sidecar raw local coefficients are present.
 
-### 2.16 [02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R) and Reporting
+### 2.18 [02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R) and Reporting
 
 [02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R) checks outcome-definition, sample-window, and W-Moran sensitivities against the quarterly contract. [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R) bundles tables and figures for the main text/appendices, and additionally publishes Pearson correlation matrices and pairwise correlation tables for main analysis variables. Reporting selectively attaches optional artifacts only when source inputs exist.
 
