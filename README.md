@@ -2,9 +2,81 @@
 
 This project is an analysis codebase and research specification package designed to estimate the direct and indirect impacts of population aging on the commercial vitality of neighborhood commercial districts (at the administrative-dong level) in Seoul, as well as their spatiotemporal heterogeneity.
 
+## Research Framework
+
+The diagram below reproduces `03_Output/05_report/figure_1_1_research_framework_clean` as a text-based Mermaid diagram so it renders directly on GitHub and stays version-controlled with the codebase.
+
+```mermaid
+flowchart TD
+    subgraph S1["1. Theoretical Background & Mechanism"]
+        direction LR
+        A["Population Aging Deepening"]
+        B["Changes in Elderly Consumption & Mobility Behavior<br/>- Aging in Place: reliance on local living zones<br/>- Repeat consumption of essential goods & daily services<br/>- Daytime-centered, dispersed usage patterns"]
+        C["Functional Reorganization of Neighborhood<br/>Commercial Districts & Commercial Vitality Change"]
+        A --> B --> C
+    end
+
+    subgraph S2["2. Empirical Analysis Framework"]
+        direction LR
+        subgraph S2L
+            direction TB
+            D["[Independent Variable]<br/>Elderly Resident Share (t-4)<br/>(lag4_age60_resident_share)"]
+            E["[Control Variables]<br/>Resident population, Worker population,<br/>Official land price, Transit accessibility (t-4)"]
+        end
+        G["[Dependent Variable: Commercial Vitality Index]<br/>(vitality_index_base)<br/>1. Economic Vitality (sales / sales count)<br/>2. Social Vitality (floating population / external inflow)<br/>3. Temporal Sustainability (time-of-day / quarterly stability)<br/>4. Structural Stability (industry diversity / store survival)"]
+        D -->|"Hypothesis Testing"| G
+        E -.->|"Factor Control"| G
+    end
+
+    M["3. Analytical Methods<br/>1. ESDA: Spatial Autocorrelation Diagnostics<br/>2. SPDM: Spatial Direct & Spillover Effects<br/>3. GTWR: Local Spatiotemporal Heterogeneity"]
+
+    R["4. Results & Implications<br/>- Multidimensional commercial vitality reorganization, not simple decline<br/>- Aging-friendly, sustainable urban vitality policy directions"]
+
+    S1 -->|"Empirical Linkage"| S2
+    S2 --> M
+    M --> R
+```
+
 ---
 
-## 1. Directory Structure
+## 1. Quick Start
+
+This analysis uses the `here` package to automatically recognize the project root directory. To ensure reproducibility, you must start the analysis by opening the `R.Rproj` file first.
+
+### 1.1 Package Installation
+When setting up the environment for the first time, run the following script to install all required R packages at once.
+```R
+source("02_Code/00_setup/install_packages.R")
+```
+
+### 1.2 Running the Full Pipeline
+To execute the entire default pipeline—from data preprocessing to model estimation and the output of tables and figures—run the following command:
+```R
+source("02_Code/run_all.R")
+```
+Alternatively, you can run it from the terminal (Bash) as follows:
+```bash
+Rscript 02_Code/run_all.R
+```
+
+### 1.3 Configuration (Environment Variables)
+
+The default pipeline runs **without any environment variables**. The following variables are only needed for optional behaviors:
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `KAKAO_REST_API_KEY` | Kakao geocoding API key — required only when fresh geocoding beyond the existing cache is needed | *(empty)* |
+| `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` | Naver geocoding API keys — same condition as above | *(empty)* |
+| `LIVING_POP_SAMPLE_MONTHS` | Stream only a sample month (e.g. `201901`) of the Seoul Living Population for a smoke test; writes sample-tagged outputs | *(empty)* |
+| `CFG_OUTPUT_TAG` | Custom suffix appended to output paths to isolate a run | *(empty)* |
+
+> **Security note**: never commit real API keys. Set them in your local `.Renviron` file (loaded automatically by R at startup) or via `Sys.setenv()` in an untracked script.
+
+Optional sidecar analyses (GTWR, SPDM experiments, robustness checks) expose additional environment variables (e.g. `GTWR_CONTROL_SET`, `GTWR_PARALLEL_SPECS`, `LIVING_POP_HOURS`). See [02_Code/README.md](02_Code/README.md) for the full reference.
+
+---
+
+## 2. Directory Structure
 
 This repository is structured as follows to maximize research reproducibility:
 
@@ -41,28 +113,6 @@ This repository is structured as follows to maximize research reproducibility:
 │
 ├── README.md                 # This main guide document
 └── R.Rproj                   # RStudio project file
-```
-
----
-
-## 2. Quick Start
-
-This analysis uses the `here` package to automatically recognize the project root directory. To ensure reproducibility, you must start the analysis by opening the `R.Rproj` file first.
-
-### 2.1 Package Installation
-When setting up the environment for the first time, run the following script to install all required R packages at once.
-```R
-source("02_Code/00_setup/install_packages.R")
-```
-
-### 2.2 Running the Full Pipeline
-To execute the entire default pipeline—from data preprocessing to model estimation and the output of tables and figures—run the following command:
-```R
-source("02_Code/run_all.R")
-```
-Alternatively, you can run it from the terminal (Bash) as follows:
-```bash
-Rscript 02_Code/run_all.R
 ```
 
 ---
