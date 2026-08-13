@@ -57,14 +57,6 @@
   - Since `ln_floating_pop` is included in the social vitality component and the composite vitality index, it is excluded from the main control variables.
   - Residual Moran output is a mandatory deliverable, and p-values are saved using a deterministic seed permutation approach (`permutation_two_sided_abs`) by default.
 
-## 3B) TWFE Interaction Models
-
-- Appendix resident FE COVID interaction family
-- Inputs: `panel_main.parquet`, `twfe_main_controls_used.csv`
-- Period flag: `covid_period = 1` represents the `2020Q1~2022Q2` quarterly sample.
-- Equation structure:
-  - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls | adm_cd + yq`
-
 ## 3A) TWFE Channel Models
 
 - Appendix TWFE channel family
@@ -76,6 +68,14 @@
   - This is a quarterly appendix contract that includes both `lag4_age60_resident_share` and `lag2_age60_floating_share`.
   - `x_to_m` and `y_with_channels` are saved separately within the same quarterly panel contract.
   - `y_with_channels` inherits the main TWFE control contract by outcome, while `x_to_m` inherits the control set commonly selected across all main outcomes from `twfe_main_controls_used.csv`.
+
+## 3B) TWFE Interaction Models
+
+- Appendix resident FE COVID interaction family
+- Inputs: `panel_main.parquet`, `twfe_main_controls_used.csv`
+- Period flag: `covid_period = 1` represents the `2020Q1~2022Q2` quarterly sample.
+- Equation structure:
+  - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls | adm_cd + yq`
 
 ## 3C) TWFE Age-Mix Experiment
 
@@ -124,14 +124,6 @@
   - Standard errors for coefficients and spatial parameters come from the model-based asymptotic ML `vcov` of the `splm::spml()` fitted object. Impact SEs/CIs are simulation-based inferences using the same `vcov`, and are not referred to as robust SEs in active SPDM outputs.
   - `ln_floating_pop` is a component of the dependent variable, so it is excluded from the main SPDM control contract.
 
-## 5B) SPDM Interaction Models
-
-- Appendix resident SDM COVID interaction family
-- Inputs: `panel_main.parquet`, `W_queen.rds`, `spdm_main_controls_used.csv`
-- Period flag: `covid_period = 1` represents the `2020Q1~2022Q2` quarterly sample.
-- Equation structure:
-  - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls`
-
 ## 5A) SPDM Optional Channel Path Sidecar
 
 - Optional/manual SPDM path family
@@ -155,6 +147,14 @@
   - Records direct, indirect, and total effects for `c`, `a`, `b`, and `c_prime`, along with the `a*b` product indirect effect and the `c - c_prime` direct attenuation diagnostic.
   - Default `a*b` inference utilizes a dong-level wild residual bootstrap. If the bootstrap is disabled or yields insufficient valid draws, `delta_independent_approx` is used as a fallback, but the result is interpreted as a mediation-oriented channel inference rather than an automatic full mediation judgment.
   - Runtime defaults are `RUN_SPDM_CHANNEL_BOOTSTRAP=TRUE`, `SPDM_CHANNEL_BOOTSTRAP_R=1000`, `SPDM_CHANNEL_BOOTSTRAP_CORES=4`, `SPDM_CHANNEL_IMPACT_SIM_R=1000`, and `SPDM_CHANNEL_IMPACT_CORES=4`. It uses parallel execution on macOS/Linux/GCP and sequential fallback on Windows.
+
+## 5B) SPDM Interaction Models
+
+- Appendix resident SDM COVID interaction family
+- Inputs: `panel_main.parquet`, `W_queen.rds`, `spdm_main_controls_used.csv`
+- Period flag: `covid_period = 1` represents the `2020Q1~2022Q2` quarterly sample.
+- Equation structure:
+  - `M4`: `Y_it ~ lag4_age60_resident_share + lag4_age60_resident_share:covid_period + controls`
 
 ## 5C) SPDM Age-Mix Experiment
 
@@ -194,6 +194,16 @@
   - `spdm_w_robustness_impacts.csv`
   - `spdm_w_robustness_controls_used.csv`
   - `spdm_w_robustness_diagnostics.csv`
+
+## 5F) SPDM Selection Sidecar
+
+- Appendix selection family
+- Outputs:
+  - `spdm_selection_tests.csv`
+  - `spdm_selection_family_comparison.csv`
+- Implementation Principles:
+  - Compares SEM, SAR, and SDM selection diagnostics within the same quarterly control contract as the main queen sample.
+  - The family comparison table also stores `sample_min_yq` and `sample_max_yq`.
 
 ## 5G) SPDM Family Comparison Sidecar
 
@@ -240,16 +250,6 @@
   - The main exposure variable is fixed as `lag4_age60_resident_share` (along with its spatial lag `W lag4_age60_resident_share`).
   - Estimates direct, indirect, and total impacts of resident aging on each underlying vitality component.
   - Controls inherit the main SPDM control pool and its outcomes-specific selected control configurations.
-
-## 5F) SPDM Selection Sidecar
-
-- Appendix selection family
-- Outputs:
-  - `spdm_selection_tests.csv`
-  - `spdm_selection_family_comparison.csv`
-- Implementation Principles:
-  - Compares SEM, SAR, and SDM selection diagnostics within the same quarterly control contract as the main queen sample.
-  - The family comparison table also stores `sample_min_yq` and `sample_max_yq`.
 
 ## 6) Robustness
 
