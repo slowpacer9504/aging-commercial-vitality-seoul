@@ -1,5 +1,7 @@
 # The Impact of Population Aging on Neighborhood Commercial Vitality: A Spatiotemporal Analysis using Seoul Big Data
 
+> **Last updated**: 2026-08-13
+
 ## 1. Background and Problem Statement
 
 Seoul is experiencing rapid population aging alongside a restructuring of local consumption patterns. The same aging trend can stabilize basic demand in some areas, while weakening mobility and business diversity in others. Therefore, the relationship between aging and commercial vitality should not be interpreted as a simple correlation, but rather as a structure that encompasses spatial dependence and inter-regional interactions.
@@ -14,12 +16,12 @@ The purpose of this study is to formulate an empirical framework capable of expl
 2. Estimate the spatial spillover effects that aging and vitality changes in a specific area have on neighboring regions.
 3. Identify local spatiotemporal patterns to account for regional coefficient variations that the global model cannot fully explain.
 
-This study does not reduce commercial vitality to a single numerical value. Instead, we first interpret the four dimensions of economic vitality, social vitality, temporal vitality, and structural stability, utilizing the composite index only as a supplementary summary.
+This study does not reduce commercial vitality to a single numerical value. Instead, we first interpret the four dimensions of economic vitality, social vitality, temporal sustainability, and structural stability, utilizing the composite index only as a supplementary summary.
 
 ## 3. Key Research Questions
 
 - `RQ1. Direct Effects and Global Relationships`
-  - In what direction and magnitude does `age60_resident_share` relate to neighborhood commercial vitality in Seoul's administrative dongs?
+  - In what direction and magnitude does `age60_resident_share` (operationalized as `lag4_age60_resident_share`) relate to neighborhood commercial vitality in Seoul's administrative dongs?
   - Does this relationship manifest differently across `economic`, `social`, `temporal`, and `stability` dimensions?
 
 - `RQ2. Spatial Dependence and Spillovers`
@@ -30,6 +32,16 @@ This study does not reduce commercial vitality to a single numerical value. Inst
 - `RQ3. Local Spatiotemporal Heterogeneity`
   - Does the global average effect apply uniformly across all regions?
   - What spatial patterns do the magnitude and direction of regional coefficients exhibit?
+
+### 3.1 Research Hypotheses
+
+The following hypotheses are derived from the three research questions and the theoretical mechanism discussed in Section 5. Because commercial vitality is defined multidimensionally, the direct-effect hypothesis is stated at the dimension level rather than for a single aggregate index.
+
+- **H1 (Direct effects).** Residence-based aging (`lag4_age60_resident_share`) exerts a statistically significant direct effect on the commercial vitality of Seoul's administrative dongs, and the direction and magnitude of this effect differ across the four vitality dimensions. Consistent with the elderly consumption mechanism, essential-goods repeat consumption and reliance on local living zones (Aging in Place) are expected to stabilize demand in the economic and structural dimensions, whereas reduced mobility and a narrow activity space are expected to weaken mobility-dependent dimensions such as social vitality (floating population).
+
+- **H2 (Spatial spillovers).** Aging and commercial vitality exhibit positive spatial autocorrelation. Spatial dependence remains in the residuals of the non-spatial TWFE baseline, and aging in one area exerts spatial spillover effects on the commercial vitality of adjacent areas, quantified through the direct, indirect, and total effects of the SPDM.
+
+- **H3 (Local spatiotemporal heterogeneity).** The effect of aging on commercial vitality does not apply uniformly across Seoul; the direction and magnitude of regional coefficients exhibit local spatiotemporal heterogeneity that the global model alone cannot capture, as explored by the GTWR sidecar.
 
 The `aging x covid_period` interaction, alternative vitality indices, and additional age-mix and sector-share models are addressed in the appendix or robustness checks. The main empirical narrative focuses on the three core questions above.
 Appendix/sidecar scripts under [`80_optional/**`](../../02_Code/80_optional) are kept separate from the main [run_all.R](../../02_Code/run_all.R). They are managed as a manual execution surface, running without explicit execution flags when the files are run directly.
@@ -137,8 +149,8 @@ While the Ministry of the Interior and Safety data also issues `age60_64_residen
 The main results tables and interpretations focus on the four primary vitality sub-indices. The composite index acts as a supplementary summary to verify if the overall direction remains consistent.
 The economic vitality sub-index is constructed by calculating the pooled z-scores of estimated transaction counts and total estimated sales, and then averaging them. Total store count and sales per store are retained in the panel but excluded from the economic sub-index components.
 The social vitality sub-index incorporates both the internal floating population size of the commercial district and the external inflow population size based on Seoul Living Population data.
-The temporal vitality sub-index reflects both the time-of-day distribution within a day and the quarterly stability over a year.
-The stability sub-index combines a structural diversity axis and a store persistence axis with equal weights. The structural diversity axis is the pooled z-score of the sector diversity index. The store persistence axis is the average of the pooled z-scores of relative operating months compared to Seoul and the 3-year survival rate of new businesses (`survival_3y`) from the Seoul Commercial District Analysis Service. `closure_rate` and `stability_score = -closure_rate` are kept as supporting diagnostic variables for closure pressure, but are excluded from the active stability sub-index components.
+The temporal sustainability sub-index reflects both the time-of-day distribution within a day and the quarterly stability over a year.
+The structural stability sub-index combines a structural diversity axis and a store persistence axis with equal weights. The structural diversity axis is the pooled z-score of the sector diversity index. The store persistence axis is the average of the pooled z-scores of relative operating months compared to Seoul and the 3-year survival rate of new businesses (`survival_3y`) from the Seoul Commercial District Analysis Service. `closure_rate` and `stability_score = -closure_rate` are kept as supporting diagnostic variables for closure pressure, but are excluded from the active stability sub-index components.
 The individual components and sub-indices of vitality are standardized using pooled z-scores based on the mean and standard deviation of the active analysis period (`2019Q4-2025Q4 adm_cd-yq` sample), rather than cross-sectional quarterly benchmarks. This active contract aligns the scale across components while preserving the level changes across quarters within the indices themselves.
 
 ### 6.3 Control Variables
@@ -181,7 +193,7 @@ The active methodology stack is configured as follows:
 
 - Purpose: Verify distributions and the presence of spatial autocorrelation.
 - Role: An exploratory step to initiate discussions on spatial dependence and spillovers.
-- Key Outputs: Global Moran's I, Bivariate Moran's I, LISA, EHSA, and distribution maps.
+- Key Outputs: Global Moran's I, Bivariate Moran's I, LISA, Emerging Hot Spot Analysis (EHSA), and distribution maps.
 
 ### 7.2 TWFE
 
