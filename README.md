@@ -17,7 +17,16 @@ The figure below summarizes the conceptual pathway from population aging to neig
 This analysis uses the `here` package to automatically recognize the project root directory. To ensure reproducibility, you must start the analysis by opening the `R.Rproj` file first.
 
 ### 1.1 Package Installation
-When setting up the environment for the first time, run the following script to install all required R packages at once.
+
+Package versions are pinned with [renv](https://rstudio.github.io/renv/). `renv.lock` records the exact package versions used to run the analysis, and `.Rprofile` activates the project library automatically when the project opens in RStudio.
+
+To restore the pinned environment (recommended for reproducibility):
+```R
+install.packages("renv")  # first time only
+renv::restore()
+```
+
+Alternatively, to install the latest package set from CRAN without renv (less reproducible):
 ```R
 source("02_Code/00_setup/install_packages.R")
 ```
@@ -85,6 +94,7 @@ This repository is structured as follows to maximize research reproducibility:
 │   └── 02_Codebook/          # Specifications mapping data specs, variable dictionary, and model specs
 │
 ├── README.md                 # This main guide document
+├── renv.lock                 # Pinned package versions for reproducible environment (renv)
 └── R.Rproj                   # RStudio project file
 ```
 

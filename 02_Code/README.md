@@ -7,10 +7,12 @@ This directory contains the core R scripts for the end-to-end data pipeline, spa
 The same steps as the main [README Quick Start](../README.md#1-quick-start) are reproduced here so this directory guide stays self-contained.
 
 1. Open `R.Rproj` so `here::here()` resolves the project root correctly.
-2. Install packages once on a new machine:
+2. Restore the pinned package environment with renv (recommended), or install the latest set from CRAN:
 
 ```r
-source("02_Code/00_setup/install_packages.R")
+renv::restore()                                    # exact versions from renv.lock
+# or
+source("02_Code/00_setup/install_packages.R")      # latest CRAN versions
 ```
 
 3. If auxiliary preprocessing needs fresh geocoding beyond the existing cache, set:

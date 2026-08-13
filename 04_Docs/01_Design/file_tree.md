@@ -4,7 +4,15 @@ This document provides a comprehensive snapshot of all tracked files in the repo
 For detailed information regarding code execution or variables, please refer to `02_Code/README.md` and the documents in `04_Docs/02_Codebook/`.
 
 ```text
+├── .Rprofile                                      # Activates renv project library on startup
+├── LICENSE                                        # MIT license
 ├── README.md                                      # Main project overview and guide
+├── R.Rproj                                        # RStudio project file
+├── renv.lock                                      # Pinned package versions (renv)
+│
+├── renv/                                          # renv project library (library/ is gitignored)
+│   ├── activate.R                                 # renv activation script
+│   └── settings.json                              # renv settings (snapshot.type = "all")
 │
 ├── 01_Data/                                       # Data directory (Git untracked except directory structure)
 │   ├── 01_Raw_Data/                               # Raw public datasets (01~14)
@@ -129,6 +137,8 @@ For detailed information regarding code execution or variables, please refer to 
     ├── file_tree.md                               # Project file tree (this file)
     │
     ├── 01_Design/
+    │   ├── figure_1_1_research_framework_en.png   # English research framework figure (raster)
+    │   ├── figure_1_1_research_framework_en.svg   # English research framework figure (vector)
     │   ├── r_code_style_guide.md                  # R coding conventions
     │   ├── raw_data_manifest.csv                  # Raw data acquisition record (file, size, access date, version, MD5)
     │   ├── research_plan.md                       # Active research goals and framing
