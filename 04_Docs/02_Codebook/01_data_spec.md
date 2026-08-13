@@ -42,7 +42,7 @@
   - **Access date:** fetched at pipeline run time from the `selectSurvivalRate.json` endpoint (raw JSON cached under `03_Processed_Data/01_Intermediate/golmok_survival_json`)
   - **Version:** 3-year blocks requested for base years 2019, 2022, 2025
   - The 1-year, 3-year, and 5-year startup survival rates, along with their numerators and denominators, are collected from the website's `selectSurvivalRate.json` endpoint and published at the `adm_cd-yq` level.
-  - The active stability sub-index utilizes the 3-year survival rate (`survival_3y`).
+  - The active structural stability sub-index utilizes the 3-year survival rate (`survival_3y`).
 - MOIS Registered Resident Population
   - **Source/Download:** [MOIS Resident Registration Demographics](https://jumin.mois.go.kr/)
   - **Access date:** 2025-12-20 ~ 2026-05-20 (raw folder `04_주민등록인구현황_행정구역(읍면동)별...`)
@@ -84,15 +84,25 @@
 - `registered_resident_population_monthly.parquet`
   - intermediate monthly registered resident population layer used for age-sum validation
 - `medical_source_preagg.parquet`
+  - record-level pre-aggregation of medical facility permits (as-of diagnostic variables)
 - `mall_source_preagg.parquet`
+  - record-level pre-aggregation of large-scale retail store permits (as-of diagnostic variables)
 - `senior_source_preagg.parquet`
+  - record-level pre-aggregation of senior welfare facility data
 - `bus_stop_source_preagg.parquet`
+  - bus stop count pre-aggregation used to construct transit accessibility
 - `subway_station_source_preagg.parquet`
+  - subway station count pre-aggregation used to construct transit accessibility
 - `apartment_registry_source_preagg.parquet`
+  - record-level pre-aggregation of apartment registry data (as-of diagnostic variables)
 - `senior_geocode_cache.parquet`
+  - cached geocoding results for senior welfare facilities
 - `medical_geocode_cache.parquet`
+  - cached geocoding results for medical facilities
 - `mall_geocode_cache.parquet`
+  - cached geocoding results for large-scale retail stores
 - `apartment_geocode_cache.parquet`
+  - cached geocoding results for apartment registry entries
 - `walk_betweenness_local800_len_v1.parquet`
   - static walk-environment cache
 - `panel_merged_base.parquet`
