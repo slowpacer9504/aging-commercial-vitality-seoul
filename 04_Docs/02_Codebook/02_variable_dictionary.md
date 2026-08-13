@@ -33,7 +33,7 @@ These variables are static metadata stored in `adm_region_lookup.parquet`. They 
 ## 2) Core Independent Variables
 
 - `main exposure`
-  - `age60_resident_share`
+  - `lag4_age60_resident_share` (4-quarter lag of `age60_resident_share`)
 - `supporting exposure`
   - `age60_floating_share`
   - `age60_sales_share`
@@ -127,7 +127,7 @@ For `subway_station_count_aux`, the opening date rules are applied to the statio
 - `vitality_sub_stability` is calculated as the equal-weighted average of the structural diversity dimension and the store persistence dimension.
 - The structural diversity dimension is the pooled z-score of `diversity_index`.
 - The store persistence dimension averages the pooled z-scores of `operating_months_rel_seoul` and the 3-year survival rate of new businesses (`survival_3y`).
-- `closure_rate` and `stability_score = -closure_rate` are retained as supplementary variables for diagnosing closure pressure but are not included in the active stability sub-index.
+- `closure_rate` and `stability_score = -closure_rate` are retained as supplementary variables for diagnosing closure pressure but are not included in the active structural stability sub-index.
 - Component z-scores for the vitality indices and sub-indices are calculated as pooled z-scores based on the active analysis period (`2019Q4~2025Q4 adm_cd-yq` sample), rather than as quarterly cross-sectional z-scores.
 - Since `ln_floating_pop` is a component of both `vitality_sub_social` and the composite vitality index, it is excluded from the main control candidate pool.
 - The active shared panel retains only contemporaneous source variables and registered model lag variables.
