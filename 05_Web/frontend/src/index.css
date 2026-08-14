@@ -1101,6 +1101,10 @@ code {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+.sidebar-collapsed .map-spec-overlay {
+  top: 54px; /* Positions cleanly beneath the floating .sidebar-expand-btn */
+}
+
 .spec-badge-header {
   display: flex;
   align-items: center;
@@ -2381,4 +2385,39 @@ code {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+
+/* Responsive Rules --------------------------------------------------------- */
+@media (max-width: 1180px) {
+  .header-subtitle {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .brand-badge.sub {
+    display: none;
+  }
+  .tour-trigger-btn,
+  .guide-trigger-btn,
+  .export-trigger-btn,
+  .theme-toggle-btn {
+    padding: 5px 9px;
+    font-size: 11px;
+  }
+  .header-title {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-workspace {
+    grid-template-columns: 1fr;
+  }
+  .app-sidebar {
+    display: none;
+  }
+  .sidebar-expand-btn {
+    display: none;
+  }
 }
