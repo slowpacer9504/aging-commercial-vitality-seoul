@@ -357,6 +357,21 @@ export function MapView({ ref }: Props) {
               </>
             )}
 
+            {/* District (Gu) Outer Boundary Highlight */}
+            {selectedGu && (
+              <Layer
+                id="gtwr-gu-highlight-line"
+                type="line"
+                source="gtwr"
+                filter={["==", ["get", "gu_name"], selectedGu]}
+                paint={{
+                  "line-color": theme === "dark" ? "#60a5fa" : "#1d4ed8",
+                  "line-width": 2.5,
+                  "line-opacity": 1.0,
+                }}
+              />
+            )}
+
             {/* Scatter Hover Highlight Stroke (Golden Orange) */}
             <Layer
               id="gtwr-scatter-hover-line"
