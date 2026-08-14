@@ -142,8 +142,8 @@ export const LinkedScatterPlot: FC = () => {
       {isOpen && (
         <div className="scatter-widget-body">
           <div className="scatter-axis-note">
-            <span>X: 2019Q4 β̂ (Pre)</span>
-            <span>Y: 2025Q4 β̂ (Post)</span>
+            <span>X: 2019Q4 β̂ (Earliest)</span>
+            <span>Y: 2025Q4 β̂ (Latest)</span>
           </div>
 
           <div className="scatter-chart-wrap" style={{ position: "relative", width: "100%", height: 165 }}>

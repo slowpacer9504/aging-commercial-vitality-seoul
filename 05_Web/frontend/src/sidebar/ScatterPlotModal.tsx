@@ -133,7 +133,7 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
         <div className="modal-header">
           <div>
             <span className="modal-tag">Spatiotemporal Dynamics</span>
-            <h2>Pre-COVID (2019Q4) vs Post-COVID (2025Q4) Trajectory</h2>
+            <h2>Earliest (2019Q4) vs Latest (2025Q4) Trajectory</h2>
           </div>
           <button
             type="button"
@@ -147,7 +147,7 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
 
         <div className="modal-body">
           <p className="scatter-modal-desc">
-            425개 행정동별 코로나 이전(2019Q4, X축) 대비 코로나 이후(2025Q4, Y축) 고령화 국지 계수(β̂)의 동적 변화를 4분면으로 분석합니다.
+            425개 행정동별 시작 분기(2019Q4, X축) 대비 최종 분기(2025Q4, Y축) 고령화 국지 계수(β̂)의 동적 변화를 4분면으로 분석합니다.
             점을 클릭하면 모달이 닫히며 해당 행정동으로 지도가 포커스됩니다.
           </p>
 
@@ -161,7 +161,7 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
                   name="2019Q4 Beta"
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   axisLine={{ stroke: "#94a3b8" }}
-                  label={{ value: "2019Q4 Aging Coefficient (β̂, Pre-COVID)", position: "insideBottom", offset: -10, fill: "#64748b", fontSize: 12 }}
+                  label={{ value: "Earliest Period Coefficient (β̂, 2019Q4)", position: "insideBottom", offset: -10, fill: "#64748b", fontSize: 12 }}
                   domain={["auto", "auto"]}
                 />
                 <YAxis
@@ -170,7 +170,7 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
                   name="2025Q4 Beta"
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   axisLine={{ stroke: "#94a3b8" }}
-                  label={{ value: "2025Q4 Aging Coefficient (β̂, Post-COVID)", angle: -90, position: "insideLeft", offset: 10, fill: "#64748b", fontSize: 12 }}
+                  label={{ value: "Latest Period Coefficient (β̂, 2025Q4)", angle: -90, position: "insideLeft", offset: 10, fill: "#64748b", fontSize: 12 }}
                   domain={["auto", "auto"]}
                 />
                 <Tooltip content={<CustomTooltip />} />
