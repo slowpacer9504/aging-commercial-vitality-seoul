@@ -73,14 +73,28 @@ cd 05_Web/frontend && npm run dev
 Open <http://localhost:5173>. Click any dong on the map to open the popup with
 diagnostics and the Supplementary panel time-series.
 
+## Updating Web Data After GTWR Model Rerun
+
+Whenever you rerun the GTWR model in R (`02_Code/03_models/03_run_gtwr_main.R`), refresh the static web artifacts and deploy the updated results with:
+
+```bash
+# 1. Rebuild web artifacts from updated 03_Output/ CSVs (run from project root)
+Rscript 05_Web/build_data.R
+
+# 2. Commit and push to deploy to GitHub Pages
+git add 05_Web/frontend/public/data
+git commit -m "chore: update web data from latest GTWR model run"
+git push origin main
+```
+
 ## Tests
 
 ```bash
 # Backend (pytest, 10 tests)
 cd 05_Web/backend && .venv/bin/pytest
 
-# Frontend (vitest, 23 tests — colorScale, store, api, popup, banner)
-cd 05_Web/frontend && npx vitest run
+# Frontend (vitest, 56 tests)
+cd 05_Web/frontend && npm test -- --run
 
 # Frontend production build (strict tsc + vite build)
 cd 05_Web/frontend && npm run build

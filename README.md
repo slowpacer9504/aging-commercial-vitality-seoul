@@ -158,6 +158,20 @@ An interactive web-based visual analytics explorer is provided to inspect the lo
 * **Comparative Analytics & Linked Scatter Plot**: Autonomous district filtering (25 Gus), pairwise side-by-side dong comparison with time-series trajectory overlays, and linked diagnostic scatter plots.
 * **Reproducibility & Data Export**: High-resolution map export (PNG), 425-dong coefficient and panel time-series extraction (CSV), and URL state deep-linking.
 
+### 5.2 Data Synchronization Pipeline
+
+Whenever the GTWR model is rerun or updated in R (`02_Code/03_models/03_run_gtwr_main.R`), the static web artifacts are synchronized and deployed via:
+
+```bash
+# 1. Rebuild web data artifacts from updated 03_Output/ tables
+Rscript 05_Web/build_data.R
+
+# 2. Deploy updated results to GitHub Pages
+git add 05_Web/frontend/public/data
+git commit -m "chore: update web data from latest GTWR model run"
+git push origin main
+```
+
 ---
 
 ## License
