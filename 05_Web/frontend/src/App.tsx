@@ -110,11 +110,11 @@ export function App() {
             type="button"
             className="guide-trigger-btn"
             onClick={() => setIsScatterModalOpen(true)}
-            aria-label="Open Diagnostics Scatter Plot"
-            title="Open Diagnostics Scatter Plot"
+            aria-label="Open Dynamic Trajectory Scatter Plot"
+            title="Open Dynamic Trajectory Scatter Plot (2019Q4 vs 2025Q4)"
           >
             <span className="guide-icon" aria-hidden="true">📈</span>
-            <span>Scatter Plot</span>
+            <span>Dynamics Scatter</span>
           </button>
 
           <ExportMenu onExportMapPng={handleExportMapPng} />

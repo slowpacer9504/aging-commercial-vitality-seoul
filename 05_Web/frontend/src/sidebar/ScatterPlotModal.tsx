@@ -18,9 +18,11 @@ interface ScatterPoint {
   adm_cd: string;
   adm_nm: string;
   gu_name: string;
-  x: number; // Local CN
-  y: number; // Local beta estimate
-  isWarn: boolean;
+  x: number; // 2019Q4 estimate
+  y: number; // 2025Q4 estimate
+  delta: number; // 2025Q4 - 2019Q4
+  isGuMatch: boolean;
+  isSelected: boolean;
 }
 
 interface CustomTooltipProps {
@@ -28,27 +30,38 @@ interface CustomTooltipProps {
   payload?: Array<{ payload: ScatterPoint }>;
 }
 
+function getQuadrantLabel(x: number, y: number): string {
+  if (x >= 0 && y >= 0) return "Persistent Hotspot (+/+)";
+  if (x < 0 && y >= 0) return "Turnaround to Positive (-/+)";
+  if (x < 0 && y < 0) return "Persistent Coldspot (-/-)";
+  return "Deteriorated to Negative (+/-)";
+}
+
 const CustomTooltip: FC<CustomTooltipProps> = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const d = payload[0]!.payload;
-    const isPos = d.y > 0;
-    const isNeg = d.y < 0;
+    const deltaSign = d.delta > 0 ? "+" : "";
     return (
       <div className="scatter-tooltip-card">
         <div className="scatter-tt-title">
           <strong>{d.adm_nm}</strong> <span className="scatter-tt-gu">({d.gu_name})</span>
         </div>
         <div className="scatter-tt-row">
-          <span>Local β̂:</span>
-          <strong className={isPos ? "val-pos" : isNeg ? "val-neg" : ""}>
-            {d.y.toFixed(3)}
-          </strong>
+          <span>2019Q4 β̂:</span>
+          <strong>{d.x.toFixed(3)}</strong>
         </div>
         <div className="scatter-tt-row">
-          <span>Local CN:</span>
-          <strong className={d.isWarn ? "cn-warn" : "cn-safe"}>
-            {d.x.toFixed(1)} {d.isWarn && "⚠"}
+          <span>2025Q4 β̂:</span>
+          <strong>{d.y.toFixed(3)}</strong>
+        </div>
+        <div className="scatter-tt-row">
+          <span>Change (Δ):</span>
+          <strong className={d.delta > 0 ? "val-pos" : d.delta < 0 ? "val-neg" : ""}>
+            {deltaSign}{d.delta.toFixed(3)}
           </strong>
+        </div>
+        <div className="scatter-tt-quadrant">
+          {getQuadrantLabel(d.x, d.y)}
         </div>
       </div>
     );
@@ -64,8 +77,7 @@ interface Props {
 export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
   const outcome = useAppStore(s => s.outcome);
   const controlSet = useAppStore(s => s.controlSet);
-  const view = useAppStore(s => s.view);
-  const selectedYq = useAppStore(s => s.selectedYq);
+  const selectedGu = useAppStore(s => s.selectedGu);
   const selectedAdmCd = useAppStore(s => s.selectedAdmCd);
   const selectAdmCd = useAppStore(s => s.selectAdmCd);
   const setHoveredScatterAdmCd = useAppStore(s => s.setHoveredScatterAdmCd);
@@ -75,7 +87,7 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
   useEffect(() => {
     if (!isOpen) return;
     let cancelled = false;
-    getCoefficients(controlSet, outcome, view, view === "quarter" ? selectedYq : undefined)
+    getCoefficients(controlSet, outcome, "latest")
       .then(fc => {
         if (!cancelled) setFeatures(fc.features ?? []);
       })
@@ -85,26 +97,28 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
     return () => {
       cancelled = true;
     };
-  }, [isOpen, controlSet, outcome, view, selectedYq]);
+  }, [isOpen, controlSet, outcome]);
 
   const scatterData: ScatterPoint[] = useMemo(() => {
     return features
       .map(f => {
         const p = f.properties;
-        const beta = p.estimate;
-        const cn = p.local_cn_gtwr_latest ?? 15.0;
-        if (beta == null || Number.isNaN(beta)) return null;
+        const x = p.earliest_estimate;
+        const y = p.latest_estimate;
+        if (x == null || y == null || Number.isNaN(x) || Number.isNaN(y)) return null;
         return {
           adm_cd: p.adm_cd,
           adm_nm: p.adm_nm ?? p.adm_cd,
           gu_name: p.gu_name ?? "Seoul",
-          x: cn,
-          y: beta,
-          isWarn: (p.local_cn_gtwr_latest ?? 0) >= 30 || Boolean(p.collinearity_warn_latest),
+          x,
+          y,
+          delta: y - x,
+          isGuMatch: selectedGu ? p.gu_name === selectedGu : true,
+          isSelected: p.adm_cd === selectedAdmCd,
         };
       })
       .filter((d): d is ScatterPoint => d !== null);
-  }, [features]);
+  }, [features, selectedGu, selectedAdmCd]);
 
   if (!isOpen) return null;
 
@@ -114,12 +128,12 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
         className="modal-content scatter-modal-content"
         onClick={e => e.stopPropagation()}
         role="dialog"
-        aria-label="Diagnostics Scatter Plot"
+        aria-label="Dynamic Trajectory Scatter Plot"
       >
         <div className="modal-header">
           <div>
-            <span className="modal-tag">Statistical Diagnostics</span>
-            <h2>Local Collinearity (CN) vs Estimated Coefficient (β̂)</h2>
+            <span className="modal-tag">Spatiotemporal Dynamics</span>
+            <h2>Pre-COVID (2019Q4) vs Post-COVID (2025Q4) Trajectory</h2>
           </div>
           <button
             type="button"
@@ -133,35 +147,35 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
 
         <div className="modal-body">
           <p className="scatter-modal-desc">
-            425개 행정동별 GTWR 국지적 조건수(Local Condition Number, X축)와 추정 계수(β̂, Y축)의 산점도입니다.
-            점 위에 마우스를 올리면 정보가 표시되고, 클릭 시 해당 동으로 즉시 이동합니다.
+            425개 행정동별 코로나 이전(2019Q4, X축) 대비 코로나 이후(2025Q4, Y축) 고령화 국지 계수(β̂)의 동적 변화를 4분면으로 분석합니다.
+            점을 클릭하면 모달이 닫히며 해당 행정동으로 지도가 포커스됩니다.
           </p>
 
-          <div className="scatter-modal-chart-wrap" style={{ width: "100%", height: 340, minHeight: 340 }}>
-            <ResponsiveContainer width="100%" height={340} minHeight={340}>
+          <div className="scatter-modal-chart-wrap" style={{ width: "100%", height: 360, minHeight: 360 }}>
+            <ResponsiveContainer width="100%" height={360} minHeight={360}>
               <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
                 <XAxis
                   type="number"
                   dataKey="x"
-                  name="Local CN"
+                  name="2019Q4 Beta"
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   axisLine={{ stroke: "#94a3b8" }}
-                  label={{ value: "Local Condition Number (Threshold = 30.0)", position: "insideBottom", offset: -10, fill: "#64748b", fontSize: 12 }}
-                  domain={[0, "auto"]}
+                  label={{ value: "2019Q4 Aging Coefficient (β̂, Pre-COVID)", position: "insideBottom", offset: -10, fill: "#64748b", fontSize: 12 }}
+                  domain={["auto", "auto"]}
                 />
                 <YAxis
                   type="number"
                   dataKey="y"
-                  name="Local Beta"
+                  name="2025Q4 Beta"
                   tick={{ fontSize: 11, fill: "#64748b" }}
                   axisLine={{ stroke: "#94a3b8" }}
-                  label={{ value: "Local Aging Coefficient (β̂)", angle: -90, position: "insideLeft", offset: 10, fill: "#64748b", fontSize: 12 }}
+                  label={{ value: "2025Q4 Aging Coefficient (β̂, Post-COVID)", angle: -90, position: "insideLeft", offset: 10, fill: "#64748b", fontSize: 12 }}
                   domain={["auto", "auto"]}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
-                <ReferenceLine x={30} stroke="#ef4444" strokeDasharray="3 3" label={{ value: "CN ≥ 30 (Warning)", fill: "#ef4444", fontSize: 11 }} />
+                <ReferenceLine x={0} stroke="#94a3b8" strokeDasharray="3 3" />
                 <Scatter
                   data={scatterData}
                   onClick={(entry: unknown) => {
@@ -179,21 +193,27 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
                   }}
                   onMouseLeave={() => setHoveredScatterAdmCd(null)}
                 >
-                  {scatterData.map((entry, index) => {
-                    const isSelected = entry.adm_cd === selectedAdmCd;
-                    const fill = isSelected
-                      ? "#2563eb"
-                      : entry.y > 0
-                        ? "#dc2626"
-                        : "#2563eb";
+                  {scatterData.map(entry => {
+                    let fill = entry.delta > 0 ? "#2563eb" : "#ef4444";
+                    let opacity = 0.75;
+                    let radius = 4;
+
+                    if (selectedGu && !entry.isGuMatch) {
+                      fill = "#94a3b8";
+                      opacity = 0.2;
+                      radius = 2.5;
+                    } else if (entry.isSelected) {
+                      fill = "#f59e0b";
+                      opacity = 1.0;
+                      radius = 6.5;
+                    }
+
                     return (
                       <Cell
-                        key={`modal-cell-${index}`}
+                        key={`modal-cell-${entry.adm_cd}`}
                         fill={fill}
-                        fillOpacity={isSelected ? 1.0 : 0.7}
-                        stroke={isSelected ? "#0f172a" : undefined}
-                        strokeWidth={isSelected ? 2 : 0}
-                        r={isSelected ? 6 : 4}
+                        fillOpacity={opacity}
+                        r={radius}
                       />
                     );
                   })}

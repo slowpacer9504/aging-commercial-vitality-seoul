@@ -18,9 +18,11 @@ interface ScatterPoint {
   adm_cd: string;
   adm_nm: string;
   gu_name: string;
-  x: number; // Local CN
-  y: number; // Local beta estimate
-  isWarn: boolean;
+  x: number; // 2019Q4 estimate
+  y: number; // 2025Q4 estimate
+  delta: number; // 2025Q4 - 2019Q4
+  isGuMatch: boolean;
+  isSelected: boolean;
 }
 
 interface CustomTooltipProps {
@@ -28,27 +30,38 @@ interface CustomTooltipProps {
   payload?: Array<{ payload: ScatterPoint }>;
 }
 
+function getQuadrantLabel(x: number, y: number): string {
+  if (x >= 0 && y >= 0) return "Persistent Hotspot (+/+)";
+  if (x < 0 && y >= 0) return "Turnaround to Positive (-/+)";
+  if (x < 0 && y < 0) return "Persistent Coldspot (-/-)";
+  return "Deteriorated to Negative (+/-)";
+}
+
 const CustomTooltip: FC<CustomTooltipProps> = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const d = payload[0]!.payload;
-    const isPos = d.y > 0;
-    const isNeg = d.y < 0;
+    const deltaSign = d.delta > 0 ? "+" : "";
     return (
       <div className="scatter-tooltip-card">
         <div className="scatter-tt-title">
           <strong>{d.adm_nm}</strong> <span className="scatter-tt-gu">({d.gu_name})</span>
         </div>
         <div className="scatter-tt-row">
-          <span>Local β̂:</span>
-          <strong className={isPos ? "val-pos" : isNeg ? "val-neg" : ""}>
-            {d.y.toFixed(3)}
-          </strong>
+          <span>2019Q4 β̂:</span>
+          <strong>{d.x.toFixed(3)}</strong>
         </div>
         <div className="scatter-tt-row">
-          <span>Local CN:</span>
-          <strong className={d.isWarn ? "cn-warn" : "cn-safe"}>
-            {d.x.toFixed(1)} {d.isWarn && "⚠"}
+          <span>2025Q4 β̂:</span>
+          <strong>{d.y.toFixed(3)}</strong>
+        </div>
+        <div className="scatter-tt-row">
+          <span>Change (Δ):</span>
+          <strong className={d.delta > 0 ? "val-pos" : d.delta < 0 ? "val-neg" : ""}>
+            {deltaSign}{d.delta.toFixed(3)}
           </strong>
+        </div>
+        <div className="scatter-tt-quadrant">
+          {getQuadrantLabel(d.x, d.y)}
         </div>
       </div>
     );
@@ -59,8 +72,7 @@ const CustomTooltip: FC<CustomTooltipProps> = ({ active, payload }) => {
 export const LinkedScatterPlot: FC = () => {
   const outcome = useAppStore(s => s.outcome);
   const controlSet = useAppStore(s => s.controlSet);
-  const view = useAppStore(s => s.view);
-  const selectedYq = useAppStore(s => s.selectedYq);
+  const selectedGu = useAppStore(s => s.selectedGu);
   const selectedAdmCd = useAppStore(s => s.selectedAdmCd);
   const selectAdmCd = useAppStore(s => s.selectAdmCd);
   const setHoveredScatterAdmCd = useAppStore(s => s.setHoveredScatterAdmCd);
@@ -70,7 +82,7 @@ export const LinkedScatterPlot: FC = () => {
 
   useEffect(() => {
     let cancelled = false;
-    getCoefficients(controlSet, outcome, view, view === "quarter" ? selectedYq : undefined)
+    getCoefficients(controlSet, outcome, "latest")
       .then(fc => {
         if (!cancelled) setFeatures(fc.features ?? []);
       })
@@ -80,33 +92,35 @@ export const LinkedScatterPlot: FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [controlSet, outcome, view, selectedYq]);
+  }, [controlSet, outcome]);
 
   const scatterData: ScatterPoint[] = useMemo(() => {
     return features
       .map(f => {
         const p = f.properties;
-        const beta = p.estimate;
-        const cn = p.local_cn_gtwr_latest ?? 15.0;
-        if (beta == null || Number.isNaN(beta)) return null;
+        const x = p.earliest_estimate;
+        const y = p.latest_estimate;
+        if (x == null || y == null || Number.isNaN(x) || Number.isNaN(y)) return null;
         return {
           adm_cd: p.adm_cd,
           adm_nm: p.adm_nm ?? p.adm_cd,
           gu_name: p.gu_name ?? "Seoul",
-          x: cn,
-          y: beta,
-          isWarn: (p.local_cn_gtwr_latest ?? 0) >= 30 || Boolean(p.collinearity_warn_latest),
+          x,
+          y,
+          delta: y - x,
+          isGuMatch: selectedGu ? p.gu_name === selectedGu : true,
+          isSelected: p.adm_cd === selectedAdmCd,
         };
       })
       .filter((d): d is ScatterPoint => d !== null);
-  }, [features]);
+  }, [features, selectedGu, selectedAdmCd]);
 
   return (
-    <div className="linked-scatter-widget" role="region" aria-label="Linked Scatter Diagnostic">
+    <div className="linked-scatter-widget" role="region" aria-label="Dynamic Trajectory Scatter">
       <div className="scatter-widget-header" onClick={() => setIsOpen(!isOpen)}>
         <div className="scatter-title-wrap">
           <span className="scatter-icon">📈</span>
-          <span className="scatter-title">Diagnostics Scatter (CN vs β̂)</span>
+          <span className="scatter-title">Dynamics (2019Q4 vs 2025Q4)</span>
         </div>
         <button
           type="button"
@@ -119,6 +133,10 @@ export const LinkedScatterPlot: FC = () => {
 
       {isOpen && (
         <div className="scatter-widget-body">
+          <div className="scatter-axis-note">
+            <span>X: 2019Q4 β̂</span>
+            <span>Y: 2025Q4 β̂</span>
+          </div>
           <div className="scatter-chart-wrap">
             <ResponsiveContainer width="100%" height={160}>
               <ScatterChart margin={{ top: 8, right: 10, bottom: 0, left: -20 }}>
@@ -126,16 +144,16 @@ export const LinkedScatterPlot: FC = () => {
                 <XAxis
                   type="number"
                   dataKey="x"
-                  name="Local CN"
+                  name="2019Q4 Beta"
                   tick={{ fontSize: 9, fill: "#64748b" }}
                   axisLine={{ stroke: "#cbd5e1" }}
                   tickLine={false}
-                  domain={[0, "auto"]}
+                  domain={["auto", "auto"]}
                 />
                 <YAxis
                   type="number"
                   dataKey="y"
-                  name="Local Beta"
+                  name="2025Q4 Beta"
                   tick={{ fontSize: 9, fill: "#64748b" }}
                   axisLine={{ stroke: "#cbd5e1" }}
                   tickLine={false}
@@ -143,7 +161,7 @@ export const LinkedScatterPlot: FC = () => {
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <ReferenceLine y={0} stroke="#94a3b8" strokeDasharray="3 3" />
-                <ReferenceLine x={30} stroke="#ef4444" strokeDasharray="2 2" />
+                <ReferenceLine x={0} stroke="#94a3b8" strokeDasharray="3 3" />
                 <Scatter
                   data={scatterData}
                   onClick={(entry: unknown) => {
@@ -158,31 +176,33 @@ export const LinkedScatterPlot: FC = () => {
                   }}
                   onMouseLeave={() => setHoveredScatterAdmCd(null)}
                 >
-                  {scatterData.map((entry, index) => {
-                    const isSelected = entry.adm_cd === selectedAdmCd;
-                    const fill = isSelected
-                      ? "#2563eb"
-                      : entry.y > 0
-                        ? "#dc2626"
-                        : "#2563eb";
+                  {scatterData.map(entry => {
+                    let fill = entry.delta > 0 ? "#2563eb" : "#ef4444";
+                    let opacity = 0.75;
+                    let radius = 3;
+
+                    if (selectedGu && !entry.isGuMatch) {
+                      fill = "#94a3b8";
+                      opacity = 0.2;
+                      radius = 2.2;
+                    } else if (entry.isSelected) {
+                      fill = "#f59e0b";
+                      opacity = 1.0;
+                      radius = 5.5;
+                    }
+
                     return (
                       <Cell
-                        key={`cell-${index}`}
+                        key={entry.adm_cd}
                         fill={fill}
-                        fillOpacity={isSelected ? 1.0 : 0.65}
-                        stroke={isSelected ? "#0f172a" : undefined}
-                        strokeWidth={isSelected ? 2 : 0}
-                        r={isSelected ? 5 : 3}
+                        fillOpacity={opacity}
+                        r={radius}
                       />
                     );
                   })}
                 </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
-          </div>
-          <div className="scatter-axis-note">
-            <span>X: Local CN (Red line: 30 Threshold)</span>
-            <span>Y: Local β̂ (0: Neutral)</span>
           </div>
         </div>
       )}

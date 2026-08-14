@@ -1060,6 +1060,15 @@ code {
   font-size: 10.5px;
 }
 
+.scatter-tt-quadrant {
+  margin-top: 4px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 9.5px;
+  color: #f59e0b;
+  font-weight: 600;
+}
+
 .scatter-axis-note {
   display: flex;
   justify-content: space-between;

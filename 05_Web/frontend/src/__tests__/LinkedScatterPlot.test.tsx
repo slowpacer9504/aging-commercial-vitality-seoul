@@ -10,9 +10,8 @@ vi.mock("@/api/endpoints", () => ({
           adm_cd: "0011110515",
           adm_nm: "청운효자동",
           gu_name: "종로구",
-          estimate: 1.25,
-          local_cn_gtwr_latest: 18.5,
-          collinearity_warn_latest: false,
+          earliest_estimate: 1.25,
+          latest_estimate: 2.10,
         },
       },
       {
@@ -20,9 +19,8 @@ vi.mock("@/api/endpoints", () => ({
           adm_cd: "0011680640",
           adm_nm: "역삼1동",
           gu_name: "강남구",
-          estimate: -2.15,
-          local_cn_gtwr_latest: 32.0,
-          collinearity_warn_latest: true,
+          earliest_estimate: -1.05,
+          latest_estimate: -2.15,
         },
       },
     ],
@@ -30,16 +28,16 @@ vi.mock("@/api/endpoints", () => ({
 }));
 
 describe("LinkedScatterPlot", () => {
-  it("renders scatter widget header and toggle button", () => {
+  it("renders dynamic trajectory scatter widget header and toggle button", () => {
     render(<LinkedScatterPlot />);
-    expect(screen.getByText("Diagnostics Scatter (CN vs β̂)")).toBeTruthy();
-    expect(screen.getByText(/Local CN/)).toBeTruthy();
+    expect(screen.getByText("Dynamics (2019Q4 vs 2025Q4)")).toBeTruthy();
+    expect(screen.getByText(/2019Q4 β̂/)).toBeTruthy();
   });
 
   it("toggles scatter body visibility", () => {
     render(<LinkedScatterPlot />);
-    const header = screen.getByText("Diagnostics Scatter (CN vs β̂)");
+    const header = screen.getByText("Dynamics (2019Q4 vs 2025Q4)");
     fireEvent.click(header);
-    expect(screen.queryByText(/Local CN/)).toBeNull();
+    expect(screen.queryByText(/2019Q4 β̂/)).toBeNull();
   });
 });
