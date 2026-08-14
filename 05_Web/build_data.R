@@ -180,6 +180,31 @@ st_write(
 log("[4b] Wrote %s (%d district boundary features)", gu_geojson_path, nrow(gu_shp))
 
 # ---------------------------------------------------------------------------
+# 4c. Build seoul_outer_mask.geojson (World polygon with unified Seoul hole)
+# ---------------------------------------------------------------------------
+seoul_unified <- st_union(st_geometry(shp4326))
+world_poly <- st_polygon(list(matrix(
+  c(-180, -90,
+     180, -90,
+     180,  90,
+    -180,  90,
+    -180, -90),
+  ncol = 2, byrow = TRUE
+)))
+world_sfc <- st_sfc(world_poly, crs = 4326)
+seoul_mask <- st_difference(world_sfc, seoul_unified)
+seoul_mask_sf <- st_sf(geometry = seoul_mask)
+
+mask_geojson_path <- file.path(out_geojson_dir, "seoul_outer_mask.geojson")
+st_write(
+  seoul_mask_sf, mask_geojson_path,
+  driver = "GeoJSON",
+  delete_dsn = TRUE,
+  quiet = TRUE
+)
+log("[4c] Wrote %s (unified outer mask)", mask_geojson_path)
+
+# ---------------------------------------------------------------------------
 # 5. Build lookup.json (adm_cd -> {adm_nm, gu_name, living_area, ...})
 # ---------------------------------------------------------------------------
 lookup <- read.csv(
@@ -437,6 +462,7 @@ dir.create(file.path(public_data_dir, "json"),    recursive = TRUE, showWarnings
 
 file.copy(geojson_path, file.path(public_data_dir, "geojson", "seoul_adm_dong.geojson"), overwrite = TRUE)
 file.copy(gu_geojson_path, file.path(public_data_dir, "geojson", "seoul_gu.geojson"), overwrite = TRUE)
+file.copy(mask_geojson_path, file.path(public_data_dir, "geojson", "seoul_outer_mask.geojson"), overwrite = TRUE)
 file.copy(out_manifest, file.path(public_data_dir, "_build_manifest.json"), overwrite = TRUE)
 json_files <- list.files(out_json_dir, pattern = "\\.json$", full.names = TRUE)
 file.copy(json_files, file.path(public_data_dir, "json"), overwrite = TRUE)

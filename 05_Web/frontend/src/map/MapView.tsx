@@ -61,6 +61,7 @@ const BASEMAP_LIGHT = "https://basemaps.cartocdn.com/gl/positron-nolabels-gl-sty
 const BASEMAP_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json";
 
 const SEOUL_GU_URL = `${import.meta.env.BASE_URL ?? "/"}data/geojson/seoul_gu.geojson`.replace(/\/{2,}/g, "/");
+const SEOUL_MASK_URL = `${import.meta.env.BASE_URL ?? "/"}data/geojson/seoul_outer_mask.geojson`.replace(/\/{2,}/g, "/");
 
 export interface MapViewHandle {
   getMapRef: () => MapRef | null;
@@ -182,44 +183,6 @@ export function MapView({ ref }: Props) {
     [features, breaks],
   );
 
-  const maskGeojson = useMemo(() => {
-    if (features.length === 0) return null;
-    const worldOuter = [
-      [-180, -90],
-      [180, -90],
-      [180, 90],
-      [-180, 90],
-      [-180, -90],
-    ];
-    const holes: number[][][] = [];
-    for (const f of features) {
-      if (!f.geometry) continue;
-      const g = f.geometry as { type: string; coordinates: unknown };
-      if (g.type === "Polygon") {
-        const coords = g.coordinates as number[][][];
-        if (coords[0]) holes.push(coords[0]);
-      } else if (g.type === "MultiPolygon") {
-        const multi = g.coordinates as number[][][][];
-        for (const poly of multi) {
-          if (poly[0]) holes.push(poly[0]);
-        }
-      }
-    }
-    return {
-      type: "FeatureCollection" as const,
-      features: [
-        {
-          type: "Feature" as const,
-          properties: {},
-          geometry: {
-            type: "Polygon" as const,
-            coordinates: [worldOuter, ...holes],
-          },
-        },
-      ],
-    };
-  }, [features]);
-
   const hasData = geojson.features.length > 0 && breaks.length === 9;
 
   const onMouseMove = useCallback((e: MapLayerMouseEvent) => {
@@ -330,34 +293,30 @@ export function MapView({ ref }: Props) {
             />
 
             {/* Seoul Outer Mask (Masking Gyeonggi-do/Incheon background cleanly) */}
-            {maskGeojson && (
-              <>
-                <Source
-                  id="seoul-mask-src"
-                  type="geojson"
-                  data={maskGeojson as never}
-                />
-                <Layer
-                  id="seoul-mask-fill"
-                  type="fill"
-                  source="seoul-mask-src"
-                  paint={{
-                    "fill-color": theme === "dark" ? "#090d16" : "#f8fafc",
-                    "fill-opacity": 1.0,
-                  }}
-                />
-                <Layer
-                  id="seoul-mask-line"
-                  type="line"
-                  source="seoul-mask-src"
-                  paint={{
-                    "line-color": theme === "dark" ? "#94a3b8" : "#334155",
-                    "line-width": 1.6,
-                    "line-opacity": 0.9,
-                  }}
-                />
-              </>
-            )}
+            <Source
+              id="seoul-mask-src"
+              type="geojson"
+              data={SEOUL_MASK_URL}
+            />
+            <Layer
+              id="seoul-mask-fill"
+              type="fill"
+              source="seoul-mask-src"
+              paint={{
+                "fill-color": theme === "dark" ? "#090d16" : "#f8fafc",
+                "fill-opacity": 1.0,
+              }}
+            />
+            <Layer
+              id="seoul-mask-line"
+              type="line"
+              source="seoul-mask-src"
+              paint={{
+                "line-color": theme === "dark" ? "#94a3b8" : "#334155",
+                "line-width": 1.6,
+                "line-opacity": 0.9,
+              }}
+            />
 
             {/* District (Gu) Dissolved Outer Boundary Highlight (Perimeter Only) */}
             {selectedGu && (

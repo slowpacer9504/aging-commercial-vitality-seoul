@@ -10,15 +10,15 @@
 //   i = 8 (out)     -> estimate > breaks[8]            (clamp: deepest red, hot)
 
 export const COLOR_SCALE_COLORS = [
-  "#313695", // very negative (Coldspot - Dark Navy Blue)
-  "#4575b4", // negative (Medium Blue)
-  "#74add1", // moderate negative (Soft Blue)
-  "#abd9e9", // mild negative (Light Cyan/Sky Blue)
-  "#ffffbf", // neutral zero (Soft Cream/Pale Yellow - distinct from white background)
-  "#fee090", // mild positive (Light Warm Yellow-Orange)
-  "#fdae61", // moderate positive (Orange)
-  "#f46d43", // strong positive (Coral Red)
-  "#d73027", // very positive (Hotspot - Deep Red)
+  "#313695", // very negative (Coldspot)
+  "#4575b4",
+  "#74add1",
+  "#abd9e9", // mildly negative
+  "#ffffff", // neutral zero
+  "#fdae61", // mildly positive
+  "#f46d43",
+  "#d73027",
+  "#a50026", // very positive (Hotspot)
 ] as const;
 
 export interface ColorScale {

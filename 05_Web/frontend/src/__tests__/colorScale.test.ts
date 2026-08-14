@@ -8,10 +8,10 @@ describe("colorScale.colorFor", () => {
     expect(colorFor(-7, BREAKS)).toBe("#4575b4"); // -7: in bucket 1 (blue)
   });
   it("maps strongly positive estimate to red family (hotspot)", () => {
-    expect(colorFor(7, BREAKS)).toBe("#d73027"); // 7: in bucket 8 (deep red)
+    expect(colorFor(7, BREAKS)).toBe("#a50026"); // 7: in bucket 8 (deep red)
   });
   it("maps 0 estimate to the neutral color", () => {
-    expect(colorFor(0, BREAKS)).toBe("#ffffbf");
+    expect(colorFor(0, BREAKS)).toBe("#ffffff");
   });
   it("maps missing/null estimate to grey", () => {
     expect(colorFor(null, BREAKS)).toBe("#cccccc");
@@ -19,11 +19,11 @@ describe("colorScale.colorFor", () => {
   });
   it("clamps out-of-domain values to extremes", () => {
     expect(colorFor(-99999, BREAKS)).toBe("#313695"); // Coldest blue
-    expect(colorFor(99999, BREAKS)).toBe("#d73027"); // Hottest red
+    expect(colorFor(99999, BREAKS)).toBe("#a50026"); // Hottest red
   });
   it("selected mid bucket values reach expected midpoint classes", () => {
     expect(colorFor(-1.5, BREAKS)).toBe("#abd9e9"); // -1.5 <= breaks[3] = -1 -> bucket 3 (light blue)
-    expect(colorFor(0.5, BREAKS)).toBe("#fee090"); // 0.5 <= breaks[5] = 1   -> bucket 5 (light warm yellow-orange)
+    expect(colorFor(0.5, BREAKS)).toBe("#fdae61"); // 0.5 <= breaks[5] = 1   -> bucket 5 (light orange)
   });
 });
 
