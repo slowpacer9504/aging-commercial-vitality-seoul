@@ -9,6 +9,7 @@ import { SearchBox } from "@/controls/SearchBox";
 import { GuFilterSelector } from "@/controls/GuFilterSelector";
 import { ExportMenu } from "@/controls/ExportMenu";
 import { ResearchGuideModal } from "@/controls/ResearchGuideModal";
+import { MobileBottomNav } from "@/controls/MobileBottomNav";
 import { StoryTourBanner } from "@/tour/StoryTourBanner";
 import { LinkedScatterPlot } from "@/sidebar/LinkedScatterPlot";
 import { ScatterPlotModal } from "@/sidebar/ScatterPlotModal";
@@ -97,7 +98,17 @@ export function App() {
         <div className="header-actions">
           <button
             type="button"
-            className="tour-trigger-btn"
+            className="mobile-header-menu-btn"
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            aria-label={isSidebarOpen ? "Close controls menu" : "Open controls menu"}
+            title="Toggle Controls Panel"
+          >
+            {isSidebarOpen ? "✕ Close" : "🎛️ Controls"}
+          </button>
+
+          <button
+            type="button"
+            className="tour-trigger-btn desktop-only-action"
             onClick={() => setTourStep(0)}
             aria-label="Start Key Findings Guided Tour"
             title="Start Key Findings Guided Tour"
@@ -108,7 +119,7 @@ export function App() {
 
           <button
             type="button"
-            className="guide-trigger-btn"
+            className="guide-trigger-btn desktop-only-action"
             onClick={() => setIsScatterModalOpen(true)}
             aria-label="Open Dynamic Trajectory Scatter Plot"
             title="Open Dynamic Trajectory Scatter Plot (2019Q4 vs 2025Q4)"
@@ -143,6 +154,15 @@ export function App() {
 
       {/* Main Workspace Layout */}
       <div className={`app-workspace ${isSidebarOpen ? "sidebar-expanded" : "sidebar-collapsed"}`}>
+        {/* Mobile Backdrop for Sidebar Drawer */}
+        {isSidebarOpen && (
+          <div
+            className="sidebar-backdrop"
+            onClick={() => setIsSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Left Sidebar */}
         <aside className="app-sidebar" aria-label="Explorer Controls and Summary">
           <div className="sidebar-top-bar">
@@ -228,6 +248,14 @@ export function App() {
           <span>© MapLibre · © CARTO · © OpenStreetMap · Data: Seoul Commercial Analysis Service (425 Dongs, 2019Q4–2025Q4)</span>
         </div>
       </footer>
+
+      {/* Mobile Bottom Navigation Quick-Bar */}
+      <MobileBottomNav
+        onOpenControls={() => setIsSidebarOpen(true)}
+        onOpenScatter={() => setIsScatterModalOpen(true)}
+        onStartTour={() => setTourStep(0)}
+        isSidebarOpen={isSidebarOpen}
+      />
 
       {/* Research Guide Modal */}
       <ResearchGuideModal

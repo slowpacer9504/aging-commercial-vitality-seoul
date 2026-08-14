@@ -89,34 +89,46 @@ export const FeaturePopup: FC = () => {
   if (!admCd || !propsA) return null;
 
   return (
-    <aside
-      className={`feature-popup-drawer ${compareAdmCd ? "is-comparing" : ""}`}
-      role="dialog"
-      aria-label={`GTWR Diagnostics for ${propsA.adm_nm ?? admCd}`}
-    >
-      <header className="drawer-header">
-        <div className="drawer-title-group">
-          <div className="drawer-badges">
-            <span className="badge-gu">{propsA.gu_name ?? "Seoul"}</span>
-            {propsA.living_area && <span className="badge-area">{propsA.living_area}</span>}
-            <span className="badge-code">{propsA.adm_cd}</span>
+    <>
+      <div
+        className="bottom-sheet-backdrop"
+        onClick={() => {
+          clear(null);
+          setCompareAdmCd(null);
+        }}
+        aria-hidden="true"
+      />
+      <aside
+        className={`feature-popup-drawer ${compareAdmCd ? "is-comparing" : ""}`}
+        role="dialog"
+        aria-label={`GTWR Diagnostics for ${propsA.adm_nm ?? admCd}`}
+      >
+        <div className="sheet-drag-handle-wrap" aria-hidden="true">
+          <div className="sheet-drag-handle" />
+        </div>
+        <header className="drawer-header">
+          <div className="drawer-title-group">
+            <div className="drawer-badges">
+              <span className="badge-gu">{propsA.gu_name ?? "Seoul"}</span>
+              {propsA.living_area && <span className="badge-area">{propsA.living_area}</span>}
+              <span className="badge-code">{propsA.adm_cd}</span>
+            </div>
+            <h2 className="drawer-title">{propsA.adm_nm ?? propsA.adm_cd}</h2>
           </div>
-          <h2 className="drawer-title">{propsA.adm_nm ?? propsA.adm_cd}</h2>
-        </div>
-        <div className="drawer-actions-top">
-          <button
-            type="button"
-            className="drawer-close-btn"
-            onClick={() => {
-              clear(null);
-              setCompareAdmCd(null);
-            }}
-            aria-label="Close detail panel"
-          >
-            ✕
-          </button>
-        </div>
-      </header>
+          <div className="drawer-actions-top">
+            <button
+              type="button"
+              className="drawer-close-btn"
+              onClick={() => {
+                clear(null);
+                setCompareAdmCd(null);
+              }}
+              aria-label="Close detail panel"
+            >
+              ✕
+            </button>
+          </div>
+        </header>
 
       {/* Inline Compare Bar */}
       <div className="drawer-compare-bar">
@@ -192,5 +204,6 @@ export const FeaturePopup: FC = () => {
         <TimeseriesChart admCd={admCd} compareAdmCd={compareAdmCd} />
       </div>
     </aside>
-  );
+  </>
+);
 };
