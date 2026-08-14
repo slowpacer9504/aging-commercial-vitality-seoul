@@ -72,11 +72,11 @@ export async function staticGetMeta(): Promise<MetaResponse> {
   const m = await fetchJSON<ManifestRaw>("data/_build_manifest.json");
   const target_yq = Array.isArray(m.target_yq) ? m.target_yq : [m.target_yq];
   const outcomes = (m.outcomes ?? [
-    "vitality_index_base",
     "vitality_sub_economic",
     "vitality_sub_social",
     "vitality_sub_stability",
     "vitality_sub_temporal",
+    "vitality_index_base",
   ]) as Outcome[];
   const control_sets = (m.control_sets ?? ["lean", "extended"]) as ControlSet[];
 

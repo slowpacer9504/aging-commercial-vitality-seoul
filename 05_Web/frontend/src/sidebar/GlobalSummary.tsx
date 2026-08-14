@@ -7,6 +7,14 @@ import { OUTCOME_LABELS } from "@/state/constants";
 const fmt = (v: number | null | undefined, digits = 3): string =>
   v === null || v === undefined || Number.isNaN(v) ? "—" : v.toFixed(digits);
 
+const OUTCOME_ORDER: Record<string, number> = {
+  vitality_sub_economic: 1,
+  vitality_sub_social: 2,
+  vitality_sub_stability: 3,
+  vitality_sub_temporal: 4,
+  vitality_index_base: 5,
+};
+
 export const GlobalSummary: FC = () => {
   const currentOutcome = useAppStore(s => s.outcome);
   const setOutcome = useAppStore(s => s.setOutcome);
@@ -25,7 +33,8 @@ export const GlobalSummary: FC = () => {
         if (cancelled) return;
         const sorted = [...res.summaries].sort(
           (a, b) =>
-            (a.outcome_order ?? 999) - (b.outcome_order ?? 999) ||
+            (OUTCOME_ORDER[a.outcome] ?? a.outcome_order ?? 999) -
+              (OUTCOME_ORDER[b.outcome] ?? b.outcome_order ?? 999) ||
             a.outcome.localeCompare(b.outcome),
         );
         setSummaries(sorted);

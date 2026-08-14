@@ -7,11 +7,11 @@ export const VIEW_MODES = ["latest", "quarter", "delta"] as const;
 export type ViewMode = (typeof VIEW_MODES)[number];
 
 export const OUTCOMES = [
-  "vitality_index_base",
   "vitality_sub_economic",
   "vitality_sub_social",
   "vitality_sub_stability",
   "vitality_sub_temporal",
+  "vitality_index_base",
 ] as const;
 export type Outcome = (typeof OUTCOMES)[number];
 
