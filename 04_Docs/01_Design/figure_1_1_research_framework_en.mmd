@@ -1,0 +1,30 @@
+flowchart TD
+    subgraph Theoretical ["<b>Theoretical Background &amp; Mechanism</b>"]
+        direction LR
+        A["Population Aging Deepening"] --> B["<div style='text-align:center'><b>Changes in Elderly Consumption &amp; Mobility Behavior</b><div style='text-align:left'>• Reliance on Local Living Zones (Aging in Place)<br>• Repeat Consumption of Essential Goods &amp; Daily Services<br>• Daytime-Centered, Dispersed Usage Patterns</div></div>"]
+        B --> C["Functional Reorganization of Neighborhood<br>Commercial Districts &amp; Changes in Commercial Vitality"]
+    end
+
+    subgraph Empirical ["<b>Empirical Analysis Framework</b>"]
+        direction LR
+        subgraph EmpiricalLeft [" "]
+            direction TB
+            X["<b>[Independent Variable]</b><br>Elderly Resident Share (t-4)"]
+            Z["<b>[Control Variables]</b><br>Resident Population, Worker Population, Official Land Price,<br>Transit Accessibility (t-4)"]
+        end
+        Y["<b>[Dependent Variable: Commercial Vitality Index]</b><br>① Economic Vitality (Sales / Sales Count)<br>② Social Vitality (Floating Population / External Inflow)<br>③ Temporal Sustainability (Time-of-Day / Quarterly Stability)<br>④ Structural Stability (Industry Diversity / Store Survival)"]
+        X -->|"Hypothesis Testing"| Y
+        Z -.->|"Factor Control"| Y
+    end
+
+    M["<b>[Analytical Methods]</b><br>1. ESDA: Spatial Autocorrelation Diagnostics<br>2. SPDM: Spatial Direct &amp; Spillover Effects Estimation<br>3. GTWR: Local Spatiotemporal Heterogeneity Exploration"]
+
+    N["<div style='text-align:center'><b>[Results &amp; Implications]</b><div style='text-align:left'>• Identification of Multidimensional Commercial Vitality<br>&nbsp;&nbsp;&nbsp;Reorganization, Not a Simple Decline<br>• Aging-Friendly Policy Directions for Sustainable Urban Vitality</div></div>"]
+
+    Theoretical -->|"Empirical Linkage"| Empirical
+    Empirical --> M
+    M --> N
+
+    style Theoretical fill:none,stroke:#666666,stroke-width:1.5px,stroke-dasharray:5 5
+    style Empirical fill:none,stroke:#666666,stroke-width:1.5px,stroke-dasharray:5 5
+    style EmpiricalLeft fill:none,stroke:none
