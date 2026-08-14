@@ -9,7 +9,6 @@ import { SearchBox } from "@/controls/SearchBox";
 import { GuFilterSelector } from "@/controls/GuFilterSelector";
 import { ExportMenu } from "@/controls/ExportMenu";
 import { ResearchGuideModal } from "@/controls/ResearchGuideModal";
-import { MobileBottomNav } from "@/controls/MobileBottomNav";
 import { MobileMenuModal } from "@/controls/MobileMenuModal";
 import { StoryTourBanner } from "@/tour/StoryTourBanner";
 import { LinkedScatterPlot } from "@/sidebar/LinkedScatterPlot";
@@ -267,14 +266,6 @@ export function App() {
           <span>© MapLibre · © CARTO · © OpenStreetMap · Data: Seoul Commercial Analysis Service (425 Dongs, 2019Q4–2025Q4)</span>
         </div>
       </footer>
-
-      {/* Mobile Bottom Navigation Quick-Bar */}
-      <MobileBottomNav
-        onOpenControls={() => setIsSidebarOpen(true)}
-        onOpenScatter={() => setIsScatterModalOpen(true)}
-        onStartTour={() => setTourStep(0)}
-        isSidebarOpen={isSidebarOpen}
-      />
 
       {/* Research Guide Modal */}
       <ResearchGuideModal
