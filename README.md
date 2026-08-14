@@ -139,26 +139,27 @@ For detailed theoretical backgrounds, variable definitions, and model equations 
 * **Research Plan Summary**: [research_plan.md](04_Docs/01_Design/research_plan.md)
 * **Step-by-step Procedure**: [research_procedure.md](04_Docs/01_Design/research_procedure.md)
 * **Project File Tree**: [file_tree.md](04_Docs/01_Design/file_tree.md)
+* **Variable and Model Specification Hub**: [00_spec_index.md](04_Docs/02_Codebook/00_spec_index.md)
+
 ---
 
-## 5. Interactive GTWR Explorer
+## 5. Interactive Web Explorer
 
-본 연구의 시공간 지리가중회귀(GTWR) 국지적 추정치와 서울시 425개 행정동별 25개 분기(2019Q4–2025Q4) 시계열 궤적을 인터랙티브하게 탐색할 수 있는 웹 애플리케이션을 제공합니다:
+An interactive web-based visual analytics explorer is provided to inspect the local spatial heterogeneity and time-series trajectories of the Geographical and Temporal Weighted Regression (GTWR) estimates across Seoul's 425 administrative dongs (2019Q4–2025Q4):
 
-👉 **[Seoul Aging & Commercial Vitality GTWR Explorer 열기](https://slowpacer9504.github.io/aging-commercial-vitality-seoul/)**
+* **Live Web Application**: [Seoul Aging & Commercial Vitality GTWR Explorer](https://slowpacer9504.github.io/aging-commercial-vitality-seoul/)
+* **Source & Standalone Setup**: Detailed instructions for local execution and standalone deployment are documented in [05_Web/README.md](05_Web/README.md).
 
-* **핵심 기능**:
-  * 🗺️ **425개 행정동 공간 Choropleth**: 5대 상권 활력 지표별 국지적 고령화 영향($\hat{\beta}$) 분포 및 다공선성(Condition Number) 진단.
-  * ⏱️ **25분기 시공간 타임라인**: 2019Q4부터 2025Q4까지 시공간 궤적 슬라이더 및 자동 재생.
-  * 💡 **논문 핵심 발견 가이드 투어 (Guided Tour)**: 동북권의 광범위한 활력 고진 및 강남 GBD 업무지구 vs 외곽 주거지의 상반된 공간 양극화 등 핵심 연구 결과 인터랙티브 해설.
-  * 🔍 **25개 자치구 필터 & 듀얼 행정동 비교**: 행정동 간 side-by-side 메트릭 비교 및 시계열 오버레이 차트.
-  * 📈 **진단 산점도 Brushing & Linking**: 국지적 다공선성(CN)과 계수($\hat{\beta}$) 간의 양방향 인터랙티브 연동.
-  * 📥 **연구 데이터 내보내기**: 고해상도 지도 이미지(PNG), 계수 및 25분기 패널 데이터(CSV) 다운로드, URL 딥링크 공유.
-  * 🌙 **다크 테마 (CartoDB Dark Matter)**: 발표 및 야간 연구 환경 최적화.
+### 5.1 Key Analytical Features
+
+* **Spatial Choropleth & Diagnostics**: Interactive maps displaying local aging coefficients ($\hat{\beta}$) across five commercial vitality outcomes, accompanied by spatiotemporal local condition number diagnostics.
+* **Spatiotemporal Timeline**: Sequential time-slider spanning 25 quarters (2019Q4–2025Q4) to trace empirical trajectory shifts across pandemic shocks and recovery.
+* **Guided Research Tour**: Step-by-step interactive narrative summarizing key empirical findings (e.g., broad vitality enhancements in Northeast living areas and divergent patterns between GBD employment centers and outer residential districts in Southeast Seoul).
+* **Comparative Analytics & Linked Scatter Plot**: Autonomous district filtering (25 Gus), pairwise side-by-side dong comparison with time-series trajectory overlays, and linked diagnostic scatter plots.
+* **Reproducibility & Data Export**: High-resolution map export (PNG), 425-dong coefficient and panel time-series extraction (CSV), and URL state deep-linking.
 
 ---
 
 ## License
 
 This project is licensed under the [MIT License](LICENSE).
-
