@@ -159,6 +159,27 @@ st_write(
 log("[4] Wrote %s (%d features, EPSG:4326)", geojson_path, nrow(shp_out))
 
 # ---------------------------------------------------------------------------
+# 4b. Build seoul_gu.geojson (Dissolved outer boundaries of 25 autonomous districts)
+# ---------------------------------------------------------------------------
+lookup_raw <- read.csv(
+  file.path(out_tables, "adm_region_lookup.csv"),
+  colClasses = "character"
+)
+shp_with_gu <- merge(shp4326, lookup_raw[, c("adm_cd", "gu_name", "living_area")], by = "adm_cd", all.x = TRUE)
+gu_shp <- shp_with_gu %>%
+  group_by(gu_name, living_area) %>%
+  summarize(geometry = st_union(geometry), .groups = "drop")
+
+gu_geojson_path <- file.path(out_geojson_dir, "seoul_gu.geojson")
+st_write(
+  gu_shp, gu_geojson_path,
+  driver = "GeoJSON",
+  delete_dsn = TRUE,
+  quiet = TRUE
+)
+log("[4b] Wrote %s (%d district boundary features)", gu_geojson_path, nrow(gu_shp))
+
+# ---------------------------------------------------------------------------
 # 5. Build lookup.json (adm_cd -> {adm_nm, gu_name, living_area, ...})
 # ---------------------------------------------------------------------------
 lookup <- read.csv(
@@ -415,6 +436,7 @@ dir.create(file.path(public_data_dir, "geojson"), recursive = TRUE, showWarnings
 dir.create(file.path(public_data_dir, "json"),    recursive = TRUE, showWarnings = FALSE)
 
 file.copy(geojson_path, file.path(public_data_dir, "geojson", "seoul_adm_dong.geojson"), overwrite = TRUE)
+file.copy(gu_geojson_path, file.path(public_data_dir, "geojson", "seoul_gu.geojson"), overwrite = TRUE)
 file.copy(out_manifest, file.path(public_data_dir, "_build_manifest.json"), overwrite = TRUE)
 json_files <- list.files(out_json_dir, pattern = "\\.json$", full.names = TRUE)
 file.copy(json_files, file.path(public_data_dir, "json"), overwrite = TRUE)

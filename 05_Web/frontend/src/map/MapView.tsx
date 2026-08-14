@@ -60,6 +60,8 @@ const GU_CENTERS: Record<string, [number, number]> = {
 const BASEMAP_LIGHT = "https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json";
 const BASEMAP_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json";
 
+const SEOUL_GU_URL = `${import.meta.env.BASE_URL ?? "/"}data/geojson/seoul_gu.geojson`.replace(/\/{2,}/g, "/");
+
 export interface MapViewHandle {
   getMapRef: () => MapRef | null;
   flyTo: (center: [number, number], zoom: number) => void;
@@ -357,19 +359,26 @@ export function MapView({ ref }: Props) {
               </>
             )}
 
-            {/* District (Gu) Outer Boundary Highlight */}
+            {/* District (Gu) Dissolved Outer Boundary Highlight (Perimeter Only) */}
             {selectedGu && (
-              <Layer
-                id="gtwr-gu-highlight-line"
-                type="line"
-                source="gtwr"
-                filter={["==", ["get", "gu_name"], selectedGu]}
-                paint={{
-                  "line-color": theme === "dark" ? "#60a5fa" : "#1d4ed8",
-                  "line-width": 2.5,
-                  "line-opacity": 1.0,
-                }}
-              />
+              <>
+                <Source
+                  id="seoul-gu-src"
+                  type="geojson"
+                  data={SEOUL_GU_URL}
+                />
+                <Layer
+                  id="gtwr-gu-outer-boundary"
+                  type="line"
+                  source="seoul-gu-src"
+                  filter={["==", ["get", "gu_name"], selectedGu]}
+                  paint={{
+                    "line-color": theme === "dark" ? "#60a5fa" : "#1d4ed8",
+                    "line-width": 3.0,
+                    "line-opacity": 1.0,
+                  }}
+                />
+              </>
             )}
 
             {/* Scatter Hover Highlight Stroke (Golden Orange) */}
