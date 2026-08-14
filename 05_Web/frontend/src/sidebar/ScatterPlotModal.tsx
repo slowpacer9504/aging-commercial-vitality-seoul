@@ -147,8 +147,7 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
 
         <div className="modal-body">
           <p className="scatter-modal-desc">
-            425개 행정동별 시작 분기(2019Q4, X축) 대비 최종 분기(2025Q4, Y축) 고령화 국지 계수(β̂)의 동적 변화를 4분면으로 분석합니다.
-            점을 클릭하면 모달이 닫히며 해당 행정동으로 지도가 포커스됩니다.
+            Analyzes the four-quadrant dynamic trajectory of local aging coefficients (&beta;&#770;) across 425 administrative dongs between the baseline quarter (2019Q4, X-axis) and the latest quarter (2025Q4, Y-axis). Click any point to close the modal and focus the map on that administrative dong.
           </p>
 
           <div className="scatter-modal-chart-wrap" style={{ width: "100%", height: 360, minHeight: 360 }}>

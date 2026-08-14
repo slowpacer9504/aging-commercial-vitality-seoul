@@ -88,7 +88,7 @@ export const ResearchGuideModal: FC<Props> = ({ isOpen, onClose }) => {
                 <strong>Local Condition Number (CN):</strong> Evaluates local multicollinearity for each dong and quarter. Values <strong>CN ≥ 30.0</strong> trigger a <code>Collinearity Warning Flag</code> indicating caution when interpreting point estimates.
               </li>
               <li>
-                <strong>Temporal View Modes:</strong> The latest quarter (2025Q4) presents the baseline spatial pattern at the end of the study period, while quarterly animations and delta change (Δ) illustrate the evolution of aging effects before and after COVID-19.
+                <strong>Temporal View Modes:</strong> The latest quarter (2025Q4) presents the canonical spatial pattern at the end of the study period, while quarterly animations and long-term delta change (&Delta;) illustrate the spatiotemporal evolution of aging effects across the 2019Q4–2025Q4 panel study period.
               </li>
             </ul>
           </section>
