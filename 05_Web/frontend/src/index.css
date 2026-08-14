@@ -2443,7 +2443,8 @@ code {
 }
 
 /* Default Desktop States for Mobile-Specific Elements -------------------- */
-.mobile-header-menu-btn {
+.mobile-header-menu-btn,
+.mobile-header-settings-btn {
   display: none;
 }
 
@@ -2515,21 +2516,13 @@ code {
 
   .app-header {
     height: var(--mobile-header-h, 52px);
-    padding: 0 8px;
-    gap: 4px;
+    padding: 0 10px;
+    gap: 8px;
   }
 
   .header-actions {
-    gap: 3px !important;
+    gap: 6px !important;
     flex-shrink: 0;
-  }
-
-  .header-actions .export-trigger-btn,
-  .header-actions .guide-trigger-btn,
-  .header-actions .theme-toggle-btn {
-    padding: 4px 6px !important;
-    font-size: 10px !important;
-    gap: 3px !important;
   }
 
   .desktop-only-action {
@@ -2539,16 +2532,36 @@ code {
   .mobile-header-menu-btn {
     display: inline-flex;
     align-items: center;
-    gap: 3px;
-    padding: 4px 8px;
+    gap: 4px;
+    padding: 6px 10px;
     background: var(--accent);
     color: #ffffff;
     border: none;
     border-radius: 6px;
-    font-size: 10.5px;
+    font-size: 11.5px;
     font-weight: 600;
     cursor: pointer;
     box-shadow: var(--shadow-sm);
+  }
+
+  .mobile-header-settings-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.15s;
+  }
+
+  .mobile-header-settings-btn:hover {
+    background: var(--bg-subtle);
   }
 
   /* Workspace & Viewport Full Dimension Enforcement */
@@ -2804,5 +2817,155 @@ code {
   .app-footer {
     display: none !important; /* Replaced cleanly by MobileBottomNav */
   }
+}
+
+/* Mobile Settings & Tools Sheet ------------------------------------------- */
+.mobile-settings-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-height: 82vh;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border-strong);
+  border-radius: 18px 18px 0 0;
+  box-shadow: var(--shadow-xl);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUpMobile 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mobile-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.settings-header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-header-title h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.mobile-settings-content {
+  padding: 14px 16px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.settings-action-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.settings-action-row:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong);
+}
+
+.setting-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.setting-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.setting-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.setting-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.setting-desc {
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+
+.setting-arrow {
+  font-size: 18px;
+  color: var(--text-light);
+  font-weight: 300;
+}
+
+.theme-toggle-row {
+  cursor: default;
+}
+
+.theme-switch-btn {
+  width: 44px;
+  height: 24px;
+  background: #cbd5e1;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.2s;
+  padding: 2px;
+}
+
+.theme-switch-btn.is-dark {
+  background: var(--accent);
+}
+
+.switch-knob {
+  width: 20px;
+  height: 20px;
+  background: #ffffff;
+  border-radius: 50%;
+  transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.theme-switch-btn.is-dark .switch-knob {
+  transform: translateX(20px);
 }
 

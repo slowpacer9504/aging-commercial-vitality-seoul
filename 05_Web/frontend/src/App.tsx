@@ -10,6 +10,7 @@ import { GuFilterSelector } from "@/controls/GuFilterSelector";
 import { ExportMenu } from "@/controls/ExportMenu";
 import { ResearchGuideModal } from "@/controls/ResearchGuideModal";
 import { MobileBottomNav } from "@/controls/MobileBottomNav";
+import { MobileMenuModal } from "@/controls/MobileMenuModal";
 import { StoryTourBanner } from "@/tour/StoryTourBanner";
 import { LinkedScatterPlot } from "@/sidebar/LinkedScatterPlot";
 import { ScatterPlotModal } from "@/sidebar/ScatterPlotModal";
@@ -30,6 +31,7 @@ export function App() {
   const [metaError, setMetaError] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isScatterModalOpen, setIsScatterModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => (typeof window !== "undefined" ? window.innerWidth > 768 : true));
   const mapHandleRef = useRef<MapViewHandle>(null);
 
@@ -99,6 +101,7 @@ export function App() {
         </div>
 
         <div className="header-actions">
+          {/* Mobile-Only Action Buttons (Controls & Settings) */}
           <button
             type="button"
             className="mobile-header-menu-btn"
@@ -109,6 +112,17 @@ export function App() {
             {isSidebarOpen ? "✕ Close" : "🎛️ Controls"}
           </button>
 
+          <button
+            type="button"
+            className="mobile-header-settings-btn"
+            onClick={() => setIsMobileMenuOpen(true)}
+            aria-label="Open settings and tools menu"
+            title="Settings & Tools"
+          >
+            ⚙️ Settings
+          </button>
+
+          {/* Desktop-Only Action Buttons */}
           <button
             type="button"
             className="tour-trigger-btn desktop-only-action"
@@ -131,11 +145,13 @@ export function App() {
             <span>Dynamics Scatter</span>
           </button>
 
-          <ExportMenu onExportMapPng={handleExportMapPng} />
+          <div className="desktop-only-action">
+            <ExportMenu onExportMapPng={handleExportMapPng} />
+          </div>
 
           <button
             type="button"
-            className="guide-trigger-btn"
+            className="guide-trigger-btn desktop-only-action"
             onClick={() => setIsGuideOpen(true)}
             aria-label="Open research guide modal"
           >
@@ -145,7 +161,7 @@ export function App() {
 
           <button
             type="button"
-            className="theme-toggle-btn"
+            className="theme-toggle-btn desktop-only-action"
             onClick={toggleTheme}
             aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
             title={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
@@ -270,6 +286,16 @@ export function App() {
       <ScatterPlotModal
         isOpen={isScatterModalOpen}
         onClose={() => setIsScatterModalOpen(false)}
+      />
+
+      {/* Mobile Settings & Tools Menu Modal */}
+      <MobileMenuModal
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        onStartTour={() => setTourStep(0)}
+        onOpenScatter={() => setIsScatterModalOpen(true)}
+        onExportMapPng={handleExportMapPng}
+        onOpenGuide={() => setIsGuideOpen(true)}
       />
     </div>
   );
