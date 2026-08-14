@@ -11,17 +11,10 @@ interface Props {
 export const Legend: FC<Props> = ({ view, breaks, selectedYq, features }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  if (breaks.length !== 9) return null;
-
-  const title =
-    view === "delta"
-      ? "Change in Effect (Δ β̂, earliest→latest)"
-      : view === "quarter"
-        ? `Effect Estimate (signed β̂, ${selectedYq})`
-        : "Latest Effect Estimate (signed β̂, 2025Q4)";
-
   // Compute distribution across the 9 bins for the mini histogram
+  // Hook MUST be called unconditionally before any early return
   const counts = useMemo(() => {
+    if (breaks.length !== 9) return new Array(9).fill(0);
     const arr = new Array(9).fill(0);
     for (const f of features) {
       const v = f.properties.estimate;
@@ -42,6 +35,15 @@ export const Legend: FC<Props> = ({ view, breaks, selectedYq, features }) => {
     }
     return arr;
   }, [features, breaks]);
+
+  if (breaks.length !== 9) return null;
+
+  const title =
+    view === "delta"
+      ? "Change in Effect (Δ β̂, earliest→latest)"
+      : view === "quarter"
+        ? `Effect Estimate (signed β̂, ${selectedYq})`
+        : "Latest Effect Estimate (signed β̂, 2025Q4)";
 
   const maxCount = Math.max(1, ...counts);
 
