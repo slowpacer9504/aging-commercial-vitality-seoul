@@ -1,0 +1,23 @@
+# Node / web
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Python
+backend/.venv/
+backend/**/__pycache__/
+**/*.pyc
+**/*.pyo
+backend/.pytest_cache/
+backend/.ruff_cache/
+
+# Build artifacts (rebuilt by `Rscript build_data.R`)
+data/
+
+# Env / editor
+.env
+.env.*
+.idea/
+.vscode/
+.DS_Store
+*.tsbuildinfo
