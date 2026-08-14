@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, type FC } from "react";
 import { useAppStore } from "@/state/store";
-import { exportFeaturesToCsv } from "@/utils/exportUtils";
+import { exportFeaturesToCsv, generateCoeffCsvFilename } from "@/utils/exportUtils";
 import { getCoefficients } from "@/api/endpoints";
 
 interface Props {
@@ -12,6 +12,8 @@ export const ExportMenu: FC<Props> = ({ onExportMapPng }) => {
   const controlSet = useAppStore(s => s.controlSet);
   const view = useAppStore(s => s.view);
   const selectedYq = useAppStore(s => s.selectedYq);
+
+  const selectedGu = useAppStore(s => s.selectedGu);
 
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -55,7 +57,7 @@ export const ExportMenu: FC<Props> = ({ onExportMapPng }) => {
         view,
         view === "quarter" ? selectedYq : undefined,
       );
-      const filename = `seoul_gtwr_${controlSet}_${outcome}_${view}_${selectedYq}.csv`;
+      const filename = generateCoeffCsvFilename(outcome, controlSet, view, selectedYq, selectedGu);
       exportFeaturesToCsv(fc.features, filename);
     } catch (err) {
       console.error("Failed to export CSV:", err);

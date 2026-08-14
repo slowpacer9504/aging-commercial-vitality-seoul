@@ -13,7 +13,7 @@ import {
 } from "recharts";
 import { getPanel } from "@/api/endpoints";
 import { staticGetLookup } from "@/api/staticFallback";
-import { exportPanelToCsv } from "@/utils/exportUtils";
+import { exportPanelToCsv, generatePanelCsvFilename } from "@/utils/exportUtils";
 import type { PanelPoint, LookupRow } from "@/types/api";
 import { useAppStore } from "@/state/store";
 import { OUTCOME_LABELS } from "@/state/constants";
@@ -117,7 +117,8 @@ export const TimeseriesChart: FC<Props> = ({ admCd, compareAdmCd }) => {
   const outcomeLabel = OUTCOME_LABELS[outcome] ?? outcome;
 
   const handleExportCsv = () => {
-    exportPanelToCsv(pointsA, nameA, `${admCd}_${outcome}_trajectory.csv`);
+    const filename = generatePanelCsvFilename(nameA, outcome, controlSet);
+    exportPanelToCsv(pointsA, nameA, filename);
   };
 
   return (

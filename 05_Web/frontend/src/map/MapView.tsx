@@ -7,6 +7,7 @@ import { getCoefficients, getMeta } from "@/api/endpoints";
 import { colorFor } from "@/map/colorScale";
 import { HoverTooltip } from "./HoverTooltip";
 import { Legend } from "./Legend";
+import { MapSpecOverlay } from "./MapSpecOverlay";
 import type {
   CoefficientFeature,
   CoefficientFeatureCollection,
@@ -56,8 +57,8 @@ const GU_CENTERS: Record<string, [number, number]> = {
   중랑구: [127.0927, 37.6065],
 };
 
-const BASEMAP_LIGHT = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
-const BASEMAP_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const BASEMAP_LIGHT = "https://basemaps.cartocdn.com/gl/positron-nolabels-gl-style/style.json";
+const BASEMAP_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json";
 
 export interface MapViewHandle {
   getMapRef: () => MapRef | null;
@@ -179,6 +180,44 @@ export function MapView({ ref }: Props) {
     [features, breaks],
   );
 
+  const maskGeojson = useMemo(() => {
+    if (features.length === 0) return null;
+    const worldOuter = [
+      [-180, -90],
+      [180, -90],
+      [180, 90],
+      [-180, 90],
+      [-180, -90],
+    ];
+    const holes: number[][][] = [];
+    for (const f of features) {
+      if (!f.geometry) continue;
+      const g = f.geometry as { type: string; coordinates: unknown };
+      if (g.type === "Polygon") {
+        const coords = g.coordinates as number[][][];
+        if (coords[0]) holes.push(coords[0]);
+      } else if (g.type === "MultiPolygon") {
+        const multi = g.coordinates as number[][][][];
+        for (const poly of multi) {
+          if (poly[0]) holes.push(poly[0]);
+        }
+      }
+    }
+    return {
+      type: "FeatureCollection" as const,
+      features: [
+        {
+          type: "Feature" as const,
+          properties: {},
+          geometry: {
+            type: "Polygon" as const,
+            coordinates: [worldOuter, ...holes],
+          },
+        },
+      ],
+    };
+  }, [features]);
+
   const hasData = geojson.features.length > 0 && breaks.length === 9;
 
   const onMouseMove = useCallback((e: MapLayerMouseEvent) => {
@@ -282,11 +321,41 @@ export function MapView({ ref }: Props) {
               type="line"
               source="gtwr"
               paint={{
-                "line-color": theme === "dark" ? "#64748b" : "#475569",
-                "line-width": 0.4,
-                "line-opacity": 0.6,
+                "line-color": theme === "dark" ? "#475569" : "#cbd5e1",
+                "line-width": 0.5,
+                "line-opacity": 0.7,
               }}
             />
+
+            {/* Seoul Outer Mask (Masking Gyeonggi-do/Incheon background cleanly) */}
+            {maskGeojson && (
+              <>
+                <Source
+                  id="seoul-mask-src"
+                  type="geojson"
+                  data={maskGeojson as never}
+                />
+                <Layer
+                  id="seoul-mask-fill"
+                  type="fill"
+                  source="seoul-mask-src"
+                  paint={{
+                    "fill-color": theme === "dark" ? "#090d16" : "#f8fafc",
+                    "fill-opacity": 1.0,
+                  }}
+                />
+                <Layer
+                  id="seoul-mask-line"
+                  type="line"
+                  source="seoul-mask-src"
+                  paint={{
+                    "line-color": theme === "dark" ? "#94a3b8" : "#334155",
+                    "line-width": 1.6,
+                    "line-opacity": 0.9,
+                  }}
+                />
+              </>
+            )}
 
             {/* Scatter Hover Highlight Stroke (Golden Orange) */}
             <Layer
@@ -349,6 +418,8 @@ export function MapView({ ref }: Props) {
           features={features}
         />
       </Map>
+
+      <MapSpecOverlay />
 
       {hoveredInfo && !selectedAdmCd && (
         <HoverTooltip

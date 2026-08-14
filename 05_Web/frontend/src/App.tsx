@@ -11,10 +11,12 @@ import { ExportMenu } from "@/controls/ExportMenu";
 import { ResearchGuideModal } from "@/controls/ResearchGuideModal";
 import { StoryTourBanner } from "@/tour/StoryTourBanner";
 import { LinkedScatterPlot } from "@/sidebar/LinkedScatterPlot";
+import { ScatterPlotModal } from "@/sidebar/ScatterPlotModal";
 import { GlobalSummary } from "@/sidebar/GlobalSummary";
 import { useAppStore } from "@/state/store";
+import { OUTCOME_LABELS } from "@/state/constants";
 import { getMeta } from "@/api/endpoints";
-import { exportMapCanvasToPng } from "@/utils/exportUtils";
+import { exportMapCanvasToPng, generateMapPngFilename } from "@/utils/exportUtils";
 import type { MetaResponse } from "@/types/api";
 
 export function App() {
@@ -26,6 +28,7 @@ export function App() {
   const [meta, setMeta] = useState<MetaResponse | null>(null);
   const [metaError, setMetaError] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isScatterModalOpen, setIsScatterModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const mapHandleRef = useRef<MapViewHandle>(null);
 
@@ -35,10 +38,36 @@ export function App() {
       .catch(e => setMetaError(String(e?.message ?? e)));
   }, []);
 
+  const outcome = useAppStore(s => s.outcome);
+  const controlSet = useAppStore(s => s.controlSet);
+  const view = useAppStore(s => s.view);
+  const selectedYq = useAppStore(s => s.selectedYq);
+  const selectedGu = useAppStore(s => s.selectedGu);
+
   const handleExportMapPng = () => {
     const mapRef = mapHandleRef.current?.getMapRef();
     if (mapRef) {
-      exportMapCanvasToPng(mapRef, "seoul_gtwr_choropleth.png");
+      const outcomeLabel = OUTCOME_LABELS[outcome] ?? outcome;
+      const controlSetLabel = controlSet === "lean" ? "Lean" : "Extended";
+      let timeLabel = "2025Q4 (Latest)";
+      if (view === "quarter") {
+        timeLabel = selectedYq;
+      } else if (view === "delta") {
+        timeLabel = "Δ (2019Q4 → 2025Q4)";
+      }
+
+      const filename = generateMapPngFilename(outcome, controlSet, view, selectedYq, selectedGu);
+
+      exportMapCanvasToPng(
+        mapRef,
+        {
+          outcomeLabel,
+          controlSetLabel,
+          timeLabel,
+          guLabel: selectedGu,
+        },
+        filename,
+      );
     }
   };
 
@@ -75,6 +104,17 @@ export function App() {
           >
             <span className="tour-icon" aria-hidden="true">💡</span>
             <span>Key Findings Tour</span>
+          </button>
+
+          <button
+            type="button"
+            className="guide-trigger-btn"
+            onClick={() => setIsScatterModalOpen(true)}
+            aria-label="Open Diagnostics Scatter Plot"
+            title="Open Diagnostics Scatter Plot"
+          >
+            <span className="guide-icon" aria-hidden="true">📈</span>
+            <span>Scatter Plot</span>
           </button>
 
           <ExportMenu onExportMapPng={handleExportMapPng} />
@@ -193,6 +233,12 @@ export function App() {
       <ResearchGuideModal
         isOpen={isGuideOpen}
         onClose={() => setIsGuideOpen(false)}
+      />
+
+      {/* Full-size Scatter Plot Modal */}
+      <ScatterPlotModal
+        isOpen={isScatterModalOpen}
+        onClose={() => setIsScatterModalOpen(false)}
       />
     </div>
   );
