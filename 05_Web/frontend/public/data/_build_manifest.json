@@ -1,0 +1,30 @@
+{
+  "generated_at": "2026-08-14T19:43:16+0900",
+  "project_root": "/Users/junghyunpyo/Library/CloudStorage/GoogleDrive-hanuiwind25@gmail.com/내 드라이브/문서/논문/R",
+  "crs_out": "EPSG:4326",
+  "crs_in": "KGD2002 / Central Belt",
+  "geojson_features": 425,
+  "shp_file": "서울시 상권분석서비스(영역-행정동).shp",
+  "control_sets": ["lean", "extended"],
+  "outcomes": ["vitality_index_base", "vitality_sub_economic", "vitality_sub_social", "vitality_sub_stability", "vitality_sub_temporal"],
+  "focal_var": "lag4_age60_resident_share",
+  "target_yq": "2025Q4",
+  "csv_adm_cd_total": 425,
+  "csv_adm_cd_matched": 425,
+  "csv_adm_cd_match_percent": 100,
+  "missing_adm_cd": [],
+  "extra_adm_cd": [],
+  "panel_quarters": ["2019Q4", "2020Q1", "2020Q2", "2020Q3", "2020Q4", "2021Q1", "2021Q2", "2021Q3", "2021Q4", "2022Q1", "2022Q2", "2022Q3", "2022Q4", "2023Q1", "2023Q2", "2023Q3", "2023Q4", "2024Q1", "2024Q2", "2024Q3", "2024Q4", "2025Q1", "2025Q2", "2025Q3", "2025Q4"],
+  "estimate_breaks": [-33.3833, -11.3468, -4.4561, -1.8823, 0, 1.8823, 4.4561, 11.3468, 33.3833],
+  "delta_breaks": [-36.1766, -11.7915, -4.6619, -1.9797, 0, 1.9797, 4.6619, 11.7915, 36.1766],
+  "delta_earliest_yq": "2019Q4",
+  "delta_latest_yq": "2025Q4",
+  "artifacts": {
+    "geojson": "geojson/seoul_adm_dong.geojson",
+    "coefficients_lean": "json/coefficients_lean.json",
+    "coefficients_extended": "json/coefficients_extended.json",
+    "summary_lean": "json/summary_lean.json",
+    "summary_extended": "json/summary_extended.json",
+    "lookup": "json/lookup.json"
+  }
+}

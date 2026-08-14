@@ -12,7 +12,7 @@ backend/.pytest_cache/
 backend/.ruff_cache/
 
 # Build artifacts (rebuilt by `Rscript build_data.R`)
-data/
+/data/
 
 # Env / editor
 .env
