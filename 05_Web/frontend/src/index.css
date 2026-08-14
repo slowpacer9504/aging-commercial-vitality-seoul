@@ -1638,11 +1638,11 @@ code {
 .s1 { background: #4575b4; }
 .s2 { background: #74add1; }
 .s3 { background: #abd9e9; }
-.s4 { background: #f8fafc; }
-.s5 { background: #fdae61; }
-.s6 { background: #f46d43; }
-.s7 { background: #d73027; }
-.s8 { background: #a50026; }
+.s4 { background: #ffffbf; }
+.s5 { background: #fee090; }
+.s6 { background: #fdae61; }
+.s7 { background: #f46d43; }
+.s8 { background: #d73027; }
 
 .legend-axis {
   display: flex;
