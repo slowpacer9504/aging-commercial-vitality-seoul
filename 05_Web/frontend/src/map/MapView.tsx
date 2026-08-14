@@ -368,16 +368,16 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
             />
           </>
         )}
-
-        <Legend
-          view={view}
-          breaks={breaks}
-          selectedYq={selectedYq}
-          features={features}
-        />
       </Map>
 
       <MapSpecOverlay isSidebarOpen={isSidebarOpen} />
+
+      <Legend
+        view={view}
+        breaks={breaks}
+        selectedYq={selectedYq}
+        features={features}
+      />
 
       {hoveredInfo && !selectedAdmCd && (
         <HoverTooltip
