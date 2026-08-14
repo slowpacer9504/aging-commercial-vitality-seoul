@@ -2434,6 +2434,14 @@ code {
   }
 }
 
+/* Title text responsive toggles */
+.title-full {
+  display: inline;
+}
+.title-short {
+  display: none;
+}
+
 /* Default Desktop States for Mobile-Specific Elements -------------------- */
 .mobile-header-menu-btn {
   display: none;
@@ -2479,19 +2487,49 @@ code {
 }
 
 @media (max-width: 768px) {
-  /* Layout Root & Workspace */
-  .app-header {
-    height: var(--mobile-header-h, 52px);
-    padding: 0 12px;
+  /* Header Responsive Adaptation */
+  .title-full {
+    display: none !important;
+  }
+  .title-short {
+    display: inline !important;
+  }
+
+  .brand-badge-wrap {
+    display: none !important;
+  }
+
+  .header-brand {
+    max-width: 120px;
+    overflow: hidden;
+    justify-content: center;
   }
 
   .header-title {
-    font-size: 14px;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
 
-  .brand-badge {
-    font-size: 9px;
-    padding: 1px 5px;
+  .app-header {
+    height: var(--mobile-header-h, 52px);
+    padding: 0 8px;
+    gap: 4px;
+  }
+
+  .header-actions {
+    gap: 3px !important;
+    flex-shrink: 0;
+  }
+
+  .header-actions .export-trigger-btn,
+  .header-actions .guide-trigger-btn,
+  .header-actions .theme-toggle-btn {
+    padding: 4px 6px !important;
+    font-size: 10px !important;
+    gap: 3px !important;
   }
 
   .desktop-only-action {
@@ -2501,21 +2539,43 @@ code {
   .mobile-header-menu-btn {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 5px 10px;
+    gap: 3px;
+    padding: 4px 8px;
     background: var(--accent);
     color: #ffffff;
     border: none;
     border-radius: 6px;
-    font-size: 11.5px;
+    font-size: 10.5px;
     font-weight: 600;
     cursor: pointer;
     box-shadow: var(--shadow-sm);
   }
 
-  .app-workspace {
-    grid-template-columns: 1fr;
-    height: calc(100vh - var(--mobile-header-h, 52px) - var(--mobile-nav-h, 56px));
+  /* Workspace & Viewport Full Dimension Enforcement */
+  .app-workspace,
+  .app-workspace.sidebar-expanded,
+  .app-workspace.sidebar-collapsed {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100vw !important;
+    height: calc(100vh - var(--mobile-header-h, 52px) - var(--mobile-nav-h, 56px) - env(safe-area-inset-bottom, 0px)) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  .app-main-viewport {
+    flex: 1 1 100% !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    position: relative !important;
+  }
+
+  .map-view {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
   }
 
   /* Slide-Over Mobile Controls Sidebar */

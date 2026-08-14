@@ -126,6 +126,13 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
   }, []);
 
   useEffect(() => {
+    const timer = setTimeout(() => {
+      mapRef.current?.resize();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [isSidebarOpen]);
+
+  useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);

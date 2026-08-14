@@ -30,7 +30,7 @@ export function App() {
   const [metaError, setMetaError] = useState<string | null>(null);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
   const [isScatterModalOpen, setIsScatterModalOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => (typeof window !== "undefined" ? window.innerWidth > 768 : true));
   const mapHandleRef = useRef<MapViewHandle>(null);
 
   useEffect(() => {
@@ -89,7 +89,10 @@ export function App() {
             <span className="brand-badge">Academic Explorer</span>
             <span className="brand-badge sub">GTWR Spatiotemporal Model</span>
           </div>
-          <h1 className="header-title">Seoul Aging & Commercial Vitality Explorer</h1>
+          <h1 className="header-title">
+            <span className="title-full">Seoul Aging & Commercial Vitality Explorer</span>
+            <span className="title-short">Seoul GTWR</span>
+          </h1>
           <p className="header-subtitle">
             Local spatial heterogeneity of residential aging effects (<code>lag4_age60_resident_share</code>) across 425 administrative dongs (2019Q4–2025Q4).
           </p>
