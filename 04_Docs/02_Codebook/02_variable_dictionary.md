@@ -102,6 +102,7 @@ For `subway_station_count_aux`, the opening date rules are applied to the statio
   - `age30_resident_share`
   - `age40_resident_share`
   - `age50_resident_share`
+  - `age60plus_resident_share`
   - `age60_64_resident_share`
   - `age65_74_resident_share`
   - `age75plus_resident_share`
