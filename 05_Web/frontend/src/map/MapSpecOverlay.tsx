@@ -2,7 +2,11 @@ import type { FC } from "react";
 import { useAppStore } from "@/state/store";
 import { OUTCOME_LABELS } from "@/state/constants";
 
-export const MapSpecOverlay: FC = () => {
+export interface MapSpecOverlayProps {
+  isSidebarOpen?: boolean;
+}
+
+export const MapSpecOverlay: FC<MapSpecOverlayProps> = ({ isSidebarOpen = true }) => {
   const outcome = useAppStore(s => s.outcome);
   const controlSet = useAppStore(s => s.controlSet);
   const view = useAppStore(s => s.view);
@@ -20,7 +24,11 @@ export const MapSpecOverlay: FC = () => {
   }
 
   return (
-    <div className="map-spec-overlay" role="status" aria-label="Current map specifications">
+    <div
+      className={`map-spec-overlay ${!isSidebarOpen ? "is-sidebar-collapsed" : ""}`}
+      role="status"
+      aria-label="Current map specifications"
+    >
       <div className="spec-badge-header">
         <span className="spec-main-tag">GTWR Spatial Estimates</span>
         {selectedGu && <span className="spec-gu-tag">{selectedGu}</span>}

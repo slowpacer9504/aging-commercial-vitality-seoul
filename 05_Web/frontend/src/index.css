@@ -1101,8 +1101,9 @@ code {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+.map-spec-overlay.is-sidebar-collapsed,
 .sidebar-collapsed .map-spec-overlay {
-  top: 54px; /* Positions cleanly beneath the floating .sidebar-expand-btn */
+  top: 56px; /* Sits cleanly beneath the floating ▶ Control Panel button */
 }
 
 .spec-badge-header {

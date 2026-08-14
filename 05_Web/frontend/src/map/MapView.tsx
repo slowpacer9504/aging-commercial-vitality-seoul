@@ -69,9 +69,10 @@ export interface MapViewHandle {
 
 interface Props {
   ref?: Ref<MapViewHandle>;
+  isSidebarOpen?: boolean;
 }
 
-export function MapView({ ref }: Props) {
+export function MapView({ ref, isSidebarOpen = true }: Props) {
   const outcome = useAppStore(s => s.outcome);
   const controlSet = useAppStore(s => s.controlSet);
   const view = useAppStore(s => s.view);
@@ -232,6 +233,7 @@ export function MapView({ ref }: Props) {
         style={{ width: "100%", height: "100%" }}
         interactive={true}
         interactiveLayerIds={["gtwr-fill"]}
+        attributionControl={false}
         {...({ preserveDrawingBuffer: true } as object)}
         onMouseMove={onMouseMove}
         onMouseLeave={onMouseLeave}
@@ -375,7 +377,7 @@ export function MapView({ ref }: Props) {
         />
       </Map>
 
-      <MapSpecOverlay />
+      <MapSpecOverlay isSidebarOpen={isSidebarOpen} />
 
       {hoveredInfo && !selectedAdmCd && (
         <HoverTooltip

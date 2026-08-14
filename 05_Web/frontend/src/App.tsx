@@ -213,7 +213,7 @@ export function App() {
 
         {/* Map View & Floating Drawer */}
         <main className="app-main-viewport">
-          <MapView ref={mapHandleRef} />
+          <MapView ref={mapHandleRef} isSidebarOpen={isSidebarOpen} />
           <StoryTourBanner onMoveCamera={handleMoveCamera} />
           {selectedAdmCd && <FeaturePopup />}
         </main>
@@ -225,7 +225,7 @@ export function App() {
           <span>Seoul Commercial Vitality & Aging Spatiotemporal GTWR Explorer</span>
         </div>
         <div className="footer-right">
-          <span>Data: Seoul Commercial Analysis Service · 425 Administrative Dongs (2019Q4–2025Q4)</span>
+          <span>© MapLibre · © CARTO · © OpenStreetMap · Data: Seoul Commercial Analysis Service (425 Dongs, 2019Q4–2025Q4)</span>
         </div>
       </footer>
 
