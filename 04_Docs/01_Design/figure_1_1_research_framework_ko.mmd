@@ -1,0 +1,38 @@
+%%{init: {'theme': 'base', 'flowchart': {'padding': 20}, 'themeVariables': { 'primaryColor': '#ffffff', 'primaryBorderColor': '#333333', 'lineColor': '#333333', 'textColor': '#000000', 'clusterBkg': 'none', 'clusterBorder': '#aaaaaa'}}}%%
+graph TD
+%% [1] 이론적 배경 및 메커니즘
+subgraph Theoretical ["<b>이론적 배경 및 메커니즘</b>"]
+	direction LR
+	A["<div style='text-align:center;'>인구 고령화 심화</div>"] --> B["<div style='text-align:center;'><b>고령층 소비 및 이동 행태 변동</b><div style='text-align:left;'>• 근거리 생활권 의존 (Aging in Place)<br/>• 필수재 및 생활 서비스 반복 소비<br/>• 낮 시간대 중심의 이용 패턴 분산</div></div>"]
+	B --> C["<div style='text-align:center;'>근린 상권의 기능적 재편<br/>및 상업활력 변화</div>"]
+end
+
+%% [2] 실증 분석 프레임워크
+subgraph Empirical ["<b>실증 분석 프레임워크</b>"]
+	X["<div style='text-align:center;'><b>[독립변수]</b><br/>고령 상주인구 비율 (t-4)</div>"] 
+	Z["<div style='text-align:center;'><b>[통제변수]</b><br/>상주인구, 직장인구, 개별공시지가,<br/>대중교통 접근성 (t-4)</div>"]
+	
+	X -->|가설 검증| Y
+	Z -.->|요인 통제| Y
+	
+	Y["<div style='text-align:center;'><b>[종속변수: 상업활력지수]</b><div style='text-align:left;'>① 경제적 활성도 (매출액 / 매출건수)<br/>② 사회적 활성도 (유동인구 / 외부유입)<br/>③ 시간적 지속성 (시간대 / 분기 안정성)<br/>④ 구조적 안정성 (업종 다양성 / 점포 존속성)</div></div>"]
+end
+
+%% 연결
+Theoretical -->|실증 연계| Empirical
+
+%% [3] 분석 방법론
+Empirical --> M["<div style='text-align:center;'><b>[분석 방법론 적용]</b><div style='text-align:left;'>1. ESDA : 공간적 자기상관성 진단<br/>2. SPDM : 공간 직접 및 파급 효과 추정<br/>3. GTWR : 국지적 시공간 이질성 탐색</div></div>"]
+
+%% [4] 연구 기여 및 시사점
+M --> N["<div style='text-align:center;'><b>[최종 결과 및 시사점]</b><div style='text-align:left;'>• 단순 쇠퇴가 아닌 다차원적 상업활력 구조 재편 규명<br/>• 지속가능한 도시활력 제고 및 고령친화적 정책 방향 제시</div></div>"]
+
+%% 스타일 설정
+classDef default fill:#ffffff,stroke:#333333,stroke-width:1px,color:#000000;
+classDef var fill:#f9f9f9,stroke:#333333,stroke-width:1.5px,color:#000000;
+
+class A,B,C default;
+class X,Y,Z,M,N var;
+
+style Theoretical fill:none,stroke:#666666,stroke-width:1.5px,stroke-dasharray: 5 5
+style Empirical fill:none,stroke:#666666,stroke-width:1.5px,stroke-dasharray: 5 5
