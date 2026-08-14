@@ -61,7 +61,6 @@ const BASEMAP_LIGHT = "https://basemaps.cartocdn.com/gl/positron-nolabels-gl-sty
 const BASEMAP_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json";
 
 const SEOUL_GU_URL = `${import.meta.env.BASE_URL ?? "/"}data/geojson/seoul_gu.geojson`.replace(/\/{2,}/g, "/");
-const SEOUL_MASK_URL = `${import.meta.env.BASE_URL ?? "/"}data/geojson/seoul_outer_mask.geojson`.replace(/\/{2,}/g, "/");
 
 export interface MapViewHandle {
   getMapRef: () => MapRef | null;
@@ -289,32 +288,6 @@ export function MapView({ ref }: Props) {
                 "line-color": theme === "dark" ? "#475569" : "#cbd5e1",
                 "line-width": 0.5,
                 "line-opacity": 0.7,
-              }}
-            />
-
-            {/* Seoul Outer Mask (Masking Gyeonggi-do/Incheon background cleanly) */}
-            <Source
-              id="seoul-mask-src"
-              type="geojson"
-              data={SEOUL_MASK_URL}
-            />
-            <Layer
-              id="seoul-mask-fill"
-              type="fill"
-              source="seoul-mask-src"
-              paint={{
-                "fill-color": theme === "dark" ? "#090d16" : "#f8fafc",
-                "fill-opacity": 1.0,
-              }}
-            />
-            <Layer
-              id="seoul-mask-line"
-              type="line"
-              source="seoul-mask-src"
-              paint={{
-                "line-color": theme === "dark" ? "#94a3b8" : "#334155",
-                "line-width": 1.6,
-                "line-opacity": 0.9,
               }}
             />
 
