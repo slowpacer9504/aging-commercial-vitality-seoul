@@ -12,6 +12,7 @@ export const StoryTourBanner: FC<Props> = ({ onMoveCamera }) => {
   const setOutcome = useAppStore(s => s.setOutcome);
   const setView = useAppStore(s => s.setView);
   const setSelectedYq = useAppStore(s => s.setSelectedYq);
+  const setSelectedLivingArea = useAppStore(s => s.setSelectedLivingArea);
   const setSelectedGu = useAppStore(s => s.setSelectedGu);
   const selectAdmCd = useAppStore(s => s.selectAdmCd);
 
@@ -24,13 +25,23 @@ export const StoryTourBanner: FC<Props> = ({ onMoveCamera }) => {
     setOutcome(currentScene.outcome);
     setView(currentScene.view);
     setSelectedYq(currentScene.selectedYq);
+    setSelectedLivingArea(currentScene.selectedLivingArea ?? null);
     setSelectedGu(currentScene.selectedGu);
     selectAdmCd(currentScene.selectedAdmCd);
 
     if (onMoveCamera) {
       onMoveCamera(currentScene.camera.center, currentScene.camera.zoom);
     }
-  }, [currentScene, setOutcome, setView, setSelectedYq, setSelectedGu, selectAdmCd, onMoveCamera]);
+  }, [
+    currentScene,
+    setOutcome,
+    setView,
+    setSelectedYq,
+    setSelectedLivingArea,
+    setSelectedGu,
+    selectAdmCd,
+    onMoveCamera,
+  ]);
 
   if (tourStep == null || !currentScene) return null;
 
@@ -40,6 +51,8 @@ export const StoryTourBanner: FC<Props> = ({ onMoveCamera }) => {
   const handleNext = () => {
     if (isLast) {
       setTourStep(null);
+      setSelectedLivingArea(null);
+      setSelectedGu(null);
       selectAdmCd(null);
     } else {
       setTourStep(tourStep + 1);
@@ -54,6 +67,8 @@ export const StoryTourBanner: FC<Props> = ({ onMoveCamera }) => {
 
   const handleExit = () => {
     setTourStep(null);
+    setSelectedLivingArea(null);
+    setSelectedGu(null);
     selectAdmCd(null);
   };
 

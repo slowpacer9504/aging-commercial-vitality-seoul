@@ -1,4 +1,5 @@
 import type { Outcome, ViewMode } from "@/types/api";
+import type { LivingArea } from "@/state/constants";
 
 export interface TourScene {
   id: number;
@@ -8,6 +9,7 @@ export interface TourScene {
   outcome: Outcome;
   view: ViewMode;
   selectedYq: string;
+  selectedLivingArea: LivingArea | null;
   selectedGu: string | null;
   selectedAdmCd: string | null;
   camera: {
@@ -26,6 +28,7 @@ export const TOUR_SCENES: TourScene[] = [
     outcome: "vitality_index_base",
     view: "latest",
     selectedYq: "2025Q4",
+    selectedLivingArea: null,
     selectedGu: null,
     selectedAdmCd: null,
     camera: {
@@ -42,6 +45,7 @@ export const TOUR_SCENES: TourScene[] = [
     outcome: "vitality_sub_stability",
     view: "latest",
     selectedYq: "2025Q4",
+    selectedLivingArea: "동북권",
     selectedGu: "노원구",
     selectedAdmCd: null,
     camera: {
@@ -58,6 +62,7 @@ export const TOUR_SCENES: TourScene[] = [
     outcome: "vitality_index_base",
     view: "latest",
     selectedYq: "2025Q4",
+    selectedLivingArea: "동남권",
     selectedGu: "강남구",
     selectedAdmCd: null,
     camera: {
@@ -74,6 +79,7 @@ export const TOUR_SCENES: TourScene[] = [
     outcome: "vitality_sub_economic",
     view: "latest",
     selectedYq: "2025Q4",
+    selectedLivingArea: "도심권",
     selectedGu: "종로구",
     selectedAdmCd: null,
     camera: {
@@ -90,11 +96,12 @@ export const TOUR_SCENES: TourScene[] = [
     outcome: "vitality_index_base",
     view: "quarter",
     selectedYq: "2021Q3",
+    selectedLivingArea: null,
     selectedGu: null,
     selectedAdmCd: null,
     camera: {
       center: [126.978, 37.5665],
-      zoom: 11.2,
+      zoom: 10.8,
     },
   },
 ];
