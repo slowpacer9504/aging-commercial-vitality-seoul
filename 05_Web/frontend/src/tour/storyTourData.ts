@@ -43,7 +43,7 @@ export const TOUR_SCENES: TourScene[] = [
     view: "latest",
     selectedYq: "2025Q4",
     selectedGu: "노원구",
-    selectedAdmCd: "0011350595", // 상계1동
+    selectedAdmCd: null,
     camera: {
       center: [127.056, 37.645],
       zoom: 12.2,
@@ -59,7 +59,7 @@ export const TOUR_SCENES: TourScene[] = [
     view: "latest",
     selectedYq: "2025Q4",
     selectedGu: "강남구",
-    selectedAdmCd: "0011680640", // 역삼1동
+    selectedAdmCd: null,
     camera: {
       center: [127.080, 37.515],
       zoom: 12.2,
@@ -75,7 +75,7 @@ export const TOUR_SCENES: TourScene[] = [
     view: "latest",
     selectedYq: "2025Q4",
     selectedGu: "종로구",
-    selectedAdmCd: "0011110515", // 청운효자동
+    selectedAdmCd: null,
     camera: {
       center: [126.979, 37.573],
       zoom: 12.4,
