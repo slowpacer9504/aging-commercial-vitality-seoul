@@ -124,6 +124,16 @@ export function App() {
           {/* Desktop-Only Action Buttons */}
           <button
             type="button"
+            className="guide-trigger-btn desktop-only-action"
+            onClick={() => setIsGuideOpen(true)}
+            aria-label="Open research guide modal"
+          >
+            <span className="guide-icon" aria-hidden="true">ℹ</span>
+            <span>Research Guide</span>
+          </button>
+
+          <button
+            type="button"
             className="tour-trigger-btn desktop-only-action"
             onClick={() => setTourStep(0)}
             aria-label="Start Key Findings Guided Tour"
@@ -147,16 +157,6 @@ export function App() {
           <div className="desktop-only-action">
             <ExportMenu onExportMapPng={handleExportMapPng} />
           </div>
-
-          <button
-            type="button"
-            className="guide-trigger-btn desktop-only-action"
-            onClick={() => setIsGuideOpen(true)}
-            aria-label="Open research guide modal"
-          >
-            <span className="guide-icon" aria-hidden="true">ℹ</span>
-            <span>Research Guide</span>
-          </button>
 
           <button
             type="button"
