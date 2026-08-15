@@ -20,18 +20,14 @@ The web explorer strictly implements this reporting hierarchy:
 
 ## 2. Key Analytical Capabilities
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                          SPATIAL EXPLORATION STACK                          │
-├──────────────────────────────┬──────────────────────────────────────────────┤
-│ 1. Multi-Scale Filtering     │ 5 Living Areas → 25 Districts → 425 Dongs    │
-│ 2. Context-Aware Boundaries  │ 3-Tier Dynamic Highlights (Solid / Dashed)   │
-│ 3. Aggregate Ribbon Dynamics │ Mean Trend Line + IQR (50%) + Min-Max Bands │
-│ 4. Spatiotemporal Scatter    │ 4-Quadrant Trajectory (2019Q4 vs 2025Q4)     │
-│ 5. Guided Story Tour         │ 5 Curated Empirical Research Highlights      │
-│ 6. Scientific Data Export    │ Watermarked Map PNGs & Filtered Panel CSVs   │
-└──────────────────────────────┴──────────────────────────────────────────────┘
-```
+| Analytical Layer | Scope & Methodological Implementation |
+| :--- | :--- |
+| **1. Multi-Scale Spatial Filtering** | 5 Major Living Areas (`도심권`, `동북권`, `서북권`, `서남권`, `동남권`) $\to$ 25 Districts $\to$ 425 Dongs |
+| **2. Context-Aware Boundary System** | 3-Tier Dynamic Highlights (Solid / Dashed transitions in Indigo & Violet) |
+| **3. Aggregate Ribbon Dynamics** | Center Mean line ($\bar{\beta}_t$) + Interquartile Range (IQR 50%) + Full Min–Max variation bands |
+| **4. Spatiotemporal Scatter Dynamics** | 4-Quadrant classification (2019Q4 Pre-COVID vs 2025Q4 Post-COVID) with bidirectional linking |
+| **5. Guided Empirical Story Tour** | 5 Curated empirical findings with district-focused camera choreography |
+| **6. Scientific Data & Map Export** | Model-watermarked Map PNGs and filtered panel timeseries CSV datasets |
 
 ### 2.1 Multi-Scale Spatial Partitioning & 3-Tier Boundary Hierarchy
 * **Metropolitan Living Areas (`5대 생활권`):** High-level spatial filtering for Seoul's 5 major planning zones (`도심권`, `동북권`, `서북권`, `서남권`, `동남권`) with automated camera framing (`flyTo`) and district dropdown pruning.
@@ -60,19 +56,12 @@ The web explorer strictly implements this reporting hierarchy:
 
 ## 3. Data Pipeline & Spatial Integrity Gates
 
-```
-01_Data/02_Boundary/       03_Output/01_Tables/gtwr/
- (SHP, EPSG:5186)             (Panel CSVs)
-        │                           │
-        └─────────────┬─────────────┘
-                      ▼
-             05_Web/build_data.R
-                      │
-     ┌────────────────┴────────────────┐
-     ▼                                 ▼
- GeoJSON Vector Layers           Optimized Static JSON
- (seoul_adm_dong.geojson)        (coefficients_*.json,
- (seoul_gu.geojson)              panel_*.json, lookup.json)
+```mermaid
+graph TD
+    A["01_Data/02_Boundary/<br/>(SHP, EPSG:5186)"] --> C["05_Web/build_data.R<br/>(Spatial Dissolve & Coverage Gate)"]
+    B["03_Output/01_Tables/gtwr/<br/>(Panel CSVs)"] --> C
+    C --> D["GeoJSON Vector Layers<br/>(seoul_adm_dong.geojson, seoul_gu.geojson)"]
+    C --> E["Optimized Static JSON<br/>(coefficients_*.json, panel_*.json, lookup.json)"]
 ```
 
 The data ingestion script (`build_data.R`) transforms upstream R model outputs into lightweight static web artifacts (`frontend/public/data/`) and enforces three strict coverage invariants in `_build_manifest.json`:
