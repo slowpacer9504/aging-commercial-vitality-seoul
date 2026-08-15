@@ -431,7 +431,7 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
         features={features}
       />
 
-      {hoveredInfo && !selectedAdmCd && (
+      {hoveredInfo && (
         <HoverTooltip
           x={hoveredInfo.x}
           y={hoveredInfo.y}
