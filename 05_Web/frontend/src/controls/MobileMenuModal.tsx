@@ -96,7 +96,7 @@ export const MobileMenuModal: FC<MobileMenuModalProps> = ({
         </header>
 
         <div className="mobile-settings-content">
-          {/* Section 1: Appearance */}
+          {/* 1. Appearance */}
           <div className="settings-section">
             <div className="settings-section-title">Appearance</div>
             <div className="settings-action-row theme-toggle-row">
@@ -120,7 +120,29 @@ export const MobileMenuModal: FC<MobileMenuModalProps> = ({
             </div>
           </div>
 
-          {/* Section 2: Interactive Exploration */}
+          {/* 2. Documentation */}
+          <div className="settings-section">
+            <div className="settings-section-title">Documentation</div>
+            <button
+              type="button"
+              className="settings-action-row"
+              onClick={() => {
+                onClose();
+                onOpenGuide();
+              }}
+            >
+              <div className="setting-info">
+                <span className="setting-icon">ℹ️</span>
+                <div className="setting-texts">
+                  <span className="setting-name">Research Guide & Model Spec</span>
+                  <span className="setting-desc">Econometric methods, variable codebook & citations</span>
+                </div>
+              </div>
+              <span className="setting-arrow">›</span>
+            </button>
+          </div>
+
+          {/* 3. Interactive Analysis */}
           <div className="settings-section">
             <div className="settings-section-title">Interactive Analysis</div>
             <button
@@ -160,9 +182,26 @@ export const MobileMenuModal: FC<MobileMenuModalProps> = ({
             </button>
           </div>
 
-          {/* Section 3: Share & Export */}
+          {/* 4. Share & Export */}
           <div className="settings-section">
             <div className="settings-section-title">Share & Export</div>
+            <button
+              type="button"
+              className="settings-action-row"
+              onClick={handleCopyLink}
+            >
+              <div className="setting-info">
+                <span className="setting-icon">{copied ? "✅" : "🔗"}</span>
+                <div className="setting-texts">
+                  <span className="setting-name">
+                    {copied ? "Link Copied to Clipboard!" : "Copy Shareable Link"}
+                  </span>
+                  <span className="setting-desc">Share current specification and view</span>
+                </div>
+              </div>
+              <span className="setting-arrow">{copied ? "✓" : "›"}</span>
+            </button>
+
             <button
               type="button"
               className="settings-action-row"
@@ -191,45 +230,6 @@ export const MobileMenuModal: FC<MobileMenuModalProps> = ({
                 <div className="setting-texts">
                   <span className="setting-name">Download Active Layer (CSV)</span>
                   <span className="setting-desc">425 dong estimates ({controlSet.toUpperCase()}, {view})</span>
-                </div>
-              </div>
-              <span className="setting-arrow">›</span>
-            </button>
-
-            <button
-              type="button"
-              className="settings-action-row"
-              onClick={handleCopyLink}
-            >
-              <div className="setting-info">
-                <span className="setting-icon">{copied ? "✅" : "🔗"}</span>
-                <div className="setting-texts">
-                  <span className="setting-name">
-                    {copied ? "Link Copied to Clipboard!" : "Copy Shareable Link"}
-                  </span>
-                  <span className="setting-desc">Share current specification and view</span>
-                </div>
-              </div>
-              <span className="setting-arrow">{copied ? "✓" : "›"}</span>
-            </button>
-          </div>
-
-          {/* Section 4: Research Reference */}
-          <div className="settings-section">
-            <div className="settings-section-title">Documentation</div>
-            <button
-              type="button"
-              className="settings-action-row"
-              onClick={() => {
-                onClose();
-                onOpenGuide();
-              }}
-            >
-              <div className="setting-info">
-                <span className="setting-icon">ℹ️</span>
-                <div className="setting-texts">
-                  <span className="setting-name">Research Guide & Model Spec</span>
-                  <span className="setting-desc">Econometric methods, variable codebook & citations</span>
                 </div>
               </div>
               <span className="setting-arrow">›</span>
