@@ -3,6 +3,8 @@
  * Loads static JSON artifacts from /data/ directly when FastAPI backend is unreachable.
  */
 import type {
+  AggregatePanelPoint,
+  AggregatePanelResponse,
   CoefficientFeature,
   CoefficientFeatureCollection,
   CoefficientFeatureProps,
@@ -251,5 +253,83 @@ export async function staticGetSummary(controlSet: ControlSet): Promise<SummaryR
   return {
     control_set: controlSet,
     summaries: summaryCache[controlSet] ?? [],
+  };
+}
+
+export async function staticGetAggregatePanel(
+  admCds: string[],
+  outcome: Outcome,
+  controlSet: ControlSet = "lean",
+  name: string = "Region",
+  regionType: "living_area" | "gu" = "gu",
+): Promise<AggregatePanelResponse> {
+  if (!panelCache[controlSet]) {
+    try {
+      panelCache[controlSet] = await fetchJSON(`data/json/panel_${controlSet}.json`);
+    } catch {
+      panelCache[controlSet] = {};
+    }
+  }
+
+  const allPanels = panelCache[controlSet] ?? {};
+  const yqMap: Record<string, number[]> = {};
+
+  for (const admCd of admCds) {
+    const dongPoints = allPanels[admCd]?.[outcome] ?? [];
+    for (const pt of dongPoints) {
+      if (pt.estimate != null && Number.isFinite(pt.estimate)) {
+        const list = yqMap[pt.yq] ?? [];
+        list.push(pt.estimate);
+        yqMap[pt.yq] = list;
+      }
+    }
+  }
+
+  const sortedYqs = Object.keys(yqMap).sort((a, b) => {
+    const ya = parseInt(a.slice(0, 4), 10);
+    const qa = parseInt(a.slice(5), 10);
+    const yb = parseInt(b.slice(0, 4), 10);
+    const qb = parseInt(b.slice(5), 10);
+    return ya !== yb ? ya - yb : qa - qb;
+  });
+
+  const points: AggregatePanelPoint[] = [];
+  for (const yq of sortedYqs) {
+    const rawVals = yqMap[yq];
+    if (!rawVals || rawVals.length === 0) continue;
+    const vals = rawVals.slice().sort((a, b) => a - b);
+    const n = vals.length;
+    const mean = vals.reduce((a, b) => a + b, 0) / n;
+    const min = vals[0]!;
+    const max = vals[n - 1]!;
+    const median = n % 2 === 1 ? vals[Math.floor(n / 2)]! : (vals[n / 2 - 1]! + vals[n / 2]!) / 2;
+    const q25 = vals[Math.floor(n * 0.25)]!;
+    const q75 = vals[Math.floor(n * 0.75)]!;
+    const year = parseInt(yq.slice(0, 4), 10);
+    const quarter = parseInt(yq.slice(5), 10);
+
+    points.push({
+      yq,
+      year,
+      quarter,
+      mean,
+      median,
+      min,
+      max,
+      q25,
+      q75,
+      ribbon: [min, max],
+      iqr: [q25, q75],
+      count: n,
+    });
+  }
+
+  return {
+    name,
+    region_type: regionType,
+    control_set: controlSet,
+    outcome,
+    dong_count: admCds.length,
+    points,
   };
 }

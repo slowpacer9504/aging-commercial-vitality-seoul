@@ -7,9 +7,13 @@ import {
 } from "@/state/constants";
 import { getCoefficients } from "@/api/endpoints";
 import type { CoefficientFeature } from "@/types/api";
+import { RegionalTrajectoryChart } from "./RegionalTrajectoryChart";
 
-const fmt = (v: number | null | undefined, digits = 3): string =>
-  v == null || Number.isNaN(v) ? "—" : v.toFixed(digits);
+const fmt = (v: number | null | undefined): string => {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const sign = v > 0 ? "+" : "";
+  return `${sign}${v.toFixed(3)}`;
+};
 
 export const LivingAreaSelector: FC = () => {
   const selectedLivingArea = useAppStore(s => s.selectedLivingArea);
@@ -66,6 +70,7 @@ export const LivingAreaSelector: FC = () => {
       dongCount: areaDongs.length,
       guCount: targetGus.size,
       meanBeta: mean,
+      admCds: areaDongs.map(d => d.properties.adm_cd),
       maxDongName: `${maxDong.properties.gu_name ? `${maxDong.properties.gu_name} ` : ""}${maxDong.properties.adm_nm ?? maxDong.properties.adm_cd}`,
       maxDongBeta: maxDong.properties.estimate,
       minDongName: `${minDong.properties.gu_name ? `${minDong.properties.gu_name} ` : ""}${minDong.properties.adm_nm ?? minDong.properties.adm_cd}`,
@@ -159,6 +164,12 @@ export const LivingAreaSelector: FC = () => {
               ▼ <strong>{areaStats.minDongName}</strong> ({fmt(areaStats.minDongBeta)})
             </span>
           </div>
+
+          <RegionalTrajectoryChart
+            name={selectedLivingArea}
+            regionType="living_area"
+            admCds={areaStats.admCds}
+          />
         </div>
       )}
     </div>

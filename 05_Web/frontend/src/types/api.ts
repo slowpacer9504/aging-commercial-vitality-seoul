@@ -96,6 +96,30 @@ export interface PanelResponse {
   points: PanelPoint[];
 }
 
+export interface AggregatePanelPoint {
+  yq: string;
+  year: number;
+  quarter: number;
+  mean: number;
+  median: number;
+  min: number;
+  max: number;
+  q25: number;
+  q75: number;
+  ribbon: [number, number];
+  iqr: [number, number];
+  count: number;
+}
+
+export interface AggregatePanelResponse {
+  name: string;
+  region_type: "living_area" | "gu";
+  control_set: ControlSet;
+  outcome: Outcome;
+  dong_count: number;
+  points: AggregatePanelPoint[];
+}
+
 export interface SummaryRow {
   method: string;
   outcome: Outcome;

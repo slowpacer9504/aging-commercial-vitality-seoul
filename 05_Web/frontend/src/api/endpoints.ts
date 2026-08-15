@@ -1,6 +1,7 @@
 // typed endpoint helpers with static fallback support
 import { getJSON } from "./client";
 import {
+  staticGetAggregatePanel,
   staticGetCoefficients,
   staticGetHealth,
   staticGetMeta,
@@ -8,6 +9,7 @@ import {
   staticGetSummary,
 } from "./staticFallback";
 import type {
+  AggregatePanelResponse,
   CoefficientFeatureCollection,
   ControlSet,
   HealthResponse,
@@ -73,6 +75,16 @@ export const getPanel = (
     () => getJSON(`/api/panel/${encodeURIComponent(admCd)}?${p.toString()}`),
     () => staticGetPanel(admCd, outcome, controlSet),
   );
+};
+
+export const getAggregatePanel = (
+  admCds: string[],
+  outcome: Outcome,
+  controlSet: ControlSet = "lean",
+  name: string = "Region",
+  regionType: "living_area" | "gu" = "gu",
+): Promise<AggregatePanelResponse> => {
+  return staticGetAggregatePanel(admCds, outcome, controlSet, name, regionType);
 };
 
 export const getSummary = (controlSet: ControlSet): Promise<SummaryResponse> =>

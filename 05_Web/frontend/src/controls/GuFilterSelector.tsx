@@ -4,6 +4,7 @@ import { staticGetLookup } from "@/api/staticFallback";
 import { getCoefficients } from "@/api/endpoints";
 import { LIVING_AREA_GUS } from "@/state/constants";
 import type { CoefficientFeature, LookupRow } from "@/types/api";
+import { RegionalTrajectoryChart } from "./RegionalTrajectoryChart";
 
 const SEOUL_GUS = [
   "강남구", "강동구", "강북구", "강서구", "관악구",
@@ -13,8 +14,11 @@ const SEOUL_GUS = [
   "용산구", "은평구", "종로구", "중구", "중랑구",
 ];
 
-const fmt = (v: number | null | undefined, digits = 3): string =>
-  v == null || Number.isNaN(v) ? "—" : v.toFixed(digits);
+const fmt = (v: number | null | undefined, digits = 3): string => {
+  if (v == null || !Number.isFinite(v)) return "—";
+  const sign = v > 0 ? "+" : "";
+  return `${sign}${v.toFixed(digits)}`;
+};
 
 export const GuFilterSelector: FC = () => {
   const selectedLivingArea = useAppStore(s => s.selectedLivingArea);
@@ -73,6 +77,7 @@ export const GuFilterSelector: FC = () => {
     return {
       dongCount: guDongs.length,
       meanBeta: mean,
+      admCds: guDongs.map(d => d.properties.adm_cd),
       maxDongName: maxDong.properties.adm_nm ?? maxDong.properties.adm_cd,
       maxDongBeta: maxDong.properties.estimate,
       minDongName: minDong.properties.adm_nm ?? minDong.properties.adm_cd,
@@ -140,6 +145,12 @@ export const GuFilterSelector: FC = () => {
               ▼ <strong>{guStats.minDongName}</strong> ({fmt(guStats.minDongBeta)})
             </span>
           </div>
+
+          <RegionalTrajectoryChart
+            name={selectedGu ?? ""}
+            regionType="gu"
+            admCds={guStats.admCds}
+          />
         </div>
       )}
     </div>

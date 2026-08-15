@@ -30,6 +30,29 @@ vi.mock("@/api/endpoints", () => ({
       },
     ],
   })),
+  getAggregatePanel: vi.fn(async () => ({
+    name: "강남구",
+    region_type: "gu",
+    control_set: "lean",
+    outcome: "vitality_index_base",
+    dong_count: 2,
+    points: [
+      {
+        yq: "2019Q4",
+        year: 2019,
+        quarter: 4,
+        mean: -0.65,
+        median: -0.65,
+        min: -2.5,
+        max: 1.2,
+        q25: -1.5,
+        q75: 0.2,
+        ribbon: [-2.5, 1.2],
+        iqr: [-1.5, 0.2],
+        count: 2,
+      },
+    ],
+  })),
 }));
 
 describe("GuFilterSelector", () => {
