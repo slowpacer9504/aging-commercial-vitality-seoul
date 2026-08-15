@@ -193,7 +193,7 @@ export const ScatterPlotModal: FC<Props> = ({ isOpen, onClose }) => {
                   onMouseLeave={() => setHoveredScatterAdmCd(null)}
                 >
                   {scatterData.map(entry => {
-                    let fill = entry.delta > 0 ? "#2563eb" : "#ef4444";
+                    let fill = entry.delta > 0 ? "#ef4444" : "#2563eb";
                     let opacity = 0.75;
                     let radius = 4;
 

@@ -209,7 +209,7 @@ export const LinkedScatterPlot: FC = () => {
                 const cy = scaleY(d.y);
                 const isSelected = d.isSelected;
                 const isGuMatch = !selectedGu || d.isGuMatch;
-                const fill = d.delta > 0 ? "#2563eb" : "#ef4444";
+                const fill = d.delta > 0 ? "#ef4444" : "#2563eb";
                 const opacity = isSelected ? 1 : isGuMatch ? 0.75 : 0.18;
                 const r = isSelected ? 5.5 : isGuMatch ? 3.2 : 2.2;
 
