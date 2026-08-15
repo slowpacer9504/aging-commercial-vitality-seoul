@@ -24,6 +24,7 @@ export function App() {
   const selectedAdmCd = useAppStore(s => s.selectedAdmCd);
   const theme = useAppStore(s => s.theme);
   const setTheme = useAppStore(s => s.setTheme);
+  const tourStep = useAppStore(s => s.tourStep);
   const setTourStep = useAppStore(s => s.setTourStep);
 
   const [meta, setMeta] = useState<MetaResponse | null>(null);
@@ -253,7 +254,7 @@ export function App() {
         <main className="app-main-viewport">
           <MapView ref={mapHandleRef} isSidebarOpen={isSidebarOpen} />
           <StoryTourBanner onMoveCamera={handleMoveCamera} />
-          {selectedAdmCd && <FeaturePopup />}
+          {selectedAdmCd && tourStep == null && <FeaturePopup />}
         </main>
       </div>
 

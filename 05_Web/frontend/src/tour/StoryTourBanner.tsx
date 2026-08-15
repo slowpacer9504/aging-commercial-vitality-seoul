@@ -40,6 +40,7 @@ export const StoryTourBanner: FC<Props> = ({ onMoveCamera }) => {
   const handleNext = () => {
     if (isLast) {
       setTourStep(null);
+      selectAdmCd(null);
     } else {
       setTourStep(tourStep + 1);
     }
@@ -53,6 +54,7 @@ export const StoryTourBanner: FC<Props> = ({ onMoveCamera }) => {
 
   const handleExit = () => {
     setTourStep(null);
+    selectAdmCd(null);
   };
 
   return (
