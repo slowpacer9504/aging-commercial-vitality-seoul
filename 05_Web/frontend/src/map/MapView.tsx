@@ -325,7 +325,7 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
                   data={SEOUL_GU_URL}
                 />
 
-                {/* Living Area Boundary Highlight (When living area is active) */}
+                {/* Living Area Boundary Highlight (Deep Violet / Soft Lilac) */}
                 {selectedLivingArea && LIVING_AREA_GUS[selectedLivingArea] && (
                   <Layer
                     id="gtwr-living-area-boundary"
@@ -333,7 +333,7 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
                     source="seoul-gu-src"
                     filter={["in", ["get", "gu_name"], ["literal", LIVING_AREA_GUS[selectedLivingArea]]]}
                     paint={{
-                      "line-color": theme === "dark" ? "#60a5fa" : "#2563eb",
+                      "line-color": theme === "dark" ? "#a78bfa" : "#8b5cf6",
                       "line-width": selectedGu ? 1.8 : 3.0,
                       "line-opacity": selectedGu ? 0.65 : 1.0,
                       ...(selectedGu ? { "line-dasharray": [3, 2] } : {}),
@@ -341,7 +341,7 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
                   />
                 )}
 
-                {/* Specific District (Gu) Outer Perimeter Boundary Highlight */}
+                {/* Specific District (Gu) Outer Perimeter Boundary Highlight (Electric Indigo / Neon Indigo) */}
                 {selectedGu && (
                   <Layer
                     id="gtwr-gu-outer-boundary"
@@ -349,7 +349,7 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
                     source="seoul-gu-src"
                     filter={["==", ["get", "gu_name"], selectedGu]}
                     paint={{
-                      "line-color": theme === "dark" ? "#60a5fa" : "#1d4ed8",
+                      "line-color": theme === "dark" ? "#818cf8" : "#6366f1",
                       "line-width": 3.2,
                       "line-opacity": 1.0,
                     }}
@@ -358,14 +358,14 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
               </>
             )}
 
-            {/* Scatter Hover Highlight Stroke (Golden Orange) */}
+            {/* Scatter Hover Highlight Stroke (Golden Amber) */}
             <Layer
               id="gtwr-scatter-hover-line"
               type="line"
               source="gtwr"
               filter={["==", ["get", "adm_cd"], hoveredScatterAdmCd ?? ""]}
               paint={{
-                "line-color": "#f59e0b",
+                "line-color": theme === "dark" ? "#fcd34d" : "#f59e0b",
                 "line-width": 3.0,
                 "line-opacity": 1.0,
               }}
@@ -378,33 +378,33 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
               source="gtwr"
               filter={["==", ["get", "adm_cd"], hoveredInfo?.admCd ?? ""]}
               paint={{
-                "line-color": theme === "dark" ? "#ffffff" : "#0f172a",
-                "line-width": 2.2,
+                "line-color": theme === "dark" ? "#e0e7ff" : "#1e1b4b",
+                "line-width": 2.4,
                 "line-opacity": 1.0,
               }}
             />
 
-            {/* Primary Selected Dong stroke (Blue) */}
+            {/* Primary Selected Dong stroke (Midnight Charcoal / Crystal White) */}
             <Layer
               id="gtwr-selected-line"
               type="line"
               source="gtwr"
               filter={["==", ["get", "adm_cd"], selectedAdmCd ?? ""]}
               paint={{
-                "line-color": "#2563eb",
-                "line-width": 3.2,
+                "line-color": theme === "dark" ? "#ffffff" : "#0f172a",
+                "line-width": 3.0,
                 "line-opacity": 1.0,
               }}
             />
 
-            {/* Secondary Comparison Dong stroke (Purple) */}
+            {/* Secondary Comparison Dong stroke (Warm Amber) */}
             <Layer
               id="gtwr-compare-line"
               type="line"
               source="gtwr"
               filter={["==", ["get", "adm_cd"], compareAdmCd ?? ""]}
               paint={{
-                "line-color": "#9333ea",
+                "line-color": theme === "dark" ? "#fbbf24" : "#f59e0b",
                 "line-width": 3.2,
                 "line-opacity": 1.0,
               }}
