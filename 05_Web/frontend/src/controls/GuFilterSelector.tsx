@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, type FC } from "react";
 import { useAppStore } from "@/state/store";
 import { staticGetLookup } from "@/api/staticFallback";
 import { getCoefficients } from "@/api/endpoints";
+import { LIVING_AREA_GUS } from "@/state/constants";
 import type { CoefficientFeature, LookupRow } from "@/types/api";
 
 const SEOUL_GUS = [
@@ -16,6 +17,7 @@ const fmt = (v: number | null | undefined, digits = 3): string =>
   v == null || Number.isNaN(v) ? "—" : v.toFixed(digits);
 
 export const GuFilterSelector: FC = () => {
+  const selectedLivingArea = useAppStore(s => s.selectedLivingArea);
   const selectedGu = useAppStore(s => s.selectedGu);
   const setSelectedGu = useAppStore(s => s.setSelectedGu);
   const outcome = useAppStore(s => s.outcome);
@@ -43,6 +45,11 @@ export const GuFilterSelector: FC = () => {
       cancelled = true;
     };
   }, [controlSet, outcome, view, selectedYq]);
+
+  const displayGus = useMemo(() => {
+    if (!selectedLivingArea) return SEOUL_GUS;
+    return LIVING_AREA_GUS[selectedLivingArea] ?? SEOUL_GUS;
+  }, [selectedLivingArea]);
 
   // Compute stats for the selected Gu
   const guStats = useMemo(() => {
@@ -81,7 +88,7 @@ export const GuFilterSelector: FC = () => {
     <div className="control gu-filter-selector" role="group" aria-labelledby="gu-filter-label">
       <div className="control-header">
         <label id="gu-filter-label" className="control-label">
-          District (Gu) Filter
+          District (Gu) Filter {selectedLivingArea ? `· ${selectedLivingArea}` : ""}
         </label>
         {selectedGu && (
           <button
@@ -90,7 +97,7 @@ export const GuFilterSelector: FC = () => {
             onClick={() => setSelectedGu(null)}
             aria-label="Clear district filter"
           >
-            Reset (All Seoul)
+            Reset ({selectedLivingArea ?? "All Seoul"})
           </button>
         )}
       </div>
@@ -101,8 +108,12 @@ export const GuFilterSelector: FC = () => {
         onChange={e => setSelectedGu(e.target.value || null)}
         aria-label="Select Autonomous District (Gu)"
       >
-        <option value="">All 25 Autonomous Districts (전체 서울)</option>
-        {SEOUL_GUS.map(gu => (
+        <option value="">
+          {selectedLivingArea
+            ? `All ${selectedLivingArea} (${displayGus.length} Gus)`
+            : "All 25 Autonomous Districts (전체 서울)"}
+        </option>
+        {displayGus.map(gu => (
           <option key={gu} value={gu}>
             {gu}
           </option>

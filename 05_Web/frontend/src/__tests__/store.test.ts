@@ -42,10 +42,18 @@ describe("appstore defaults and actions", () => {
     expect(useAppStore.getState().compareAdmCd).toBeNull();
   });
 
-  it("setting district filter updates selectedGu", () => {
+  it("setting district filter updates selectedGu and auto-associates living area", () => {
     useAppStore.getState().setSelectedGu("강남구");
     expect(useAppStore.getState().selectedGu).toBe("강남구");
+    expect(useAppStore.getState().selectedLivingArea).toBe("동남권");
     useAppStore.getState().setSelectedGu(null);
+    expect(useAppStore.getState().selectedGu).toBeNull();
+  });
+
+  it("setting living area updates selectedLivingArea and clears incompatible gu", () => {
+    useAppStore.getState().setSelectedGu("강남구"); // 동남권
+    useAppStore.getState().setSelectedLivingArea("동북권");
+    expect(useAppStore.getState().selectedLivingArea).toBe("동북권");
     expect(useAppStore.getState().selectedGu).toBeNull();
   });
 

@@ -2,6 +2,7 @@
 import { create } from "zustand";
 import type { ControlSet, Outcome, ViewMode } from "@/types/api";
 import { OUTCOMES, CONTROL_SETS, VIEW_MODES } from "@/types/api";
+import { LIVING_AREAS, GU_TO_LIVING_AREA, type LivingArea } from "@/state/constants";
 
 const DEFAULT_OUTCOME: Outcome = "vitality_index_base";
 const DEFAULT_CONTROL_SET: ControlSet = "lean";
@@ -16,6 +17,7 @@ export interface AppState {
   selectedYq: string;
   selectedAdmCd: string | null;
   compareAdmCd: string | null;
+  selectedLivingArea: LivingArea | null;
   selectedGu: string | null;
   theme: "light" | "dark";
   tourStep: number | null;
@@ -27,6 +29,7 @@ export interface AppState {
   setSelectedYq: (yq: string) => void;
   selectAdmCd: (admCd: string | null) => void;
   setCompareAdmCd: (admCd: string | null) => void;
+  setSelectedLivingArea: (area: LivingArea | null) => void;
   setSelectedGu: (gu: string | null) => void;
   setTheme: (theme: "light" | "dark") => void;
   setTourStep: (step: number | null) => void;
@@ -41,6 +44,7 @@ function getInitialState(): {
   selectedYq: string;
   selectedAdmCd: string | null;
   compareAdmCd: string | null;
+  selectedLivingArea: LivingArea | null;
   selectedGu: string | null;
   theme: "light" | "dark";
 } {
@@ -60,6 +64,7 @@ function getInitialState(): {
       selectedYq: DEFAULT_SELECTED_YQ,
       selectedAdmCd: null,
       compareAdmCd: null,
+      selectedLivingArea: null,
       selectedGu: null,
       theme,
     };
@@ -72,6 +77,7 @@ function getInitialState(): {
   const yqParam = p.get("yq");
   const dongParam = p.get("dong");
   const compareParam = p.get("compare");
+  const areaParam = p.get("area") as LivingArea | null;
   const guParam = p.get("gu");
 
   const outcome = outcomeParam && OUTCOMES.includes(outcomeParam) ? outcomeParam : DEFAULT_OUTCOME;
@@ -79,6 +85,7 @@ function getInitialState(): {
     controlSetParam && CONTROL_SETS.includes(controlSetParam) ? controlSetParam : DEFAULT_CONTROL_SET;
   const view = viewParam && VIEW_MODES.includes(viewParam) ? viewParam : DEFAULT_VIEW;
   const selectedYq = yqParam && /^\d{4}Q[1-4]$/.test(yqParam) ? yqParam : DEFAULT_SELECTED_YQ;
+  const selectedLivingArea = areaParam && (LIVING_AREAS as readonly string[]).includes(areaParam) ? areaParam : (guParam ? GU_TO_LIVING_AREA[guParam] ?? null : null);
 
   return {
     outcome,
@@ -87,6 +94,7 @@ function getInitialState(): {
     selectedYq,
     selectedAdmCd: dongParam || null,
     compareAdmCd: compareParam || null,
+    selectedLivingArea,
     selectedGu: guParam || null,
     theme,
   };
@@ -133,6 +141,12 @@ export function updateUrlQuery(state: Partial<AppState>) {
     p.delete("compare");
   }
 
+  if (state.selectedLivingArea) {
+    p.set("area", state.selectedLivingArea);
+  } else if (state.selectedLivingArea === null) {
+    p.delete("area");
+  }
+
   if (state.selectedGu) {
     p.set("gu", state.selectedGu);
   } else if (state.selectedGu === null) {
@@ -153,6 +167,7 @@ export const useAppStore = create<AppState>((set) => ({
   selectedYq: initial.selectedYq,
   selectedAdmCd: initial.selectedAdmCd,
   compareAdmCd: initial.compareAdmCd,
+  selectedLivingArea: initial.selectedLivingArea,
   selectedGu: initial.selectedGu,
   theme: initial.theme,
   tourStep: null,
@@ -182,9 +197,24 @@ export const useAppStore = create<AppState>((set) => ({
     set({ compareAdmCd });
     updateUrlQuery({ compareAdmCd });
   },
+  setSelectedLivingArea: (selectedLivingArea) => {
+    set((state) => {
+      let nextGu = state.selectedGu;
+      if (selectedLivingArea && nextGu) {
+        if (GU_TO_LIVING_AREA[nextGu] !== selectedLivingArea) {
+          nextGu = null;
+        }
+      }
+      updateUrlQuery({ selectedLivingArea, selectedGu: nextGu });
+      return { selectedLivingArea, selectedGu: nextGu };
+    });
+  },
   setSelectedGu: (selectedGu) => {
-    set({ selectedGu });
-    updateUrlQuery({ selectedGu });
+    set((state) => {
+      const nextLivingArea = selectedGu ? (GU_TO_LIVING_AREA[selectedGu] ?? state.selectedLivingArea) : state.selectedLivingArea;
+      updateUrlQuery({ selectedGu, selectedLivingArea: nextLivingArea });
+      return { selectedGu, selectedLivingArea: nextLivingArea };
+    });
   },
   setTheme: (theme) => {
     set({ theme });

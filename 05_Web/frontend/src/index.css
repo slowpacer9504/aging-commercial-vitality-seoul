@@ -593,6 +593,47 @@ code {
   color: var(--accent);
 }
 
+/* Living Area Filter -------------------------------------------------------- */
+.living-area-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.living-area-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.area-chip {
+  padding: 6px 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  font-family: inherit;
+  color: var(--text-main);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.area-chip:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover, rgba(59, 130, 246, 0.05));
+}
+
+.area-chip.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
 /* District (Gu) Filter ----------------------------------------------------- */
 .gu-filter-selector {
   display: flex;

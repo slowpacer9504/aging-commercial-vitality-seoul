@@ -5,6 +5,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useAppStore } from "@/state/store";
 import { getCoefficients, getMeta } from "@/api/endpoints";
 import { colorFor } from "@/map/colorScale";
+import { LIVING_AREA_CENTERS, LIVING_AREA_GUS } from "@/state/constants";
 import { HoverTooltip } from "./HoverTooltip";
 import { Legend } from "./Legend";
 import { MapSpecOverlay } from "./MapSpecOverlay";
@@ -79,6 +80,7 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
   const selectedYq = useAppStore(s => s.selectedYq);
   const selectedAdmCd = useAppStore(s => s.selectedAdmCd);
   const compareAdmCd = useAppStore(s => s.compareAdmCd);
+  const selectedLivingArea = useAppStore(s => s.selectedLivingArea);
   const selectedGu = useAppStore(s => s.selectedGu);
   const theme = useAppStore(s => s.theme);
   const hoveredScatterAdmCd = useAppStore(s => s.hoveredScatterAdmCd);
@@ -154,7 +156,7 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
     };
   }, [outcome, controlSet, view, selectedYq]);
 
-  // Fly to selected district when selectedGu changes
+  // Fly to selected district or living area
   useEffect(() => {
     if (selectedGu && GU_CENTERS[selectedGu]) {
       const [lng, lat] = GU_CENTERS[selectedGu]!;
@@ -163,14 +165,21 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
         zoom: 12.3,
         duration: 1000,
       });
-    } else if (!selectedGu && mapRef.current) {
+    } else if (selectedLivingArea && LIVING_AREA_CENTERS[selectedLivingArea]) {
+      const [lng, lat, zoom] = LIVING_AREA_CENTERS[selectedLivingArea];
+      mapRef.current?.flyTo({
+        center: [lng, lat],
+        zoom,
+        duration: 1000,
+      });
+    } else if (!selectedGu && !selectedLivingArea && mapRef.current) {
       mapRef.current.flyTo({
         center: [INITIAL_VIEW.longitude, INITIAL_VIEW.latitude],
         zoom: INITIAL_VIEW.zoom,
         duration: 1000,
       });
     }
-  }, [selectedGu]);
+  }, [selectedGu, selectedLivingArea]);
 
   const breaks = view === "delta" ? deltaBreaks : estimateBreaks;
 
@@ -283,6 +292,13 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
                       ["==", ["get", "gu_name"], selectedGu],
                       0.85,
                       0.35, // Dim non-selected districts
+                    ]
+                  : selectedLivingArea && LIVING_AREA_GUS[selectedLivingArea]
+                  ? [
+                      "case",
+                      ["in", ["get", "gu_name"], ["literal", LIVING_AREA_GUS[selectedLivingArea]]],
+                      0.85,
+                      0.35, // Dim non-selected living areas
                     ]
                   : 0.78,
               }}

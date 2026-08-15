@@ -6,6 +6,7 @@ import { ControlSetSelector } from "@/controls/ControlSetSelector";
 import { ViewModeSelector } from "@/controls/ViewModeSelector";
 import { QuarterSelector } from "@/controls/QuarterSelector";
 import { SearchBox } from "@/controls/SearchBox";
+import { LivingAreaSelector } from "@/controls/LivingAreaSelector";
 import { GuFilterSelector } from "@/controls/GuFilterSelector";
 import { ExportMenu } from "@/controls/ExportMenu";
 import { ResearchGuideModal } from "@/controls/ResearchGuideModal";
@@ -199,6 +200,7 @@ export function App() {
 
           <div className="sidebar-scrollable-content">
             <SearchBox />
+            <LivingAreaSelector />
             <GuFilterSelector />
 
             <div className="controls-group">
