@@ -55,15 +55,21 @@ export const LivingAreaSelector: FC = () => {
         ? estimates.reduce((a, b) => a + b, 0) / estimates.length
         : null;
 
-    const warnCount = areaDongs.filter(
-      f => f.properties.collinearity_warn_latest || f.properties.collinearity_warn_flag
-    ).length;
+    let maxDong = areaDongs[0]!;
+    let minDong = areaDongs[0]!;
+    for (const d of areaDongs) {
+      if ((d.properties.estimate ?? -Infinity) > (maxDong.properties.estimate ?? -Infinity)) maxDong = d;
+      if ((d.properties.estimate ?? Infinity) < (minDong.properties.estimate ?? Infinity)) minDong = d;
+    }
 
     return {
       dongCount: areaDongs.length,
       guCount: targetGus.size,
       meanBeta: mean,
-      warnCount,
+      maxDongName: `${maxDong.properties.gu_name ? `${maxDong.properties.gu_name} ` : ""}${maxDong.properties.adm_nm ?? maxDong.properties.adm_cd}`,
+      maxDongBeta: maxDong.properties.estimate,
+      minDongName: `${minDong.properties.gu_name ? `${minDong.properties.gu_name} ` : ""}${minDong.properties.adm_nm ?? minDong.properties.adm_cd}`,
+      minDongBeta: minDong.properties.estimate,
     };
   }, [selectedLivingArea, features]);
 
@@ -126,37 +132,32 @@ export const LivingAreaSelector: FC = () => {
       </div>
 
       {selectedLivingArea && areaStats && (
-        <div
-          className="gu-stats-badge"
-          style={{ marginTop: "8px" }}
-          role="region"
-          aria-label={`${selectedLivingArea} statistics summary`}
-        >
-          <div className="gu-stats-title">
-            <span className="gu-pin-icon">🏙️</span>
-            <strong>{selectedLivingArea} Summary</strong>
-            <span className="gu-dong-count">
+        <div className="gu-stats-card">
+          <div className="gu-stats-header">
+            <span className="gu-stats-title">🏙️ {selectedLivingArea} Summary</span>
+            <span className="gu-stats-count">
               {areaStats.guCount} Gus · {areaStats.dongCount} Dongs
             </span>
           </div>
 
           <div className="gu-stats-grid">
-            <div className="gu-stat-item">
-              <span className="gu-stat-k">Mean β</span>
+            <div className="gu-stat-item single-stat">
+              <span className="stat-label">Mean Effect (β̂)</span>
               <span
-                className={`gu-stat-v ${
-                  (areaStats.meanBeta ?? 0) >= 0 ? "positive" : "negative"
-                }`}
+                className={`stat-val ${(areaStats.meanBeta ?? 0) >= 0 ? "val-pos" : "val-neg"}`}
               >
                 {fmt(areaStats.meanBeta)}
               </span>
             </div>
-            {areaStats.warnCount > 0 && (
-              <div className="gu-stat-item warn-item">
-                <span className="gu-stat-k">Collinearity Warn</span>
-                <span className="gu-stat-v warn">{areaStats.warnCount} flagged</span>
-              </div>
-            )}
+          </div>
+
+          <div className="gu-minmax-row">
+            <span title={`Highest impact in ${selectedLivingArea}`}>
+              ▲ <strong>{areaStats.maxDongName}</strong> ({fmt(areaStats.maxDongBeta)})
+            </span>
+            <span title={`Lowest impact in ${selectedLivingArea}`}>
+              ▼ <strong>{areaStats.minDongName}</strong> ({fmt(areaStats.minDongBeta)})
+            </span>
           </div>
         </div>
       )}

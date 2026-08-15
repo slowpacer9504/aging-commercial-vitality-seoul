@@ -700,15 +700,20 @@ code {
 }
 
 .gu-stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
 
 .gu-stat-item {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 11px;
+}
+
+.gu-stat-item.single-stat {
+  padding: 1px 0;
 }
 
 .stat-label {
@@ -726,8 +731,9 @@ code {
   font-size: 10px;
   color: var(--text-muted);
   border-top: 1px solid var(--border-subtle);
-  padding-top: 4px;
-  margin-top: 2px;
+  padding-top: 5px;
+  margin-top: 3px;
+  gap: 8px;
 }
 
 /* Control Components ------------------------------------------------------- */

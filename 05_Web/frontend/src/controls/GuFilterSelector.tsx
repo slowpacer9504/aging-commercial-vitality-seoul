@@ -62,9 +62,6 @@ export const GuFilterSelector: FC = () => {
       .filter((v): v is number => v != null && Number.isFinite(v));
 
     const mean = estimates.length > 0 ? estimates.reduce((a, b) => a + b, 0) / estimates.length : null;
-    const warnCount = guDongs.filter(
-      f => f.properties.collinearity_warn_latest || f.properties.collinearity_warn_flag,
-    ).length;
 
     let maxDong = guDongs[0]!;
     let minDong = guDongs[0]!;
@@ -76,7 +73,6 @@ export const GuFilterSelector: FC = () => {
     return {
       dongCount: guDongs.length,
       meanBeta: mean,
-      warnCount,
       maxDongName: maxDong.properties.adm_nm ?? maxDong.properties.adm_cd,
       maxDongBeta: maxDong.properties.estimate,
       minDongName: minDong.properties.adm_nm ?? minDong.properties.adm_cd,
@@ -127,18 +123,12 @@ export const GuFilterSelector: FC = () => {
             <span className="gu-stats-count">{guStats.dongCount} Dongs</span>
           </div>
           <div className="gu-stats-grid">
-            <div className="gu-stat-item">
-              <span className="stat-label">Mean β̂</span>
+            <div className="gu-stat-item single-stat">
+              <span className="stat-label">Mean Effect (β̂)</span>
               <span
-                className={`stat-val ${(guStats.meanBeta ?? 0) > 0 ? "val-pos" : "val-neg"}`}
+                className={`stat-val ${(guStats.meanBeta ?? 0) >= 0 ? "val-pos" : "val-neg"}`}
               >
                 {fmt(guStats.meanBeta)}
-              </span>
-            </div>
-            <div className="gu-stat-item">
-              <span className="stat-label">Collinearity Warn</span>
-              <span className={`stat-val ${guStats.warnCount > 0 ? "cn-warn" : "cn-safe"}`}>
-                {guStats.warnCount} flagged
               </span>
             </div>
           </div>
