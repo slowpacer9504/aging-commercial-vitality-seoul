@@ -1,6 +1,5 @@
-import type { FC } from "react";
+import { useState, type FC } from "react";
 import { useAppStore } from "@/state/store";
-import { OUTCOME_LABELS } from "@/state/constants";
 import { exportFeaturesToCsv, generateCoeffCsvFilename } from "@/utils/exportUtils";
 import { getCoefficients } from "@/api/endpoints";
 
@@ -29,10 +28,29 @@ export const MobileMenuModal: FC<MobileMenuModalProps> = ({
   const selectedGu = useAppStore(s => s.selectedGu);
   const view = useAppStore(s => s.view);
 
+  const [copied, setCopied] = useState(false);
+
   if (!isOpen) return null;
 
   const handleToggleTheme = () => {
     setTheme(theme === "light" ? "dark" : "light");
+  };
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const input = document.createElement("input");
+      input.value = window.location.href;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleExportCsv = async () => {
@@ -49,18 +67,6 @@ export const MobileMenuModal: FC<MobileMenuModalProps> = ({
     } catch (e) {
       alert("Failed to export coefficient data: " + String(e));
     }
-  };
-
-  const handleDownloadGeoJSON = () => {
-    const yqParam = view === "quarter" ? `&yq=${encodeURIComponent(selectedYq)}` : "";
-    const url = `/api/coefficients/${controlSet}/${outcome}?view=${view}${yqParam}&format=geojson`;
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `seoul_gtwr_${controlSet}_${outcome}_${view}.geojson`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    onClose();
   };
 
   return (
@@ -154,9 +160,9 @@ export const MobileMenuModal: FC<MobileMenuModalProps> = ({
             </button>
           </div>
 
-          {/* Section 3: Data & Export */}
+          {/* Section 3: Share & Export */}
           <div className="settings-section">
-            <div className="settings-section-title">Export & Download</div>
+            <div className="settings-section-title">Share & Export</div>
             <button
               type="button"
               className="settings-action-row"
@@ -193,16 +199,18 @@ export const MobileMenuModal: FC<MobileMenuModalProps> = ({
             <button
               type="button"
               className="settings-action-row"
-              onClick={handleDownloadGeoJSON}
+              onClick={handleCopyLink}
             >
               <div className="setting-info">
-                <span className="setting-icon">🗺️</span>
+                <span className="setting-icon">{copied ? "✅" : "🔗"}</span>
                 <div className="setting-texts">
-                  <span className="setting-name">Download Active Layer (GeoJSON)</span>
-                  <span className="setting-desc">{OUTCOME_LABELS[outcome] ?? outcome} ({view})</span>
+                  <span className="setting-name">
+                    {copied ? "Link Copied to Clipboard!" : "Copy Shareable Link"}
+                  </span>
+                  <span className="setting-desc">Share current specification and view</span>
                 </div>
               </div>
-              <span className="setting-arrow">›</span>
+              <span className="setting-arrow">{copied ? "✓" : "›"}</span>
             </button>
           </div>
 

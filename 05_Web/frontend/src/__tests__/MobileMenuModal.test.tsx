@@ -25,6 +25,8 @@ describe("MobileMenuModal", () => {
     expect(screen.getByText("Key Findings Tour")).toBeTruthy();
     expect(screen.getByText("Dynamics Scatter Plot")).toBeTruthy();
     expect(screen.getByText("Export Map View (PNG)")).toBeTruthy();
+    expect(screen.getByText("Download Active Layer (CSV)")).toBeTruthy();
+    expect(screen.getByText("Copy Shareable Link")).toBeTruthy();
     expect(screen.getByText("Research Guide & Model Spec")).toBeTruthy();
   });
 
