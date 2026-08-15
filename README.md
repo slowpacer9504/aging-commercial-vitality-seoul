@@ -93,6 +93,12 @@ This repository is structured as follows to maximize research reproducibility:
 │   ├── 01_Design/            # Research plan and procedural manual (incl. English research framework figure)
 │   └── 02_Codebook/          # Specifications mapping data specs, variable dictionary, and model specs
 │
+├── 05_Web/                   # Interactive GTWR visual analytics explorer (React 19 + MapLibre GL)
+│   ├── README.md             # Web explorer specification, methodology, and execution guide
+│   ├── build_data.R          # Static data build pipeline & geographic integrity coverage gate
+│   ├── backend/              # Optional FastAPI backend API service
+│   └── frontend/             # Frontend application (MapLibre vector maps, ribbon charts, story tour)
+│
 ├── .Rprofile                 # Activates the renv project library on startup
 ├── .gitignore                # Git ignore rules (data, outputs, secrets, renv library)
 ├── LICENSE                   # MIT license

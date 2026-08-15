@@ -135,25 +135,39 @@ For detailed information regarding code execution or variables, please refer to 
 │   ├── 04_Logs/                                   # Process, geocoding, and runtime cache logs
 │   └── 05_report/                                 # Publication-ready presentation materials
 │
-└── 04_Docs/                                       # Design docs and Codebooks
-    ├── 01_Design/
-    │   ├── file_tree.md                           # Project file tree (this file)
-    │   ├── figure_1_1_research_framework_en.png   # English research framework figure (raster)
-    │   ├── figure_1_1_research_framework_en.svg   # English research framework figure (vector)
-    │   ├── r_code_style_guide.md                  # R coding conventions
-    │   ├── raw_data_manifest.csv                  # Raw data acquisition record (file, size, access date, version, MD5)
-    │   ├── research_plan.md                       # Active research goals and framing
-    │   └── research_procedure.md                  # Project procedure pipeline
-    │
-    └── 02_Codebook/
-        ├── 00_spec_index.md                       # Main index of codebook specs
-        ├── 01_data_spec.md                        # Explanations of data sources
-        ├── 01_data_spec_datasets.csv              # List of source datasets
-        ├── 02_variable_dictionary.md              # Variable definitions and logic
-        ├── 02_variable_dictionary.csv             # Machine-readable variables list
-        ├── 03_join_harmonization_rules.md         # Spatial and temporal join rules
-        ├── 03_join_harmonization_rules.csv        # Machine-readable join rules
-        ├── 04_model_spec.md                       # Econometric models specifications
-        ├── 04_model_spec.csv                      # Machine-readable models list
-        └── 99_spec_to_code_map.csv                # Mapping between specs and scripts
+├── 04_Docs/                                       # Design docs and Codebooks
+│   ├── 01_Design/
+│   │   ├── file_tree.md                           # Project file tree (this file)
+│   │   ├── figure_1_1_research_framework_en.png   # English research framework figure (raster)
+│   │   ├── figure_1_1_research_framework_en.svg   # English research framework figure (vector)
+│   │   ├── r_code_style_guide.md                  # R coding conventions
+│   │   ├── raw_data_manifest.csv                  # Raw data acquisition record (file, size, access date, version, MD5)
+│   │   ├── research_plan.md                       # Active research goals and framing
+│   │   └── research_procedure.md                  # Project procedure pipeline
+│   │
+│   └── 02_Codebook/
+│       ├── 00_spec_index.md                       # Main index of codebook specs
+│       ├── 01_data_spec.md                        # Explanations of data sources
+│       ├── 01_data_spec_datasets.csv              # List of source datasets
+│       ├── 02_variable_dictionary.md              # Variable definitions and logic
+│       ├── 02_variable_dictionary.csv             # Machine-readable variables list
+│       ├── 03_join_harmonization_rules.md         # Spatial and temporal join rules
+│       ├── 03_join_harmonization_rules.csv        # Machine-readable join rules
+│       ├── 04_model_spec.md                       # Econometric models specifications
+│       ├── 04_model_spec.csv                      # Machine-readable models list
+│       └── 99_spec_to_code_map.csv                # Mapping between specs and scripts
+│
+└── 05_Web/                                        # Interactive GTWR spatiotemporal web explorer
+    ├── README.md                                  # Web module specification and architecture guide
+    ├── Makefile                                   # Automation targets: dev, build, test, clean
+    ├── build_data.R                               # R pipeline: SHP/CSV transformation & coverage gate
+    ├── .gitignore                                 # Ignored build outputs and dependencies
+    ├── backend/                                   # Optional FastAPI backend service (Pydantic v2)
+    │   ├── pyproject.toml                         # Python package configuration
+    │   ├── app/                                   # Routers: meta, coefficients, panel, summary, health
+    │   └── tests/                                 # Backend pytest suite
+    └── frontend/                                  # React 19 + TypeScript + Vite + MapLibre GL
+        ├── package.json, tsconfig.json, vite.config.ts, vitest.config.ts
+        ├── public/data/                           # Static GeoJSON and JSON artifacts (GitHub Pages ready)
+        └── src/                                   # Frontend source code (components, store, tour, tests)
 ```
