@@ -2566,7 +2566,7 @@ code {
     display: flex !important;
     flex-direction: column !important;
     width: 100vw !important;
-    height: calc(100dvh - var(--mobile-header-h, 52px)) !important;
+    height: calc(100vh - var(--mobile-header-h, 52px)) !important;
     min-height: 0 !important;
     overflow: hidden !important;
   }
@@ -2611,7 +2611,7 @@ code {
     bottom: 0;
     width: 86vw;
     max-width: 360px;
-    height: 100dvh;
+    height: 100vh;
     z-index: 100;
     transform: translateX(-100%);
     transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
@@ -2723,7 +2723,7 @@ code {
 
   /* Legend (Mobile Bottom-Right Compact / Collapsible) */
   .legend {
-    bottom: calc(env(safe-area-inset-bottom, 0px) + 24px) !important;
+    bottom: calc(env(safe-area-inset-bottom, 34px) + 54px) !important;
     right: 8px !important;
     max-width: calc(100vw - 16px) !important;
     width: auto !important;
