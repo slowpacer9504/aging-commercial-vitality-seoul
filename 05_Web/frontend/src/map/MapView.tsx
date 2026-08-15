@@ -316,25 +316,45 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
               }}
             />
 
-            {/* District (Gu) Dissolved Outer Boundary Highlight (Perimeter Only) */}
-            {selectedGu && (
+            {/* Autonomous District (Gu) and Living Area Boundary Highlight Layers */}
+            {(selectedGu || selectedLivingArea) && (
               <>
                 <Source
                   id="seoul-gu-src"
                   type="geojson"
                   data={SEOUL_GU_URL}
                 />
-                <Layer
-                  id="gtwr-gu-outer-boundary"
-                  type="line"
-                  source="seoul-gu-src"
-                  filter={["==", ["get", "gu_name"], selectedGu]}
-                  paint={{
-                    "line-color": theme === "dark" ? "#60a5fa" : "#1d4ed8",
-                    "line-width": 3.0,
-                    "line-opacity": 1.0,
-                  }}
-                />
+
+                {/* Living Area Boundary Highlight (When living area is active) */}
+                {selectedLivingArea && LIVING_AREA_GUS[selectedLivingArea] && (
+                  <Layer
+                    id="gtwr-living-area-boundary"
+                    type="line"
+                    source="seoul-gu-src"
+                    filter={["in", ["get", "gu_name"], ["literal", LIVING_AREA_GUS[selectedLivingArea]]]}
+                    paint={{
+                      "line-color": theme === "dark" ? "#60a5fa" : "#2563eb",
+                      "line-width": selectedGu ? 1.8 : 3.0,
+                      "line-opacity": selectedGu ? 0.65 : 1.0,
+                      ...(selectedGu ? { "line-dasharray": [3, 2] } : {}),
+                    }}
+                  />
+                )}
+
+                {/* Specific District (Gu) Outer Perimeter Boundary Highlight */}
+                {selectedGu && (
+                  <Layer
+                    id="gtwr-gu-outer-boundary"
+                    type="line"
+                    source="seoul-gu-src"
+                    filter={["==", ["get", "gu_name"], selectedGu]}
+                    paint={{
+                      "line-color": theme === "dark" ? "#60a5fa" : "#1d4ed8",
+                      "line-width": 3.2,
+                      "line-opacity": 1.0,
+                    }}
+                  />
+                )}
               </>
             )}
 
