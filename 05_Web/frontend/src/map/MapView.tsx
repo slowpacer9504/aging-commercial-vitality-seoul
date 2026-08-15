@@ -183,6 +183,14 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
 
   const breaks = view === "delta" ? deltaBreaks : estimateBreaks;
 
+  const selectedDongGu = useMemo(() => {
+    if (!selectedAdmCd) return null;
+    const match = features.find(f => f.properties.adm_cd === selectedAdmCd);
+    return match?.properties.gu_name ?? null;
+  }, [selectedAdmCd, features]);
+
+  const activeGu = selectedGu || selectedDongGu;
+
   const geojson = useMemo(
     () => ({
       type: "FeatureCollection" as const,
@@ -317,7 +325,7 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
             />
 
             {/* Autonomous District (Gu) and Living Area Boundary Highlight Layers */}
-            {(selectedGu || selectedLivingArea) && (
+            {(activeGu || selectedLivingArea) && (
               <>
                 <Source
                   id="seoul-gu-src"
@@ -334,24 +342,25 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
                     filter={["in", ["get", "gu_name"], ["literal", LIVING_AREA_GUS[selectedLivingArea]]]}
                     paint={{
                       "line-color": theme === "dark" ? "#a78bfa" : "#8b5cf6",
-                      "line-width": selectedGu ? 1.8 : 3.0,
-                      "line-opacity": selectedGu ? 0.65 : 1.0,
-                      ...(selectedGu ? { "line-dasharray": [3, 2] } : {}),
+                      "line-width": activeGu ? 1.8 : 3.0,
+                      "line-opacity": activeGu ? 0.65 : 1.0,
+                      ...(activeGu ? { "line-dasharray": [3, 2] } : {}),
                     }}
                   />
                 )}
 
                 {/* Specific District (Gu) Outer Perimeter Boundary Highlight (Electric Indigo / Neon Indigo) */}
-                {selectedGu && (
+                {activeGu && (
                   <Layer
                     id="gtwr-gu-outer-boundary"
                     type="line"
                     source="seoul-gu-src"
-                    filter={["==", ["get", "gu_name"], selectedGu]}
+                    filter={["==", ["get", "gu_name"], activeGu]}
                     paint={{
                       "line-color": theme === "dark" ? "#818cf8" : "#6366f1",
-                      "line-width": 3.2,
-                      "line-opacity": 1.0,
+                      "line-width": selectedAdmCd ? 2.2 : 3.2,
+                      "line-opacity": selectedAdmCd ? 0.8 : 1.0,
+                      ...(selectedAdmCd ? { "line-dasharray": [3, 2] } : {}),
                     }}
                   />
                 )}
