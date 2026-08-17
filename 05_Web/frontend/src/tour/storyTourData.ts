@@ -73,9 +73,9 @@ export const TOUR_SCENES: TourScene[] = [
   {
     id: 3,
     tag: "Scene 4 / Downtown Hotspots",
-    title: "4. Downtown Silver Consumption Hotspots (도심권 경제 활력)",
+    title: "4. Downtown Vitality: Economic, Social & Stability Hotspots (도심권 상권의 다면적 활력)",
     description:
-      "도심권(종로·중구·용산) 등 한양도성 도심 및 전통 상권에서는 시니어 소비자와 두터운 단골 기반이 상권 매출액과 저녁·주말 영업력(β̂ > 0, 붉은색)을 적극 견인하는 핫스팟이 뚜렷하게 관측됩니다.",
+      "도심권(종로·중구·용산 등 한양도성 도심 및 전통 상권)에서는 시니어 소비자와 단골 기반을 바탕으로 상권 매출액(경제적 활력)과 더불어 점포 생존율(안정성 활력), 고객 다양성(사회적 활력)에서 긍정적 영향(β̂ > 0, 붉은색)을 보이는 핫스팟이 다수 관측됩니다. 반면, 야간·주말 영업을 대변하는 시간대별 활력(Temporal Vitality)은 도심 특성상 음(-)의 영향이 우세하게 나타납니다.",
     outcome: "vitality_sub_economic",
     view: "latest",
     selectedYq: "2025Q4",
