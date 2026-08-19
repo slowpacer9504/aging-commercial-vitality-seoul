@@ -112,12 +112,12 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
   } | null>(null);
 
   const hoveredAdmCdRef = useRef<string | null>(null);
-  const rafRef = useRef<number | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
-      if (rafRef.current != null) {
-        cancelAnimationFrame(rafRef.current);
+      if (hoverTimerRef.current != null) {
+        clearTimeout(hoverTimerRef.current);
       }
     };
   }, []);
@@ -224,49 +224,53 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
     const f = (e.features ?? [])[0];
     const props = f?.properties as unknown as CoefficientFeatureProps | undefined;
     const newAdmCd = props?.adm_cd ?? null;
+    const point = e.point ? { x: e.point.x, y: e.point.y } : null;
 
-    // 1. Direct 0ms MapLibre GPU filter update (bypasses React render pipeline)
-    if (hoveredAdmCdRef.current !== newAdmCd) {
-      hoveredAdmCdRef.current = newAdmCd;
+    // Clear any pending highlight timer on active mouse movement
+    if (hoverTimerRef.current != null) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+
+    // If moving rapidly to a new area, clear previous highlight immediately to avoid visual noise
+    if (hoveredAdmCdRef.current !== newAdmCd && hoveredAdmCdRef.current !== null) {
+      hoveredAdmCdRef.current = null;
       const map = mapRef.current?.getMap();
       if (map && map.getLayer("gtwr-hover-line")) {
-        map.setFilter("gtwr-hover-line", ["==", ["get", "adm_cd"], newAdmCd ?? ""]);
+        map.setFilter("gtwr-hover-line", ["==", ["get", "adm_cd"], ""]);
       }
+      setHoveredInfo(null);
     }
 
-    // 2. Throttle tooltip React state updates to screen refresh rate (60/120fps)
-    if (rafRef.current != null) {
-      cancelAnimationFrame(rafRef.current);
-    }
-
-    if (f && props) {
-      const x = e.point.x;
-      const y = e.point.y;
-      rafRef.current = requestAnimationFrame(() => {
+    // Trigger highlight and tooltip only when mouse pauses / rests (80ms dwell debounce)
+    if (f && props && newAdmCd && point) {
+      hoverTimerRef.current = setTimeout(() => {
+        hoveredAdmCdRef.current = newAdmCd;
+        const map = mapRef.current?.getMap();
+        if (map && map.getLayer("gtwr-hover-line")) {
+          map.setFilter("gtwr-hover-line", ["==", ["get", "adm_cd"], newAdmCd]);
+        }
         setHoveredInfo({
-          x,
-          y,
-          admCd: props.adm_cd,
+          x: point.x,
+          y: point.y,
+          admCd: newAdmCd,
           props,
         });
-      });
-    } else {
-      rafRef.current = requestAnimationFrame(() => {
-        setHoveredInfo(null);
-      });
+      }, 80);
     }
   }, []);
 
   const onMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current != null) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
     if (hoveredAdmCdRef.current !== null) {
       hoveredAdmCdRef.current = null;
       const map = mapRef.current?.getMap();
       if (map && map.getLayer("gtwr-hover-line")) {
         map.setFilter("gtwr-hover-line", ["==", ["get", "adm_cd"], ""]);
       }
-    }
-    if (rafRef.current != null) {
-      cancelAnimationFrame(rafRef.current);
     }
     setHoveredInfo(null);
   }, []);
