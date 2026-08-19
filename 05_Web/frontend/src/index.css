@@ -1686,7 +1686,8 @@ code {
   box-shadow: var(--shadow-lg);
   font-size: 12px;
   min-width: 140px;
-  transform: translate(0, 0);
+  transform: translate3d(0, 0, 0);
+  will-change: left, top;
   transition: opacity 0.1s ease;
 }
 

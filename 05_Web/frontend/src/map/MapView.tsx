@@ -111,6 +111,17 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
     props: CoefficientFeatureProps;
   } | null>(null);
 
+  const hoveredAdmCdRef = useRef<string | null>(null);
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     getMeta()
@@ -211,20 +222,52 @@ export function MapView({ ref, isSidebarOpen = true }: Props) {
 
   const onMouseMove = useCallback((e: MapLayerMouseEvent) => {
     const f = (e.features ?? [])[0];
-    if (f && f.properties) {
-      const props = f.properties as unknown as CoefficientFeatureProps;
-      setHoveredInfo({
-        x: e.point.x,
-        y: e.point.y,
-        admCd: props.adm_cd,
-        props,
+    const props = f?.properties as unknown as CoefficientFeatureProps | undefined;
+    const newAdmCd = props?.adm_cd ?? null;
+
+    // 1. Direct 0ms MapLibre GPU filter update (bypasses React render pipeline)
+    if (hoveredAdmCdRef.current !== newAdmCd) {
+      hoveredAdmCdRef.current = newAdmCd;
+      const map = mapRef.current?.getMap();
+      if (map && map.getLayer("gtwr-hover-line")) {
+        map.setFilter("gtwr-hover-line", ["==", ["get", "adm_cd"], newAdmCd ?? ""]);
+      }
+    }
+
+    // 2. Throttle tooltip React state updates to screen refresh rate (60/120fps)
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+    }
+
+    if (f && props) {
+      const x = e.point.x;
+      const y = e.point.y;
+      rafRef.current = requestAnimationFrame(() => {
+        setHoveredInfo({
+          x,
+          y,
+          admCd: props.adm_cd,
+          props,
+        });
       });
     } else {
-      setHoveredInfo(null);
+      rafRef.current = requestAnimationFrame(() => {
+        setHoveredInfo(null);
+      });
     }
   }, []);
 
   const onMouseLeave = useCallback(() => {
+    if (hoveredAdmCdRef.current !== null) {
+      hoveredAdmCdRef.current = null;
+      const map = mapRef.current?.getMap();
+      if (map && map.getLayer("gtwr-hover-line")) {
+        map.setFilter("gtwr-hover-line", ["==", ["get", "adm_cd"], ""]);
+      }
+    }
+    if (rafRef.current != null) {
+      cancelAnimationFrame(rafRef.current);
+    }
     setHoveredInfo(null);
   }, []);
 
