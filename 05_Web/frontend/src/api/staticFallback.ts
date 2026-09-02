@@ -203,6 +203,10 @@ export async function staticGetCoefficients(
       bw_obs_n: baseProps.bw_obs_n ?? null,
       local_cn_gtwr_earliest: baseProps.local_cn_gtwr_earliest ?? null,
       local_cn_gtwr_latest: baseProps.local_cn_gtwr_latest ?? null,
+      local_cn_centered_earliest: baseProps.local_cn_centered_earliest ?? null,
+      local_cn_centered_latest: baseProps.local_cn_centered_latest ?? null,
+      local_vif_max_earliest: baseProps.local_vif_max_earliest ?? null,
+      local_vif_max_latest: baseProps.local_vif_max_latest ?? null,
       collinearity_warn_latest: Boolean(baseProps.collinearity_warn_latest),
       collinearity_warn_flag: Boolean(baseProps.collinearity_warn_flag),
     };

@@ -54,6 +54,10 @@ export interface CoefficientFeatureProps {
   bw_obs_n: number | null;
   local_cn_gtwr_earliest: number | null;
   local_cn_gtwr_latest: number | null;
+  local_cn_centered_earliest?: number | null;
+  local_cn_centered_latest?: number | null;
+  local_vif_max_earliest?: number | null;
+  local_vif_max_latest?: number | null;
   collinearity_warn_latest: boolean;
   collinearity_warn_flag: boolean;
 }
@@ -148,6 +152,8 @@ export interface SummaryRow {
   latest_missing_n: number | null;
   latest_coverage_share: number | null;
   max_local_cn_gtwr: number | null;
+  max_local_cn_centered_gtwr?: number | null;
+  max_local_vif_gtwr?: number | null;
   control_set: ControlSet;
   outcome_group: string | null;
   outcome_order: number | null;

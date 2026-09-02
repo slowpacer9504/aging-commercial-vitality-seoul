@@ -85,7 +85,7 @@ export const ResearchGuideModal: FC<Props> = ({ isOpen, onClose }) => {
             <h3>4. Diagnostic Metrics & Interpretation</h3>
             <ul className="guide-list">
               <li>
-                <strong>Local Condition Number (CN):</strong> Evaluates local multicollinearity for each dong and quarter. Values <strong>CN ≥ 30.0</strong> trigger a <code>Collinearity Warning Flag</code> indicating caution when interpreting point estimates.
+                <strong>Local Collinearity Diagnostics:</strong> Each dong reports the largest weighted variance inflation factor (<strong>max VIF</strong>) and the condition number of the weighted, centered local design (<strong>centered CN</strong>). A <code>Collinearity Warning Flag</code> is raised when <strong>max VIF ≥ 10</strong>, the one criterion with an established rule of thumb; the centered CN is reported without a threshold. The uncentered condition number of GWmodel&rsquo;s <code>gwr.collin.diagno()</code> convention is also reported for comparability with the GWR literature. It conditions on the local intercept as well as the predictors, so it runs high here where the intercept is nearly dependent with the log-scaled controls; the three figures describe different things rather than correcting one another.
               </li>
               <li>
                 <strong>Temporal View Modes:</strong> The latest quarter (2025Q4) presents the canonical spatial pattern at the end of the study period, while quarterly animations and long-term delta change (&Delta;) illustrate the spatiotemporal evolution of aging effects across the 2019Q4–2025Q4 panel study period.

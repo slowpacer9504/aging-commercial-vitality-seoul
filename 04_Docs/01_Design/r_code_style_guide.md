@@ -160,7 +160,9 @@ Comments to avoid:
 - Fix lean controls to `lag4_ln_resident_pop` and `lag4_ln_land_price_adjusted`.
 - Extended controls add `lag4_transit_accessibility` and `lag4_ln_workplace_worker_pop` to the lean controls.
 - Construct `transit_accessibility` as the pooled z-score average of `bus_stop_count_aux` and `subway_station_count_aux`; do not input these two raw counts directly as model controls.
-- Save the GTWR spatiotemporal weight-based local condition-number as a diagnostic.
+- Save three GTWR spatiotemporal weight-based local collinearity diagnostics: `local_vif_max`, `local_cn_centered`, and the uncentered `local_cn_gtwr`. Flag on `local_vif_max` only, since VIF > 10 is the sole criterion with an established convention; report the two condition numbers without thresholds and do not describe either as correcting the other.
+- Build the spatiotemporal distance matrix with `build_gtwr_st_dmat()` and pass it to every `bw.gtwr()` and `gtwr()` call as `st.dMat`. Never let GWmodel rebuild it internally: `GWmodel::ti.distv()` compares times as strings and mislabels past quarters as future for integer period ids.
+- Keep `lamda` dimensionless by normalizing the spatial and temporal distances by their own spans (`gtwr_st_scales()`) before combining them, and compute the scales once per estimation sample so every column of a spec's distance matrix shares them. Do not compare `lamda` values across the raw-unit and dimensionless conventions.
 - Unify bandwidth in main GTWR to a fixed `GTWR_ST_BW=60`. Perform `bw.gtwr()` search only in `06_select_gtwr_bandwidth.R`, fixed grid `(30,60,90,120,180)` sensitivity in `07_run_gtwr_bandwidth_sensitivity.R`, and lambda grid sensitivity only in `08_run_gtwr_lamda_sensitivity.R`.
 - The `estimate` in the main output is the latest-quarter local beta, whereas delta is calculated only in supplementary reporting tables.
 - Long-running executions must be resumable via outcome-exposure spec caches, limiting worker nodes with `GTWR_PARALLEL_SPECS`.

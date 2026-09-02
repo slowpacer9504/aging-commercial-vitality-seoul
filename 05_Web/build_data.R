@@ -251,6 +251,10 @@ build_coefficients_nested <- function(df) {
           bw_obs_n      = suppressWarnings(as.integer(row$bw_obs_n)),
           local_cn_gtwr_earliest = as_num(row$local_cn_gtwr_earliest),
           local_cn_gtwr_latest   = as_num(row$local_cn_gtwr_latest),
+          local_cn_centered_earliest = as_num(row$local_cn_centered_earliest),
+          local_cn_centered_latest   = as_num(row$local_cn_centered_latest),
+          local_vif_max_earliest = as_num(row$local_vif_max_earliest),
+          local_vif_max_latest   = as_num(row$local_vif_max_latest),
           collinearity_warn_latest = as.logical(row$collinearity_warn_latest),
           collinearity_warn_flag   = as.logical(row$collinearity_warn_flag),
           status        = row$status,
@@ -286,7 +290,8 @@ SUMMARY_COLS <- c(
   "global_lm_r2", "global_lm_r2_adj",
   "gtw_aic", "gtw_aicc", "gtw_enp", "gtw_edf",
   "collinearity_warn_n", "collinearity_warn_share",
-  "latest_missing_n", "latest_coverage_share", "max_local_cn_gtwr",
+  "latest_missing_n", "latest_coverage_share",
+  "max_local_cn_gtwr", "max_local_cn_centered_gtwr", "max_local_vif_gtwr",
   "control_set", "outcome_group", "outcome_order"
 )
 build_summary <- function(control_set) {
@@ -302,7 +307,8 @@ build_summary <- function(control_set) {
                    "share_positive","st_bw","global_lm_r2","global_lm_r2_adj",
                    "gtw_aic","gtw_aicc","gtw_enp","gtw_edf",
                    "collinearity_warn_share","latest_coverage_share",
-                   "max_local_cn_gtwr")
+                   "max_local_cn_gtwr","max_local_cn_centered_gtwr",
+                   "max_local_vif_gtwr")
     for (col in intersect(num_cols, names(out_row))) {
       out_row[[col]] <- suppressWarnings(as.numeric(out_row[[col]]))
     }

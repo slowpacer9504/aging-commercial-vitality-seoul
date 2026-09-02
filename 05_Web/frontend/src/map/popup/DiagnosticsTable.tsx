@@ -1,5 +1,11 @@
 import type { FC } from "react";
 import type { CoefficientFeatureProps } from "@/types/api";
+import {
+  LOCAL_VIF_GAUGE_MAX,
+  LOCAL_VIF_WARN_THRESHOLD,
+  hasCollinearityWarning,
+  isVifWarn,
+} from "@/utils/collinearity";
 
 interface Props {
   props: CoefficientFeatureProps;
@@ -16,9 +22,13 @@ const estimateLabel = (props: CoefficientFeatureProps): string => {
 };
 
 export const DiagnosticsTable: FC<Props> = ({ props, compareProps }) => {
-  const flagA = props.collinearity_warn_latest || props.collinearity_warn_flag;
-  const cnLatestA = props.local_cn_gtwr_latest ?? 0;
-  const cnPctA = Math.min(100, Math.round((cnLatestA / 40) * 100));
+  const flagA = hasCollinearityWarning(props);
+  // The gauge tracks the max VIF, the metric the flag is defined on. The
+  // uncentered CN is still displayed, but on its own row and without a
+  // threshold, since the usual CN > 30 rule does not apply to it.
+  const vifLatestA = props.local_vif_max_latest ?? null;
+  const vifPctA =
+    vifLatestA == null ? 0 : Math.min(100, Math.round((vifLatestA / LOCAL_VIF_GAUGE_MAX) * 100));
 
   const betaA = props.estimate;
   const isPosA = betaA != null && betaA > 0;
@@ -70,19 +80,29 @@ export const DiagnosticsTable: FC<Props> = ({ props, compareProps }) => {
         {/* Multicollinearity Section */}
         <div className="diag-cn-section">
           <div className="cn-header">
-            <span className="cn-title">Local Multicollinearity (CN)</span>
-            <span className={`cn-val ${cnLatestA >= 30 ? "cn-warn" : "cn-safe"}`}>
-              {fmt(props.local_cn_gtwr_latest, 1)} / 30.0
+            <span className="cn-title">Local Multicollinearity</span>
+            <span className={`cn-val ${isVifWarn(vifLatestA) ? "cn-warn" : "cn-safe"}`}>
+              max VIF {fmt(vifLatestA, 2)} / {LOCAL_VIF_WARN_THRESHOLD.toFixed(1)}
             </span>
           </div>
           <div className="cn-gauge-bar">
             <div
-              className={`cn-gauge-fill ${cnLatestA >= 30 ? "is-warn" : ""}`}
-              style={{ width: `${cnPctA}%` }}
+              className={`cn-gauge-fill ${isVifWarn(vifLatestA) ? "is-warn" : ""}`}
+              style={{ width: `${vifPctA}%` }}
             />
           </div>
+          <div className="diag-grid">
+            <div className="diag-cell">
+              <span className="diag-k">CN (centered)</span>
+              <span className="diag-v">{fmt(props.local_cn_centered_latest, 2)}</span>
+            </div>
+            <div className="diag-cell">
+              <span className="diag-k">CN (uncentered, GWmodel)</span>
+              <span className="diag-v">{fmt(props.local_cn_gtwr_latest, 1)}</span>
+            </div>
+          </div>
           <div className="cn-footer">
-            <span>Threshold: 30.0</span>
+            <span>Threshold: max VIF {LOCAL_VIF_WARN_THRESHOLD.toFixed(1)}</span>
             {flagA ? (
               <span className="badge-warn" data-testid="collinearity-warn-on" role="status">
                 ⚠ Collinearity Flag
@@ -99,8 +119,7 @@ export const DiagnosticsTable: FC<Props> = ({ props, compareProps }) => {
   }
 
   // Dual Comparison Mode (Dong A vs Dong B)
-  const flagB = compareProps.collinearity_warn_latest || compareProps.collinearity_warn_flag;
-  const cnLatestB = compareProps.local_cn_gtwr_latest ?? 0;
+  const flagB = hasCollinearityWarning(compareProps);
   const betaB = compareProps.estimate;
   const isPosB = betaB != null && betaB > 0;
   const isNegB = betaB != null && betaB < 0;
@@ -160,9 +179,23 @@ export const DiagnosticsTable: FC<Props> = ({ props, compareProps }) => {
             <td>{fmt(compareProps.n_eff, 1)}</td>
           </tr>
           <tr>
-            <td>Local CN (Latest)</td>
-            <td className={cnLatestA >= 30 ? "cn-warn" : "cn-safe"}>{fmt(props.local_cn_gtwr_latest, 1)}</td>
-            <td className={cnLatestB >= 30 ? "cn-warn" : "cn-safe"}>{fmt(compareProps.local_cn_gtwr_latest, 1)}</td>
+            <td>Max Local VIF (Latest)</td>
+            <td className={isVifWarn(props.local_vif_max_latest) ? "cn-warn" : "cn-safe"}>
+              {fmt(props.local_vif_max_latest, 2)}
+            </td>
+            <td className={isVifWarn(compareProps.local_vif_max_latest) ? "cn-warn" : "cn-safe"}>
+              {fmt(compareProps.local_vif_max_latest, 2)}
+            </td>
+          </tr>
+          <tr>
+            <td>Local CN, centered (Latest)</td>
+            <td>{fmt(props.local_cn_centered_latest, 2)}</td>
+            <td>{fmt(compareProps.local_cn_centered_latest, 2)}</td>
+          </tr>
+          <tr>
+            <td>Local CN, uncentered (Latest)</td>
+            <td>{fmt(props.local_cn_gtwr_latest, 1)}</td>
+            <td>{fmt(compareProps.local_cn_gtwr_latest, 1)}</td>
           </tr>
           <tr>
             <td>Collinearity Warning</td>

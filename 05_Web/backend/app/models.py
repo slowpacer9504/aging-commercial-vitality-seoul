@@ -43,6 +43,10 @@ class CoefficientsRow(BaseModel):
     bw_obs_n: int | None
     local_cn_gtwr_earliest: float | None
     local_cn_gtwr_latest: float | None
+    local_cn_centered_earliest: float | None = None
+    local_cn_centered_latest: float | None = None
+    local_vif_max_earliest: float | None = None
+    local_vif_max_latest: float | None = None
     collinearity_warn_latest: bool
     collinearity_warn_flag: bool
     status: str | None = None
@@ -90,6 +94,8 @@ class SummaryRow(BaseModel):
     latest_missing_n: int | None
     latest_coverage_share: float | None
     max_local_cn_gtwr: float | None
+    max_local_cn_centered_gtwr: float | None = None
+    max_local_vif_gtwr: float | None = None
     control_set: str
     outcome_group: str | None = None
     outcome_order: int | None = None
@@ -144,6 +150,10 @@ class CoefficientFeatureProps(BaseModel):
     bw_obs_n: int | None
     local_cn_gtwr_earliest: float | None
     local_cn_gtwr_latest: float | None
+    local_cn_centered_earliest: float | None = None
+    local_cn_centered_latest: float | None = None
+    local_vif_max_earliest: float | None = None
+    local_vif_max_latest: float | None = None
     collinearity_warn_latest: bool
     collinearity_warn_flag: bool
 

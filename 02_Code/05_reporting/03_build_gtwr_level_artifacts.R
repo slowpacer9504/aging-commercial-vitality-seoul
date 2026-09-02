@@ -916,7 +916,8 @@ quarter_axis_labels <- expected_yq[quarter_axis_tick_idx]
 main_meta <- main_tbl |>
   ensure_cols(c(
     "outcome_group", "outcome_order", "target_yq", "earliest_yq", "latest_yq",
-    "st_bw", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr",
+    "st_bw", "collinearity_warn_n", "collinearity_warn_share",
+    "max_local_cn_gtwr", "max_local_cn_centered_gtwr", "max_local_vif_gtwr",
     "latest_coverage_share", "status"
   )) |>
   dplyr::mutate(
@@ -929,7 +930,8 @@ main_meta <- main_tbl |>
     dplyr::any_of(c(
       "outcome", "focal_var", "outcome_group", "outcome_order",
       "target_yq", "earliest_yq", "latest_yq", "st_bw",
-      "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr",
+      "collinearity_warn_n", "collinearity_warn_share",
+      "max_local_cn_gtwr", "max_local_cn_centered_gtwr", "max_local_vif_gtwr",
       "latest_coverage_share", "status"
     ))
   ) |>
@@ -991,7 +993,12 @@ snapshot_pairs <- panel_tbl |>
 
 if (nrow(local_tbl) > 0L) {
   local_cn_cols <- intersect(
-    c("local_cn_gtwr_earliest", "local_cn_gtwr_latest", "collinearity_warn_earliest", "collinearity_warn_latest"),
+    c(
+      "local_cn_gtwr_earliest", "local_cn_gtwr_latest",
+      "local_cn_centered_earliest", "local_cn_centered_latest",
+      "local_vif_max_earliest", "local_vif_max_latest",
+      "collinearity_warn_earliest", "collinearity_warn_latest"
+    ),
     names(local_tbl)
   )
   if (length(local_cn_cols) > 0L) {

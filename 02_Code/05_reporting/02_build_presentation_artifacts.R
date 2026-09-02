@@ -1316,7 +1316,10 @@ if (!is.na(gtwr_resolution$source_control_set)) {
   } else if (any(gtwr_summary_tbl$status == "success")) {
       gtwr_success_tbl <- gtwr_summary_tbl |>
         dplyr::filter(status == "success") |>
-        ensure_cols(c("global_lm_r2", "global_gw_r2", "max_local_cn_gtwr")) |>
+        ensure_cols(c(
+          "global_lm_r2", "global_gw_r2",
+          "max_local_cn_gtwr", "max_local_cn_centered_gtwr", "max_local_vif_gtwr"
+        )) |>
         dplyr::mutate(global_lm_r2 = dplyr::coalesce(.data$global_lm_r2, .data$global_gw_r2))
 
     presentation_gtwr_tbl <- gtwr_success_tbl |>
@@ -1329,7 +1332,9 @@ if (!is.na(gtwr_resolution$source_control_set)) {
         `75th Percentile` = fmt_num(p75_beta),
           `Share Positive` = fmt_pct(share_positive),
           `Global LM R2` = fmt_num(global_lm_r2),
-          `Max GTWR Local CN` = fmt_num(max_local_cn_gtwr),
+          `Max Local VIF` = fmt_num(max_local_vif_gtwr),
+          `Max Local CN (centered)` = fmt_num(max_local_cn_centered_gtwr),
+          `Max Local CN (uncentered)` = fmt_num(max_local_cn_gtwr),
         `Comparison Window` = comparison_window,
         window_scope = window_scope,
         fit_scope = fit_scope,

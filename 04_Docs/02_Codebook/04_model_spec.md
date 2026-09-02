@@ -284,8 +284,11 @@
   - The lean control pool consists solely of `lag4_ln_resident_pop` and `lag4_ln_land_price_adjusted`.
   - `GTWR_CONTROL_SET=extended` adds `lag4_transit_accessibility` and `lag4_ln_workplace_worker_pop` to the lean controls.
   - In GTWR extended, the number of bus stops and subway stations are not input as separate controls but as a `lag4_transit_accessibility` composite, and workplace population size is controlled via `lag4_ln_workplace_worker_pop`.
-  - Records the local condition-number based on GTWR spatiotemporal weights as a diagnostic.
-  - The local condition-number applies the local_CN calculation convention of `GWmodel::gwr.collin.diagno()` adapted to GTWR's `st.dist`/`gw.weight` spatiotemporal weights.
+  - Records three local collinearity diagnostics based on GTWR spatiotemporal weights: `local_vif_max` (largest weighted variance inflation factor), `local_cn_centered` (condition number of the weighted centered design), and `local_cn_gtwr` (uncentered condition number).
+  - `local_cn_gtwr` applies the local_CN calculation convention of `GWmodel::gwr.collin.diagno()` adapted to GTWR's `gw.weight` spatiotemporal weights. Following Belsley (1984), it is computed without centering and therefore conditions on the local intercept as well as the predictors; it is reported for comparability with the GWR literature.
+  - The collinearity warning flag is raised when `local_vif_max >= GTWR_LOCAL_VIF_WARN_THRESHOLD` (default 10). `local_cn_centered` and `local_cn_gtwr` carry no threshold, because Belsley's cut-off of 30 is defined for the uncentered construction and no comparable convention exists for a centered one.
+  - The spatiotemporal distance matrix is built by `build_gtwr_st_dmat()` with the symmetric temporal distance `|t_i - t_j|` and passed to `bw.gtwr()` and `gtwr()` as `st.dMat`, bypassing `GWmodel::st.dist()`/`ti.distm()` whose string time comparison mislabels past quarters as future for integer period ids.
+  - `lamda` is dimensionless: spatial and temporal distances are divided by their own observed spans before combining, so `0.5` weights space and time equally and the default is `GTWR_LAMDA=0.5`. The previous raw-unit `lamda=0.05` corresponds to roughly `0.987` under this convention; values from the two conventions are not comparable.
   - The default bandwidth is uniformly fixed at `GTWR_ST_BW=60`.
   - Under `adaptive=TRUE`, a bandwidth of 60 means 60 spatiotemporal neighbors around each estimation point.
   - [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R) does not run `bw.gtwr()` even if `GTWR_BANDWIDTH_STRATEGY` is not fixed.
@@ -382,7 +385,7 @@
   - `03_Output/04_Logs/gtwr_bandwidth_sensitivity_cache/<control_set>/main/*.rds`
 - Implementation Principles:
   - Requires baseline `gtwr_main_models_<control_set>.csv` and `gtwr_local_coefficients_<control_set>.csv` first.
-  - The fixed bandwidth grid is re-estimated by spec, and the sensitivity regarding correlation, absolute difference, sign flip, and local condition-number relative to the baseline latest-quarter beta is saved.
+  - The fixed bandwidth grid is re-estimated by spec, and the sensitivity regarding correlation, absolute difference, sign flip, and local collinearity diagnostics relative to the baseline latest-quarter beta is saved.
 
 ## 7G) GTWR Lamda Sensitivity Diagnostic
 
@@ -393,7 +396,7 @@
   - `03_Output/04_Logs/gtwr_lamda_sensitivity_cache/<control_set>/main/*.rds`
 - Implementation Principles:
   - Requires baseline `gtwr_main_models_<control_set>.csv` and `gtwr_local_coefficients_<control_set>.csv` first.
-  - The lamda grid is re-estimated by spec using the fixed main bandwidth, and sensitivity regarding correlation, absolute difference, sign flip, and local condition-number relative to the baseline latest-quarter beta is saved.
+  - The lamda grid is re-estimated by spec using the fixed main bandwidth, and sensitivity regarding correlation, absolute difference, sign flip, and local collinearity diagnostics relative to the baseline latest-quarter beta is saved.
 
 ## 7X) GTWR Experiment Appendix
 

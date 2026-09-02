@@ -249,6 +249,8 @@ empty_gtwr_main_tbl <- function() {
       latest_missing_n = integer(),
       latest_coverage_share = numeric(),
       max_local_cn_gtwr = numeric(),
+      max_local_cn_centered_gtwr = numeric(),
+      max_local_vif_gtwr = numeric(),
     control_set = character(),
     fit_scope = character(),
     recent_period_n = integer(),
@@ -294,6 +296,10 @@ empty_gtwr_local_tbl <- function() {
     bw_source = character(),
       local_cn_gtwr_earliest = numeric(),
       local_cn_gtwr_latest = numeric(),
+      local_cn_centered_earliest = numeric(),
+      local_cn_centered_latest = numeric(),
+      local_vif_max_earliest = numeric(),
+      local_vif_max_latest = numeric(),
     collinearity_warn_earliest = logical(),
     collinearity_warn_latest = logical(),
     collinearity_warn_flag = logical(),
@@ -418,6 +424,8 @@ empty_gtwr_lamda_sensitivity_tbl <- function() {
     p75_beta = numeric(),
     share_positive = numeric(),
     max_local_cn_gtwr = numeric(),
+    max_local_cn_centered_gtwr = numeric(),
+    max_local_vif_gtwr = numeric(),
     collinearity_warn_n = integer(),
     collinearity_warn_share = numeric(),
     n_compare_with_main = integer(),
@@ -466,6 +474,8 @@ empty_gtwr_bandwidth_sensitivity_tbl <- function() {
     p75_beta = numeric(),
     share_positive = numeric(),
     max_local_cn_gtwr = numeric(),
+    max_local_cn_centered_gtwr = numeric(),
+    max_local_vif_gtwr = numeric(),
     collinearity_warn_n = integer(),
     collinearity_warn_share = numeric(),
     n_compare_with_main = integer(),
@@ -608,71 +618,219 @@ prepare_gtwr_points <- function(panel) {
     dplyr::left_join(coord_tbl, by = "adm_cd")
 }
 
-build_gtwr_st_dmat <- function(d_fit, lamda = cfg$gtwr_lamda, ksi = cfg$gtwr_ksi) {
-  coords <- as.matrix(d_fit[, c("x", "y")])
-  out <- tryCatch(
-    GWmodel::st.dist(
-      dp.locat = coords,
-      obs.tv = d_fit$time_id,
-      p = 2,
-      theta = 0,
-      longlat = FALSE,
-      lamda = lamda,
-      ksi = ksi
-    ),
-    error = function(e) NULL
+# GWmodel::ti.distv() compares observation times with as.character(), so integer
+# period ids such as 1:25 make "25" >= "3" false and push genuinely past quarters
+# to a 1e50 "future" distance. The GTWR contract therefore builds its own
+# spatiotemporal distance and never lets GWmodel reach ti.distm().
+gtwr_time_dist_vector <- function(time_ids, focus_time) {
+  abs(as.numeric(time_ids) - as.numeric(focus_time))
+}
+
+# Faithful reproduction of the GWmodel::ti.distv() string-comparison rule. Used
+# only by the collinearity backfill diagnostic to quantify what the defect
+# changed; never used to build weights for an actual fit.
+gtwr_time_dist_vector_legacy <- function(time_ids, focus_time) {
+  tv <- suppressWarnings(as.numeric(time_ids))
+  eligible <- as.character(focus_time) >= as.character(time_ids)
+  ifelse(eligible, abs(tv - suppressWarnings(as.numeric(focus_time))), 1e50)
+}
+
+# Scales that make lamda dimensionless. GWmodel::st.dist() mixes the raw spatial
+# and temporal distances, so lamda silently absorbs their units: on this panel
+# space spans 338-33,772 metres while time spans 0-24 quarters, which makes a
+# nominal lamda of 0.05 weight space roughly 76:1 over time rather than 1:19.
+# Dividing each distance by its own observed span puts both on [0, 1], so lamda
+# reads as the share of weight given to the full spatial extent and 0.5 means
+# equal weighting. The scales come from the estimation sample, so every column of
+# one spec's distance matrix is normalized identically.
+gtwr_st_scales <- function(loc, time_ids) {
+  finite_s <- loc$dmat[is.finite(loc$dmat)]
+  s <- if (length(finite_s) > 0L) max(finite_s) else NA_real_
+  tv <- suppressWarnings(as.numeric(time_ids))
+  tv <- tv[is.finite(tv)]
+  t <- if (length(tv) > 0L) max(tv) - min(tv) else NA_real_
+  list(
+    s = if (is.finite(s) && s > 0) s else 1,
+    t = if (is.finite(t) && t > 0) t else 1
   )
-  if (is.null(out) || !is.matrix(out) || any(dim(out) != nrow(d_fit))) {
-    return(NULL)
+}
+
+# Huang et al. (2010) spatiotemporal distance, matching the combination GWmodel
+# applies inside st.dist() but on span-normalized inputs.
+gtwr_st_combine <- function(ds, dt, lamda, ksi, scales) {
+  ds <- ds / scales$s
+  dt <- dt / scales$t
+  lamda * ds + (1 - lamda) * dt +
+    2 * sqrt(lamda * (1 - lamda) * ds * dt) * cos(ksi)
+}
+
+# Spatial distances only need the distinct administrative-dong locations; the
+# panel repeats each location once per quarter.
+gtwr_location_dist <- function(d_fit) {
+  locs <- d_fit |>
+    dplyr::select(dplyr::all_of(c("adm_cd", "x", "y"))) |>
+    dplyr::distinct(.data$adm_cd, .keep_all = TRUE)
+  idx <- match(as.character(d_fit$adm_cd), as.character(locs$adm_cd))
+  if (anyNA(idx)) return(NULL)
+  list(
+    dmat = as.matrix(stats::dist(as.matrix(locs[, c("x", "y")]))),
+    idx = idx
+  )
+}
+
+# One column of the spatiotemporal distance matrix. Local diagnostics only ever
+# need a few hundred columns, so this avoids materializing the full n x n matrix.
+gtwr_st_dist_column <- function(loc,
+                                time_ids,
+                                focus,
+                                lamda = cfg$gtwr_lamda,
+                                ksi = cfg$gtwr_ksi,
+                                time_dist_fn = gtwr_time_dist_vector,
+                                scales = gtwr_st_scales(loc, time_ids)) {
+  ds <- loc$dmat[loc$idx, loc$idx[[focus]]]
+  dt <- time_dist_fn(time_ids, time_ids[[focus]])
+  gtwr_st_combine(ds, dt, lamda, ksi, scales)
+}
+
+build_gtwr_st_dmat <- function(d_fit, lamda = cfg$gtwr_lamda, ksi = cfg$gtwr_ksi) {
+  n <- nrow(d_fit)
+  if (n == 0L) return(NULL)
+  loc <- gtwr_location_dist(d_fit)
+  if (is.null(loc)) return(NULL)
+  tv <- suppressWarnings(as.numeric(d_fit$time_id))
+  if (anyNA(tv)) return(NULL)
+
+  # Gather the n x n_locations spatial block once (tens of MB). The per-column
+  # loop then only extracts a column instead of re-gathering, keeping peak memory
+  # at the single n x n result rather than several n x n intermediates.
+  scales <- gtwr_st_scales(loc, tv)
+  ds_by_location <- loc$dmat[loc$idx, , drop = FALSE]
+  out <- matrix(NA_real_, nrow = n, ncol = n)
+  for (j in seq_len(n)) {
+    out[, j] <- gtwr_st_combine(
+      ds_by_location[, loc$idx[[j]]],
+      abs(tv - tv[[j]]),
+      lamda,
+      ksi,
+      scales
+    )
   }
   out
 }
 
-weighted_design_cn <- function(model_matrix, weights) {
-  # Mirrors GWmodel::gwr.collin.diagno() local_CN, but uses the GTWR
-  # spatiotemporal weights generated from st.dist/gw.weight.
+# GWmodel rebuilds st.dist() internally whenever st.dMat is absent, which would
+# reintroduce the ti.distv() defect. Every fit and bandwidth search must therefore
+# receive a precomputed matrix.
+require_gtwr_st_dmat <- function(st_dmat, n_obs, context) {
+  if (is.null(st_dmat) || !is.matrix(st_dmat) || any(dim(st_dmat) != n_obs)) {
+    stop(
+      sprintf(
+        paste0(
+          "[ERROR] %s requires a precomputed GTWR spatiotemporal distance matrix. ",
+          "Refusing to let GWmodel rebuild it with the defective ti.distv() time comparison."
+        ),
+        context
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(st_dmat)
+}
+
+empty_gtwr_collin_diag <- function(n = 0L) {
+  data.frame(
+    cn_uncentered = rep(NA_real_, n),
+    cn_centered = rep(NA_real_, n),
+    vif_max = rep(NA_real_, n)
+  )
+}
+
+# Three local collinearity diagnostics from one pass over the same weighted
+# design matrix.
+#
+# They answer different questions and are all reported.
+#
+# cn_uncentered reproduces GWmodel::gwr.collin.diagno() local_CN exactly. It is a
+# Belsley condition number on a column-scaled but *uncentered* design, so it
+# measures the conditioning of the full coefficient vector including the local
+# intercept; Belsley (1984, The American Statistician 38:73-77) argues centering
+# should not be applied precisely because it hides intercept-related dependency.
+# On this panel it is large (84.9 globally) because the intercept is nearly
+# dependent with the large-mean log controls.
+#
+# cn_centered and vif_max instead describe conditioning within the predictor
+# space only; vif_max follows the weighted-correlation convention GWmodel uses
+# for its own local VIFs. Since the estimand is the slope on the aging variable
+# rather than the local intercept, these are the operative diagnostics, but they
+# are not a correction of cn_uncentered - the two differ in what they condition
+# on.
+weighted_design_collin_diag <- function(model_matrix, weights) {
+  out <- list(cn_uncentered = NA_real_, cn_centered = NA_real_, vif_max = NA_real_)
   if (is.null(model_matrix) || nrow(model_matrix) == 0L || ncol(model_matrix) == 0L) {
-    return(NA_real_)
+    return(out)
   }
 
   mm <- suppressWarnings(as.matrix(model_matrix))
   w <- suppressWarnings(as.numeric(weights))
-  if (length(w) != nrow(mm)) return(NA_real_)
-  keep <- stats::complete.cases(mm) & is.finite(w) & w >= 0
-  if (!any(keep)) return(NA_real_)
+  if (length(w) != nrow(mm)) return(out)
+
+  # Zero-weight rows become zero rows of the weighted design, so they change
+  # neither the column norms nor the singular values nor the weighted moments.
+  # Dropping them is exact for every kernel, and for a compact-support kernel
+  # such as bisquare it turns an n x p decomposition into a bw x p one.
+  keep <- stats::complete.cases(mm) & is.finite(w) & w > 0
+  if (!any(keep)) return(out)
 
   mm <- mm[keep, , drop = FALSE]
   w <- w[keep]
-  if (sum(w) <= .Machine$double.eps) return(NA_real_)
-  if (sum(w > sqrt(.Machine$double.eps)) < ncol(mm) + 1L) return(NA_real_)
+  if (sum(w) <= .Machine$double.eps) return(out)
+  if (sum(w > sqrt(.Machine$double.eps)) < ncol(mm) + 1L) return(out)
 
   wi <- w / sum(w)
-  xw <- sweep(mm, 1, wi, "*")
-  col_norm <- sqrt(colSums(xw^2, na.rm = TRUE))
-  if (any(!is.finite(col_norm) | col_norm <= .Machine$double.eps)) return(Inf)
+  scaled_condition_number <- function(x) {
+    xw <- sweep(x, 1, wi, "*")
+    col_norm <- sqrt(colSums(xw^2, na.rm = TRUE))
+    if (any(!is.finite(col_norm) | col_norm <= .Machine$double.eps)) return(Inf)
+    sv <- tryCatch(svd(sweep(xw, 2, col_norm, "/"), nu = 0, nv = 0)$d, error = function(e) NA_real_)
+    sv <- suppressWarnings(as.numeric(sv))
+    sv <- sv[is.finite(sv)]
+    if (length(sv) == 0L) return(NA_real_)
+    if (min(sv) <= .Machine$double.eps) return(Inf)
+    max(sv) / min(sv)
+  }
 
-  x_scaled <- sweep(xw, 2, col_norm, "/")
-  sv <- tryCatch(svd(x_scaled, nu = 0, nv = 0)$d, error = function(e) NA_real_)
-  sv <- suppressWarnings(as.numeric(sv))
-  sv <- sv[is.finite(sv)]
-  if (length(sv) == 0L) return(NA_real_)
-  if (min(sv) <= .Machine$double.eps) return(Inf)
-  max(sv) / min(sv)
+  out$cn_uncentered <- scaled_condition_number(mm)
+
+  intercept_col <- match("(Intercept)", colnames(mm))
+  x <- if (is.na(intercept_col)) mm else mm[, -intercept_col, drop = FALSE]
+  # A single predictor has no collinearity to measure.
+  if (ncol(x) < 2L) return(out)
+
+  weighted_mean <- colSums(sweep(x, 1, wi, "*"))
+  out$cn_centered <- scaled_condition_number(sweep(x, 2, weighted_mean, "-"))
+
+  # Same weighted-correlation convention GWmodel::gwr.collin.diagno() applies to
+  # its own local VIFs.
+  cw <- tryCatch(stats::cov.wt(x, wt = wi, cor = TRUE)$cor, error = function(e) NULL)
+  if (is.null(cw) || anyNA(cw)) return(out)
+  vif <- tryCatch(diag(solve(cw)), error = function(e) NULL)
+  out$vif_max <- if (is.null(vif) || !any(is.finite(vif))) Inf else max(vif[is.finite(vif)])
+  out
 }
 
-compute_gtwr_local_cn <- function(d_fit, rhs_vars, st_bw, st_dmat, target_idx) {
-  if (length(target_idx) == 0L) return(numeric(0))
+compute_gtwr_local_collin_diag <- function(d_fit, rhs_vars, st_bw, st_dmat, target_idx) {
+  if (length(target_idx) == 0L) return(empty_gtwr_collin_diag(0L))
   if (is.null(st_dmat) || !is.matrix(st_dmat) || any(dim(st_dmat) != nrow(d_fit))) {
-    return(rep(NA_real_, length(target_idx)))
+    return(empty_gtwr_collin_diag(length(target_idx)))
   }
 
   mm <- tryCatch(
     stats::model.matrix(stats::reformulate(rhs_vars), data = d_fit),
     error = function(e) NULL
   )
-  if (is.null(mm) || ncol(mm) <= 1L) return(rep(NA_real_, length(target_idx)))
+  if (is.null(mm) || ncol(mm) <= 1L) return(empty_gtwr_collin_diag(length(target_idx)))
 
-  vapply(target_idx, function(i) {
+  diags <- lapply(target_idx, function(i) {
     weights <- tryCatch(
       GWmodel::gw.weight(
         vdist = st_dmat[, i],
@@ -682,8 +840,33 @@ compute_gtwr_local_cn <- function(d_fit, rhs_vars, st_bw, st_dmat, target_idx) {
       ),
       error = function(e) rep(NA_real_, nrow(d_fit))
     )
-    weighted_design_cn(mm, weights)
-  }, numeric(1))
+    weighted_design_collin_diag(mm, weights)
+  })
+
+  data.frame(
+    cn_uncentered = vapply(diags, function(z) z$cn_uncentered, numeric(1)),
+    cn_centered = vapply(diags, function(z) z$cn_centered, numeric(1)),
+    vif_max = vapply(diags, function(z) z$vif_max, numeric(1))
+  )
+}
+
+# Aggregate helper shared by the summary rows: NA when nothing finite was
+# measured, otherwise the worst local value.
+gtwr_max_finite <- function(x) {
+  x <- suppressWarnings(as.numeric(x))
+  if (!any(is.finite(x))) return(NA_real_)
+  max(x[is.finite(x)])
+}
+
+# Flag on the weighted VIF alone. VIF > 10 is an established rule of thumb, while
+# no comparable convention exists for a condition number computed on a centered
+# design: Belsley's 30 applies to the uncentered construction and cannot be
+# transferred to a centered one. cn_centered is therefore reported descriptively
+# without a threshold. A non-finite VIF means an exactly singular local design,
+# which counts as a warning rather than a missing measurement.
+gtwr_collin_warn_flag <- function(vif_max,
+                                  vif_threshold = cfg$gtwr_local_vif_warn_threshold) {
+  !is.na(vif_max) & vif_max >= vif_threshold
 }
 
 gtwr_period_id <- function(d_fit) {
@@ -751,36 +934,41 @@ gtwr_period_meta <- function(d_fit) {
   )
 }
 
-local_cn_for_window <- function(d_fit, rhs_vars, st_bw, st_dmat, threshold) {
+local_collin_diag_for_window <- function(d_fit,
+                                         rhs_vars,
+                                         st_bw,
+                                         st_dmat,
+                                         vif_threshold = cfg$gtwr_local_vif_warn_threshold) {
   period_meta <- gtwr_period_meta(d_fit)
   period_id <- period_meta$period_id
 
-  build_period_cn <- function(target_period_id, suffix) {
+  build_period_diag <- function(target_period_id, suffix) {
     target_idx <- which(period_id == target_period_id)
     target_idx <- target_idx[order(d_fit$adm_cd[target_idx])]
 
-    cn <- if (length(target_idx) == 0L) {
-      numeric(0)
-    } else {
-      compute_gtwr_local_cn(
-        d_fit = d_fit,
-        rhs_vars = rhs_vars,
-        st_bw = st_bw,
-        st_dmat = st_dmat,
-        target_idx = target_idx
-      )
-    }
+    diag_tbl <- compute_gtwr_local_collin_diag(
+      d_fit = d_fit,
+      rhs_vars = rhs_vars,
+      st_bw = st_bw,
+      st_dmat = st_dmat,
+      target_idx = target_idx
+    )
 
-      tibble::tibble(
-        adm_cd = d_fit$adm_cd[target_idx],
-        !!paste0("local_cn_gtwr_", suffix) := cn,
-        !!paste0("collinearity_warn_", suffix) := is.finite(cn) & cn >= threshold
+    tibble::tibble(
+      adm_cd = d_fit$adm_cd[target_idx],
+      !!paste0("local_cn_gtwr_", suffix) := diag_tbl$cn_uncentered,
+      !!paste0("local_cn_centered_", suffix) := diag_tbl$cn_centered,
+      !!paste0("local_vif_max_", suffix) := diag_tbl$vif_max,
+      !!paste0("collinearity_warn_", suffix) := gtwr_collin_warn_flag(
+        diag_tbl$vif_max,
+        vif_threshold
       )
+    )
   }
 
   dplyr::full_join(
-    build_period_cn(period_meta$earliest_period_id, "earliest"),
-    build_period_cn(period_meta$latest_period_id, "latest"),
+    build_period_diag(period_meta$earliest_period_id, "earliest"),
+    build_period_diag(period_meta$latest_period_id, "latest"),
     by = "adm_cd"
   )
 }
@@ -921,7 +1109,7 @@ build_gtwr_spec_signature <- function(outcome,
                                       extra_cache_stamp = NULL) {
   paste(
     c(
-      "quarterly_gtwr_spec_cache_v6_gwmodel_local_cn",
+      "quarterly_gtwr_spec_cache_v8_normalized_st_dist",
       paste("cache_context", cache_context, sep = "="),
       if (!is.null(extra_cache_stamp)) paste("extra_cache_stamp", extra_cache_stamp, sep = "=") else NULL,
       paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
@@ -953,7 +1141,7 @@ build_gtwr_bandwidth_signature <- function(outcome,
                                            cache_context = "main") {
     paste(
       c(
-        "quarterly_gtwr_main_bandwidth_cache_v3_st_dmat",
+        "quarterly_gtwr_main_bandwidth_cache_v5_normalized_st_dist",
       paste("cache_context", cache_context, sep = "="),
         paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
         paste("outcome", outcome, sep = "="),
@@ -1298,9 +1486,8 @@ resolve_gtwr_st_bw <- function(d_fit,
       ksi = ksi,
       verbose = FALSE
   )
-  if (!is.null(st_dmat_bw) && is.matrix(st_dmat_bw) && all(dim(st_dmat_bw) == nrow(d_bw))) {
-    bw_args$st.dMat <- st_dmat_bw
-  }
+  require_gtwr_st_dmat(st_dmat_bw, nrow(d_bw), "GWmodel::bw.gtwr bandwidth search")
+  bw_args$st.dMat <- st_dmat_bw
   bw_raw <- tryCatch(
     do.call(GWmodel::bw.gtwr, bw_args),
     error = function(e) e
@@ -1524,6 +1711,16 @@ build_gtwr_lamda_baseline_rows <- function(summary_tbl) {
       p75_beta,
       share_positive,
       max_local_cn_gtwr,
+      max_local_cn_centered_gtwr = if ("max_local_cn_centered_gtwr" %in% names(summary_tbl)) {
+        .data$max_local_cn_centered_gtwr
+      } else {
+        NA_real_
+      },
+      max_local_vif_gtwr = if ("max_local_vif_gtwr" %in% names(summary_tbl)) {
+        .data$max_local_vif_gtwr
+      } else {
+        NA_real_
+      },
       collinearity_warn_n,
       collinearity_warn_share,
       n_compare_with_main = dplyr::if_else(.data$status == "success", as.integer(.data$n_valid), 0L),
@@ -1623,6 +1820,16 @@ build_gtwr_bandwidth_baseline_rows <- function(summary_tbl) {
       p75_beta,
       share_positive,
       max_local_cn_gtwr,
+      max_local_cn_centered_gtwr = if ("max_local_cn_centered_gtwr" %in% names(summary_tbl)) {
+        .data$max_local_cn_centered_gtwr
+      } else {
+        NA_real_
+      },
+      max_local_vif_gtwr = if ("max_local_vif_gtwr" %in% names(summary_tbl)) {
+        .data$max_local_vif_gtwr
+      } else {
+        NA_real_
+      },
       collinearity_warn_n,
       collinearity_warn_share,
       n_compare_with_main = dplyr::if_else(.data$status == "success", as.integer(.data$n_valid), 0L),
@@ -1719,6 +1926,8 @@ build_gtwr_bandwidth_sensitivity_row_from_payload <- function(payload,
       p75_beta = suppressWarnings(as.numeric(summary$p75_beta[[1]])),
       share_positive = suppressWarnings(as.numeric(summary$share_positive[[1]])),
       max_local_cn_gtwr = suppressWarnings(as.numeric(summary$max_local_cn_gtwr[[1]])),
+      max_local_cn_centered_gtwr = suppressWarnings(as.numeric(summary$max_local_cn_centered_gtwr[[1]])),
+      max_local_vif_gtwr = suppressWarnings(as.numeric(summary$max_local_vif_gtwr[[1]])),
       collinearity_warn_n = suppressWarnings(as.integer(summary$collinearity_warn_n[[1]])),
       collinearity_warn_share = suppressWarnings(as.numeric(summary$collinearity_warn_share[[1]])),
       n_compare_with_main = if (identical(status, "success")) cmp_stats$n_compare_with_main else 0L,
@@ -1832,9 +2041,8 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
     lamda = lamda,
     ksi = ksi
   )
-  if (!is.null(st_dmat) && is.matrix(st_dmat) && all(dim(st_dmat) == nrow(d_fit))) {
-    gtwr_args$st.dMat <- st_dmat
-  }
+  require_gtwr_st_dmat(st_dmat, nrow(d_fit), "GWmodel::gtwr fit")
+  gtwr_args$st.dMat <- st_dmat
   fit <- tryCatch(
     do.call(GWmodel::gtwr, gtwr_args),
     error = function(e) e
@@ -1895,14 +2103,15 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
     dplyr::filter(.data$period_id == .env$period_meta$latest_period_id) |>
     dplyr::select(adm_cd, outcome, focal_var, estimate)
 
-  cn_tbl <- local_cn_for_window(
+  cn_tbl <- local_collin_diag_for_window(
     d_fit,
     rhs_vars = rhs_vars,
     st_bw = st_bw,
-    st_dmat = st_dmat,
-    threshold = cfg$gtwr_local_cn_warn_threshold
+    st_dmat = st_dmat
   )
   cn_vals <- cn_tbl$local_cn_gtwr_latest
+  cn_centered_vals <- cn_tbl$local_cn_centered_latest
+  vif_vals <- cn_tbl$local_vif_max_latest
   warn_vals <- cn_tbl$collinearity_warn_latest
   warn_n <- sum(warn_vals %in% TRUE, na.rm = TRUE)
   warn_denom <- sum(!is.na(warn_vals))
@@ -1968,7 +2177,9 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
       p50_beta = beta_stats$p50_beta,
       p75_beta = beta_stats$p75_beta,
       share_positive = beta_stats$share_positive,
-      max_local_cn_gtwr = if (any(is.finite(cn_vals))) max(cn_vals[is.finite(cn_vals)]) else NA_real_,
+      max_local_cn_gtwr = gtwr_max_finite(cn_vals),
+      max_local_cn_centered_gtwr = gtwr_max_finite(cn_centered_vals),
+      max_local_vif_gtwr = gtwr_max_finite(vif_vals),
       collinearity_warn_n = as.integer(warn_n),
       collinearity_warn_share = if (warn_denom > 0L) warn_n / warn_denom else NA_real_,
       n_compare_with_main = cmp_stats$n_compare_with_main,
@@ -2212,9 +2423,8 @@ run_actual_gtwr_spec <- function(panel_xy,
     lamda = cfg$gtwr_lamda,
     ksi = cfg$gtwr_ksi
   )
-  if (!is.null(st_dmat) && is.matrix(st_dmat) && all(dim(st_dmat) == nrow(d_fit))) {
-    gtwr_args$st.dMat <- st_dmat
-  }
+  require_gtwr_st_dmat(st_dmat, nrow(d_fit), "GWmodel::gtwr fit")
+  gtwr_args$st.dMat <- st_dmat
   fit <- tryCatch(
     do.call(GWmodel::gtwr, gtwr_args),
     error = function(e) e
@@ -2352,12 +2562,11 @@ run_actual_gtwr_spec <- function(panel_xy,
       bw_source = bw_source
     )
 
-  cn_tbl <- local_cn_for_window(
+  cn_tbl <- local_collin_diag_for_window(
     d_fit,
     rhs_vars = rhs_vars,
     st_bw = st_bw,
-    st_dmat = st_dmat,
-    threshold = cfg$gtwr_local_cn_warn_threshold
+    st_dmat = st_dmat
   )
 
   local_tbl <- beta_panel |>
@@ -2402,15 +2611,20 @@ run_actual_gtwr_spec <- function(panel_xy,
           .data$status == "success" & .data$collinearity_warn_latest ~ "latest",
           TRUE ~ NA_character_
         ),
-        collinearity_warn_metric = "gtwr_spatiotemporal_local_cn_gwmodel_style",
-        collinearity_warn_threshold = cfg$gtwr_local_cn_warn_threshold,
+        collinearity_warn_metric = "gtwr_local_weighted_vif_max",
+        collinearity_warn_threshold = cfg$gtwr_local_vif_warn_threshold,
         collinearity_diag_status = dplyr::case_when(
           is.null(.env$st_dmat) ~ "not_computed_st_dmat_error",
           TRUE ~ "computed_gtwr_spatiotemporal"
         ),
         collinearity_diag_message = dplyr::case_when(
-          is.null(.env$st_dmat) ~ "GTWR local CN not computed because spatiotemporal distance matrix construction failed",
-          TRUE ~ "local_cn_gtwr mirrors GWmodel::gwr.collin.diagno local_CN using GTWR spatiotemporal weights"
+          is.null(.env$st_dmat) ~ "GTWR local collinearity diagnostics not computed because spatiotemporal distance matrix construction failed",
+          TRUE ~ paste(
+            "local_vif_max drives the warning flag at VIF >= 10;",
+            "local_cn_centered is reported without a threshold;",
+            "local_cn_gtwr is the uncentered GWmodel::gwr.collin.diagno local_CN convention,",
+            "which conditions on the local intercept as well as the predictors"
+          )
         )
       ) |>
     dplyr::select(dplyr::all_of(names(empty_gtwr_local_tbl())))
@@ -2421,6 +2635,8 @@ run_actual_gtwr_spec <- function(panel_xy,
     diag_tbl <- extract_gtwr_diagnostics(fit)
     warn_vals <- local_tbl$collinearity_warn_flag
     cn_vals <- local_tbl$local_cn_gtwr_latest
+    cn_centered_vals <- local_tbl$local_cn_centered_latest
+    vif_vals <- local_tbl$local_vif_max_latest
     warn_n <- sum(warn_vals %in% TRUE, na.rm = TRUE)
     warn_denom <- sum(local_tbl$status == "success" & !is.na(warn_vals))
     latest_missing_n <- sum(!is.finite(local_tbl$latest_estimate))
@@ -2460,7 +2676,9 @@ run_actual_gtwr_spec <- function(panel_xy,
         collinearity_warn_share = if (warn_denom > 0L) warn_n / warn_denom else NA_real_,
         latest_missing_n = as.integer(latest_missing_n),
         latest_coverage_share = latest_coverage_share,
-        max_local_cn_gtwr = if (any(is.finite(cn_vals))) max(cn_vals[is.finite(cn_vals)]) else NA_real_,
+        max_local_cn_gtwr = gtwr_max_finite(cn_vals),
+        max_local_cn_centered_gtwr = gtwr_max_finite(cn_centered_vals),
+        max_local_vif_gtwr = gtwr_max_finite(vif_vals),
       control_set = control_set,
       fit_scope = "quarterly_actual",
       recent_period_n = as.integer(n_periods),

@@ -3,6 +3,7 @@ import { getSummary } from "@/api/endpoints";
 import type { SummaryRow } from "@/types/api";
 import { useAppStore } from "@/state/store";
 import { OUTCOME_LABELS } from "@/state/constants";
+import { isVifWarn } from "@/utils/collinearity";
 
 const fmt = (v: number | null | undefined, digits = 3): string =>
   v === null || v === undefined || Number.isNaN(v) ? "—" : v.toFixed(digits);
@@ -105,10 +106,14 @@ export const GlobalSummary: FC = () => {
                   <span className="metric-v">{fmt(s.gtw_aicc, 1)}</span>
                 </div>
                 <div className="metric-box">
-                  <span className="metric-k">Max Local CN</span>
-                  <span className={`metric-v ${(s.max_local_cn_gtwr ?? 0) >= 30 ? "cn-warn" : ""}`}>
-                    {fmt(s.max_local_cn_gtwr, 1)}
+                  <span className="metric-k">Max Local VIF</span>
+                  <span className={`metric-v ${isVifWarn(s.max_local_vif_gtwr) ? "cn-warn" : ""}`}>
+                    {fmt(s.max_local_vif_gtwr, 2)}
                   </span>
+                </div>
+                <div className="metric-box">
+                  <span className="metric-k">Max CN (centered)</span>
+                  <span className="metric-v">{fmt(s.max_local_cn_centered_gtwr, 2)}</span>
                 </div>
               </div>
             </div>

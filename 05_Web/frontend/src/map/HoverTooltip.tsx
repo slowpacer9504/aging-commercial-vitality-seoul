@@ -1,5 +1,6 @@
 import type { FC } from "react";
 import type { CoefficientFeatureProps } from "@/types/api";
+import { hasCollinearityWarning } from "@/utils/collinearity";
 
 interface Props {
   x: number;
@@ -14,7 +15,7 @@ export const HoverTooltip: FC<Props> = ({ x, y, props }) => {
   const beta = props.estimate;
   const isPos = beta != null && beta > 0;
   const isNeg = beta != null && beta < 0;
-  const flag = props.collinearity_warn_latest || props.collinearity_warn_flag;
+  const flag = hasCollinearityWarning(props);
 
   return (
     <div

@@ -550,6 +550,40 @@ if (!isTRUE(optional_required_test_enabled)) {
     detail <- if (inherits(gtwr_main_tbl, "error")) gtwr_main_tbl$message else "unavailable"
   }
   rows[[length(rows) + 1L]] <- add_row("G02", "gtwr_optional", pass, detail)
+
+  # G03 reports whether the GTWR outputs already carry the local collinearity
+  # diagnostics that drive the warning flag (weighted max VIF and the centered
+  # condition number). Outputs produced before that contract was introduced
+  # legitimately lack them, so a miss is reported as pending-rerun rather than
+  # failed; the check exists to catch a silent schema regression once a rerun
+  # has populated them.
+  gtwr_local_tbl <- safe_read_csv(cfg$get_gtwr_local_coefficients_path(gtwr_control_set))
+  expected_diag_cols <- c(
+    "local_cn_gtwr_latest",
+    "local_cn_centered_latest",
+    "local_vif_max_latest",
+    "collinearity_warn_flag"
+  )
+  if (inherits(gtwr_local_tbl, "data.frame")) {
+    present_cols <- intersect(expected_diag_cols, names(gtwr_local_tbl))
+    missing_diag_cols <- setdiff(expected_diag_cols, names(gtwr_local_tbl))
+    legacy_only <- setequal(present_cols, c("local_cn_gtwr_latest", "collinearity_warn_flag"))
+    pass <- length(missing_diag_cols) == 0L || legacy_only
+    detail <- if (length(missing_diag_cols) == 0L) {
+      "all local collinearity diagnostic columns present"
+    } else if (legacy_only) {
+      sprintf(
+        "pending_rerun: legacy uncentered-only diagnostics; missing %s",
+        paste(missing_diag_cols, collapse = ", ")
+      )
+    } else {
+      sprintf("unexpected diagnostic schema; missing %s", paste(missing_diag_cols, collapse = ", "))
+    }
+  } else {
+    pass <- FALSE
+    detail <- if (inherits(gtwr_local_tbl, "error")) gtwr_local_tbl$message else "unavailable"
+  }
+  rows[[length(rows) + 1L]] <- add_row("G03", "gtwr_optional", pass, detail)
 }
 
 

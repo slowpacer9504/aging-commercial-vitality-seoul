@@ -294,7 +294,7 @@ build_gtwr_rankings <- function(local_tbl, group_cols = character()) {
 build_gtwr_latest_local <- function(local_tbl) {
   ensure_cols(
     local_tbl,
-    c("adm_cd", "outcome", "focal_var", "estimate", "estimate_type", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
+    c("adm_cd", "outcome", "focal_var", "estimate", "estimate_type", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "local_cn_gtwr_latest", "local_cn_centered_latest", "local_vif_max_latest", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
   ) |>
     dplyr::mutate(
       estimate = dplyr::coalesce(
@@ -319,10 +319,10 @@ build_gtwr_latest_local <- function(local_tbl) {
 }
 
 build_gtwr_latest_summary <- function(latest_local_tbl, gtwr_summary_tbl) {
-  out_cols <- c("outcome", "focal_var", "target_yq", "estimate_type", "earliest_yq", "latest_yq", "window_scope", "n_locations", "n_valid", "mean_beta", "sd_beta", "p25_beta", "p50_beta", "p75_beta", "share_positive", "latest_missing_n", "latest_coverage_share", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr", "control_set", "fit_scope", "status", "message")
+  out_cols <- c("outcome", "focal_var", "target_yq", "estimate_type", "earliest_yq", "latest_yq", "window_scope", "n_locations", "n_valid", "mean_beta", "sd_beta", "p25_beta", "p50_beta", "p75_beta", "share_positive", "latest_missing_n", "latest_coverage_share", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr", "max_local_cn_centered_gtwr", "max_local_vif_gtwr", "control_set", "fit_scope", "status", "message")
   template <- gtwr_summary_tbl |>
-    ensure_cols(c("outcome", "focal_var", "target_yq", "earliest_yq", "latest_yq", "window_scope", "n_locations", "latest_missing_n", "latest_coverage_share", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr", "control_set", "fit_scope", "status", "message")) |>
-    dplyr::select(outcome, focal_var, target_yq, earliest_yq, latest_yq, window_scope, n_locations, latest_missing_n, latest_coverage_share, collinearity_warn_n, collinearity_warn_share, max_local_cn_gtwr, control_set, fit_scope, status, message)
+    ensure_cols(c("outcome", "focal_var", "target_yq", "earliest_yq", "latest_yq", "window_scope", "n_locations", "latest_missing_n", "latest_coverage_share", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr", "max_local_cn_centered_gtwr", "max_local_vif_gtwr", "control_set", "fit_scope", "status", "message")) |>
+    dplyr::select(outcome, focal_var, target_yq, earliest_yq, latest_yq, window_scope, n_locations, latest_missing_n, latest_coverage_share, collinearity_warn_n, collinearity_warn_share, max_local_cn_gtwr, max_local_cn_centered_gtwr, max_local_vif_gtwr, control_set, fit_scope, status, message)
 
   success_latest <- latest_local_tbl |>
     ensure_cols(c("outcome", "focal_var", "estimate", "status")) |>
@@ -365,7 +365,7 @@ build_gtwr_latest_summary <- function(latest_local_tbl, gtwr_summary_tbl) {
 build_gtwr_delta_local <- function(local_tbl) {
   ensure_cols(
     local_tbl,
-    c("adm_cd", "outcome", "focal_var", "earliest_estimate", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "collinearity_warn_earliest", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
+    c("adm_cd", "outcome", "focal_var", "earliest_estimate", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "local_cn_gtwr_earliest", "local_cn_gtwr_latest", "local_cn_centered_earliest", "local_cn_centered_latest", "local_vif_max_earliest", "local_vif_max_latest", "collinearity_warn_earliest", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
   ) |>
     dplyr::mutate(
       estimate = suppressWarnings(as.numeric(.data$latest_estimate)) - suppressWarnings(as.numeric(.data$earliest_estimate)),

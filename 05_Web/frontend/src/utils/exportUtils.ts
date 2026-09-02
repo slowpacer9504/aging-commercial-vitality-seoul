@@ -1,5 +1,6 @@
 import type { MapRef } from "react-map-gl/maplibre";
 import type { ControlSet, Outcome, ViewMode, CoefficientFeature, PanelPoint } from "@/types/api";
+import { hasCollinearityWarning } from "@/utils/collinearity";
 
 const OUTCOME_SLUGS: Record<string, string> = {
   vitality_index_base: "composite",
@@ -196,7 +197,9 @@ export function exportFeaturesToCsv(
     "latest_estimate_2025Q4",
     "effective_n",
     "n_obs",
-    "local_cn_latest",
+    "local_vif_max_latest",
+    "local_cn_centered_latest",
+    "local_cn_uncentered_latest",
     "collinearity_warning",
   ];
 
@@ -216,8 +219,10 @@ export function exportFeaturesToCsv(
       p.latest_estimate ?? "",
       p.n_eff != null ? p.n_eff.toFixed(2) : "",
       p.n_obs ?? "",
+      p.local_vif_max_latest != null ? p.local_vif_max_latest.toFixed(2) : "",
+      p.local_cn_centered_latest != null ? p.local_cn_centered_latest.toFixed(2) : "",
       p.local_cn_gtwr_latest != null ? p.local_cn_gtwr_latest.toFixed(2) : "",
-      p.collinearity_warn_latest || p.collinearity_warn_flag ? "TRUE" : "FALSE",
+      hasCollinearityWarning(p) ? "TRUE" : "FALSE",
     ].join(",");
   });
 

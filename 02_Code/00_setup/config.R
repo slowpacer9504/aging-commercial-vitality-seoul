@@ -546,15 +546,36 @@ if (!cfg$gtwr_bw_approach %in% c("CV", "cv", "AIC", "aic", "AICc")) cfg$gtwr_bw_
 cfg$gtwr_refresh_bw_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BW_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_st_bw <- suppressWarnings(as.integer(Sys.getenv("GTWR_ST_BW", unset = "60")))
 if (!is.finite(cfg$gtwr_st_bw) || cfg$gtwr_st_bw < 30L) cfg$gtwr_st_bw <- 60L
-cfg$gtwr_lamda <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LAMDA", unset = "0.05")))
-if (!is.finite(cfg$gtwr_lamda) || cfg$gtwr_lamda < 0) cfg$gtwr_lamda <- 0.05
+# lamda is dimensionless: build_gtwr_st_dmat() divides the spatial and temporal
+# distances by their own observed spans before combining them, so lamda is the
+# share of weight on the full spatial extent and 0.5 means space and time are
+# weighted equally. This differs from GWmodel::st.dist(), which mixes raw units
+# and therefore folds the metre-versus-quarter scale gap into lamda: the previous
+# raw-unit lamda of 0.05 corresponds to roughly 0.987 here, i.e. about 76:1 in
+# favour of space. Runs before 2026-09-02 used the raw-unit convention and their
+# lamda values are not comparable with these.
+cfg$gtwr_lamda <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LAMDA", unset = "0.5")))
+if (!is.finite(cfg$gtwr_lamda) || cfg$gtwr_lamda < 0 || cfg$gtwr_lamda > 1) cfg$gtwr_lamda <- 0.5
 cfg$gtwr_ksi <- suppressWarnings(as.numeric(Sys.getenv("GTWR_KSI", unset = "0")))
 if (!is.finite(cfg$gtwr_ksi) || cfg$gtwr_ksi < 0) cfg$gtwr_ksi <- 0
+# Local collinearity threshold. Only the weighted VIF carries an established rule
+# of thumb, so it alone drives the warning flag. The centered condition number is
+# reported without a threshold: Belsley's 30 is defined for the uncentered,
+# column-scaled construction and does not transfer to a centered one.
+cfg$gtwr_local_vif_warn_threshold <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LOCAL_VIF_WARN_THRESHOLD", unset = "10")))
+if (!is.finite(cfg$gtwr_local_vif_warn_threshold) || cfg$gtwr_local_vif_warn_threshold <= 0) {
+  cfg$gtwr_local_vif_warn_threshold <- 10
+}
+# Belsley's convention for the uncentered metric, retained for reference
+# reporting only; it does not drive any warning flag.
 cfg$gtwr_local_cn_warn_threshold <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LOCAL_CN_WARN_THRESHOLD", unset = "100")))
 if (!is.finite(cfg$gtwr_local_cn_warn_threshold) || cfg$gtwr_local_cn_warn_threshold <= 0) {
   cfg$gtwr_local_cn_warn_threshold <- 100
 }
-cfg$gtwr_lamda_sensitivity_grid <- trimws(Sys.getenv("GTWR_LAMDA_SENSITIVITY_GRID", unset = "0.025,0.05,0.1,0.2"))
+# Spans the dimensionless range with interior points so the AICc optimum can be
+# bracketed rather than pinned at a boundary. 0.987 is the continuity point
+# reproducing the previous raw-unit lamda of 0.05.
+cfg$gtwr_lamda_sensitivity_grid <- trimws(Sys.getenv("GTWR_LAMDA_SENSITIVITY_GRID", unset = "0.1,0.25,0.5,0.75,0.9"))
 cfg$gtwr_refresh_lamda_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_LAMDA_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_bandwidth_sensitivity_grid <- trimws(Sys.getenv("GTWR_BANDWIDTH_SENSITIVITY_GRID", unset = "30,60,90,120,180"))
 cfg$gtwr_refresh_bandwidth_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BANDWIDTH_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")

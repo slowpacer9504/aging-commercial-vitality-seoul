@@ -19,6 +19,8 @@
 
 # Agent operating instructions (kept local-only, not published)
 AGENTS.md
+CLAUDE.md
+claude.md
 
 # Internal research logs
 04_Docs/03_Log/
