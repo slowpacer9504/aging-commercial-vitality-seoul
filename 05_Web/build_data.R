@@ -11,6 +11,9 @@
 #   * 03_Output/01_Tables/gtwr_local_beta_panel_{lean,extended}.csv
 #   * 03_Output/01_Tables/gtwr_main_models_{lean,extended}.csv
 #   * 03_Output/01_Tables/adm_region_lookup.csv
+#   * 03_Output/01_Tables/gtwr_collin_diag_backfill_{lean,extended}.csv (optional;
+#     moves the local collinearity flag onto the weighted VIF for GTWR outputs
+#     estimated before that contract — see section 3a)
 #   * 01_Data/02_Boundary/01_Seoul/서울시 상권분석서비스(영역-행정동)/*.shp
 #     (EPSG:5186, 425 administrative dongs, 8-digit ADSTRD_CD)
 #
@@ -120,8 +123,156 @@ read_coeffs <- function(control_set) {
     colClasses = "character"
   )
 }
-coeffs_lean <- read_coeffs("lean")
-coeffs_ext  <- read_coeffs("extended")
+
+# ---------------------------------------------------------------------------
+# 3a. Local collinearity backfill
+# ---------------------------------------------------------------------------
+# GTWR outputs estimated before the three-metric collinearity contract carry
+# only the uncentered GWmodel-convention condition number. That measure
+# conditions on the local intercept, which is nearly dependent with the
+# log-scaled controls here, so its warning threshold fires at every dong and the
+# map reads as if no local estimate were interpretable. The weighted VIF, which
+# describes the predictor space the aging slope is identified from, stays below
+# 10 almost everywhere.
+#
+# 02_Code/80_optional/gtwr/09_backfill_gtwr_collin_diag.R recomputes all three
+# metrics from the same weights without refitting GTWR, so the flag can be moved
+# onto the VIF here instead of waiting for a rerun. Join the
+# "legacy_string_compare" rows: those reproduce the GWmodel::ti.distv() time
+# weighting the stored coefficients were actually estimated under, so diagnostic
+# and estimate describe the same local window. The "symmetric" rows belong to the
+# corrected pipeline and would describe a window these coefficients never saw.
+BACKFILL_TIME_BASIS <- "legacy_string_compare"
+
+# The backfill repeats the original run's floating-point operations in the same
+# order, so its uncentered CN should reproduce the stored value near exactly.
+BACKFILL_GATE_TOL <- 1e-6
+
+# Mirrors cfg$gtwr_local_vif_warn_threshold and LOCAL_VIF_WARN_THRESHOLD in
+# 05_Web/frontend/src/utils/collinearity.ts.
+LOCAL_VIF_WARN_THRESHOLD <- 10
+
+# NA means "not measured", which is neither a warning nor a clean bill of health;
+# it must not become TRUE when combined with the success flag.
+isTRUE_vec <- function(x) !is.na(x) & x
+
+# Recorded per control set and published in _build_manifest.json, so a reader of
+# the deployed data can tell which collinearity contract each map was drawn under
+# without going back to the CSVs.
+collin_provenance <- list()
+
+apply_collin_backfill <- function(df, control_set) {
+  # A rerun on the corrected pipeline writes the VIF and centered CN itself, and
+  # its flags are already VIF-based. Backfilling on top of that would be wrong
+  # twice over: the metrics are redundant, and the backfill's legacy time basis
+  # describes the window the *previous* run used, not this one. Stand down as
+  # soon as the outputs carry the columns natively.
+  native_vif <- suppressWarnings(as.numeric(df$local_vif_max_latest))
+  if (length(native_vif) > 0L && any(is.finite(native_vif))) {
+    collin_provenance[[control_set]] <<- list(
+      source = sprintf("gtwr_local_coefficients_%s.csv", control_set),
+      warn_metric = "gtwr_local_weighted_vif_max",
+      warn_threshold = LOCAL_VIF_WARN_THRESHOLD,
+      note = "Diagnostics came from the GTWR run itself; no backfill applied."
+    )
+    log("[3a] %s: outputs already carry the VIF diagnostics; no backfill needed",
+        control_set)
+    return(df)
+  }
+
+  path <- file.path(
+    out_tables, sprintf("gtwr_collin_diag_backfill_%s.csv", control_set)
+  )
+  if (!file.exists(path)) {
+    collin_provenance[[control_set]] <<- list(
+      source = "stored_gtwr_output",
+      warn_metric = "gtwr_local_uncentered_cn",
+      note = paste(
+        "No backfill file; flags still come from the uncentered condition number,",
+        "which fires at nearly every dong on this panel.",
+        "Run 02_Code/80_optional/gtwr/09_backfill_gtwr_collin_diag.R for this control set."
+      )
+    )
+    log("[3a] %s: no backfill file; keeping stored collinearity fields as-is",
+        control_set)
+    return(df)
+  }
+
+  bf <- read.csv(path, colClasses = "character")
+  bf <- bf[bf$time_basis == BACKFILL_TIME_BASIS, , drop = FALSE]
+  if (nrow(bf) == 0L) {
+    stop(sprintf(
+      "Backfill %s has no time_basis == '%s' rows; cannot match the stored coefficients.",
+      basename(path), BACKFILL_TIME_BASIS
+    ))
+  }
+
+  key    <- paste(df$adm_cd, df$outcome, sep = "\r")
+  bf_key <- paste(bf$adm_cd, bf$outcome, sep = "\r")
+  idx    <- match(key, bf_key)
+  if (anyNA(idx)) {
+    stop(sprintf(
+      "Backfill %s is missing %d of %d adm_cd x outcome rows present in the coefficients CSV.",
+      basename(path), sum(is.na(idx)), length(idx)
+    ))
+  }
+
+  # Consistency gate. Agreement on the uncentered CN proves the backfill
+  # reconstructed the same design matrix and weights the stored run used; only
+  # then do its other two metrics describe these coefficients.
+  stored <- suppressWarnings(as.numeric(df$local_cn_gtwr_latest))
+  redone <- suppressWarnings(as.numeric(bf$local_cn_uncentered_latest[idx]))
+  both   <- is.finite(stored) & is.finite(redone)
+  if (!any(both)) {
+    stop(sprintf("Backfill %s shares no comparable local_cn value with the coefficients CSV.",
+                 basename(path)))
+  }
+  worst <- max(abs(redone[both] - stored[both]) / pmax(abs(stored[both]), 1e-12))
+  if (worst > BACKFILL_GATE_TOL) {
+    stop(sprintf(
+      paste0(
+        "Backfill consistency gate failed for %s: worst relative deviation on ",
+        "local_cn is %.3g (tolerance %.0e). The backfill does not describe the ",
+        "stored coefficients; rerun 09_backfill_gtwr_collin_diag.R against the ",
+        "current outputs before building the web data."
+      ),
+      control_set, worst, BACKFILL_GATE_TOL
+    ))
+  }
+
+  df$local_cn_centered_earliest <- suppressWarnings(as.numeric(bf$local_cn_centered_earliest[idx]))
+  df$local_cn_centered_latest   <- suppressWarnings(as.numeric(bf$local_cn_centered_latest[idx]))
+  df$local_vif_max_earliest     <- suppressWarnings(as.numeric(bf$local_vif_max_earliest[idx]))
+  df$local_vif_max_latest       <- suppressWarnings(as.numeric(bf$local_vif_max_latest[idx]))
+
+  # The stored flags were raised on the uncentered CN. Replace them with the
+  # VIF-based verdict so every consumer of this frame agrees with the pipeline's
+  # current contract (utils_gtwr_main.R sets the same metric on a fresh run).
+  warn_earliest <- as.logical(bf$collinearity_warn_earliest[idx])
+  warn_latest   <- as.logical(bf$collinearity_warn_latest[idx])
+  df$collinearity_warn_earliest <- warn_earliest
+  df$collinearity_warn_latest   <- warn_latest
+  df$collinearity_warn_flag     <- (df$status == "success") & isTRUE_vec(warn_latest)
+  df$collinearity_warn_metric   <- "gtwr_local_weighted_vif_max"
+  df$collinearity_warn_threshold <- LOCAL_VIF_WARN_THRESHOLD
+
+  collin_provenance[[control_set]] <<- list(
+    source = basename(path),
+    time_basis = BACKFILL_TIME_BASIS,
+    warn_metric = "gtwr_local_weighted_vif_max",
+    warn_threshold = LOCAL_VIF_WARN_THRESHOLD,
+    gate_max_rel_dev = worst,
+    warn_n = sum(df$collinearity_warn_flag, na.rm = TRUE),
+    n_rows = nrow(df)
+  )
+  log("[3a] %s: applied VIF-based collinearity backfill to %d rows (gate %.2e, warn %d/%d)",
+      control_set, nrow(df), worst,
+      sum(df$collinearity_warn_flag, na.rm = TRUE), nrow(df))
+  df
+}
+
+coeffs_lean <- apply_collin_backfill(read_coeffs("lean"), "lean")
+coeffs_ext  <- apply_collin_backfill(read_coeffs("extended"), "extended")
 
 # All distinct adm_cd across both control sets
 all_coeff_adm_cd <- unique(c(coeffs_lean$adm_cd, coeffs_ext$adm_cd))
@@ -294,7 +445,31 @@ SUMMARY_COLS <- c(
   "max_local_cn_gtwr", "max_local_cn_centered_gtwr", "max_local_vif_gtwr",
   "control_set", "outcome_group", "outcome_order"
 )
-build_summary <- function(control_set) {
+# The per-outcome collinearity aggregates in gtwr_main_models_*.csv were reduced
+# from the uncentered condition number, so they disagree with the per-dong flags
+# once the backfill has moved those onto the weighted VIF. Recompute them from
+# the same frame the map is drawn from, so the sidebar total and the number of
+# flagged dongs on screen cannot diverge.
+summarise_collin <- function(coeffs, outcome) {
+  sub <- coeffs[coeffs$outcome == outcome, , drop = FALSE]
+  finite_max <- function(x) {
+    x <- suppressWarnings(as.numeric(x))
+    x <- x[is.finite(x)]
+    if (length(x) == 0L) NA_real_ else max(x)
+  }
+  # Logical after a backfill, character straight off read.csv() without one.
+  flags <- as.logical(sub$collinearity_warn_flag)
+  measured <- !is.na(flags)
+  list(
+    collinearity_warn_n = if (any(measured)) sum(flags[measured]) else NA_integer_,
+    collinearity_warn_share =
+      if (any(measured)) sum(flags[measured]) / sum(measured) else NA_real_,
+    max_local_vif_gtwr = finite_max(sub$local_vif_max_latest),
+    max_local_cn_centered_gtwr = finite_max(sub$local_cn_centered_latest)
+  )
+}
+
+build_summary <- function(control_set, coeffs) {
   df <- read.csv(
     file.path(out_tables, sprintf("gtwr_main_models_%s.csv", control_set)),
     colClasses = "character"
@@ -316,14 +491,19 @@ build_summary <- function(control_set) {
     for (col in intersect(int_cols, names(out_row))) {
       out_row[[col]] <- suppressWarnings(as.integer(out_row[[col]]))
     }
+    collin <- summarise_collin(coeffs, out_row$outcome)
+    out_row$collinearity_warn_n <- suppressWarnings(as.integer(collin$collinearity_warn_n))
+    out_row$collinearity_warn_share <- collin$collinearity_warn_share
+    out_row$max_local_vif_gtwr <- collin$max_local_vif_gtwr
+    out_row$max_local_cn_centered_gtwr <- collin$max_local_cn_centered_gtwr
     out_row
   })
   out <- file.path(out_json_dir, sprintf("summary_%s.json", control_set))
   write_json(res, out, auto_unbox = TRUE, pretty = FALSE, na = "null")
   log("[7] Wrote %s (%d outcomes)", out, length(res))
 }
-build_summary("lean")
-build_summary("extended")
+build_summary("lean", coeffs_lean)
+build_summary("extended", coeffs_ext)
 
 # ---------------------------------------------------------------------------
 # 7b. panel_{lean,extended}.json & quarter_estimates_{lean,extended}.json
@@ -447,6 +627,7 @@ manifest <- list(
   delta_breaks         = delta_breaks,
   delta_earliest_yq    = delta_earliest_yq,
   delta_latest_yq      = delta_latest_yq,
+  collinearity         = collin_provenance,
   artifacts = list(
     geojson = "geojson/seoul_adm_dong.geojson",
     coefficients_lean = "json/coefficients_lean.json",

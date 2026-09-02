@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-14T23:02:19+0900",
+  "generated_at": "2026-09-02T16:49:19+0900",
   "project_root": "/Users/junghyunpyo/Library/CloudStorage/GoogleDrive-hanuiwind25@gmail.com/내 드라이브/문서/논문/R",
   "crs_out": "EPSG:4326",
   "crs_in": "KGD2002 / Central Belt",
@@ -19,6 +19,22 @@
   "delta_breaks": [-36.1766, -11.7915, -4.6619, -1.9797, 0, 1.9797, 4.6619, 11.7915, 36.1766],
   "delta_earliest_yq": "2019Q4",
   "delta_latest_yq": "2025Q4",
+  "collinearity": {
+    "lean": {
+      "source": "gtwr_collin_diag_backfill_lean.csv",
+      "time_basis": "legacy_string_compare",
+      "warn_metric": "gtwr_local_weighted_vif_max",
+      "warn_threshold": 10,
+      "gate_max_rel_dev": 2.4567e-12,
+      "warn_n": 25,
+      "n_rows": 2125
+    },
+    "extended": {
+      "source": "stored_gtwr_output",
+      "warn_metric": "gtwr_local_uncentered_cn",
+      "note": "No backfill file; flags still come from the uncentered condition number, which fires at nearly every dong on this panel. Run 02_Code/80_optional/gtwr/09_backfill_gtwr_collin_diag.R for this control set."
+    }
+  },
   "artifacts": {
     "geojson": "geojson/seoul_adm_dong.geojson",
     "coefficients_lean": "json/coefficients_lean.json",
