@@ -237,6 +237,11 @@ empty_gtwr_main_tbl <- function() {
     p50_beta = numeric(),
       p75_beta = numeric(),
       share_positive = numeric(),
+      median_local_se = numeric(),
+      n_significant_fdr = integer(),
+      share_significant_fdr = numeric(),
+      share_positive_among_significant = numeric(),
+      local_inference_status = character(),
       st_bw = numeric(),
       global_lm_r2 = numeric(),
       global_lm_r2_adj = numeric(),
@@ -277,6 +282,12 @@ empty_gtwr_local_tbl <- function() {
     estimate = numeric(),
     earliest_estimate = numeric(),
     latest_estimate = numeric(),
+    latest_estimate_se = numeric(),
+    latest_estimate_t = numeric(),
+    latest_estimate_p = numeric(),
+    latest_estimate_p_fdr = numeric(),
+    latest_significant_fdr = logical(),
+    estimate_inference_source = character(),
     estimate_type = character(),
     earliest_yq = character(),
     latest_yq = character(),
@@ -322,6 +333,10 @@ empty_gtwr_local_beta_panel_tbl <- function() {
     outcome = character(),
     focal_var = character(),
     estimate = numeric(),
+    estimate_se = numeric(),
+    estimate_t = numeric(),
+    estimate_p = numeric(),
+    estimate_inference_source = character(),
     estimate_type = character(),
     window_scope = character(),
     status = character(),
@@ -735,6 +750,53 @@ require_gtwr_st_dmat <- function(st_dmat, n_obs, context) {
     )
   }
   invisible(st_dmat)
+}
+
+# GWmodel::gtwr() returns a local standard error and t-value for every
+# coefficient at every estimation point, as `<var>_SE` and `<var>_TV` columns of
+# the SDF. Reading only the coefficient leaves the local surface with no measure
+# of its own uncertainty, which is exactly what a heterogeneity claim needs: the
+# dispersion of a local coefficient field is not evidence of varying relationships
+# until it can be separated from the sampling noise of many small local fits.
+#
+# What these are and are not. The local SE is conditional on the bandwidth and
+# treats it as known, and the local t-values at neighbouring points are strongly
+# dependent because their windows overlap, so they do not carry exact nominal
+# coverage; Wheeler and Tiefelsdorf (2005) and Paez et al. (2011) are the standard
+# cautions. They are reported here as the weakest defensible screen, not as exact
+# inference, which is why the FDR-adjusted flag rather than the raw p-value is the
+# one the summary reports.
+#
+# The residual degrees of freedom follow GWmodel's own convention,
+# n - 2*tr(S) + tr(S'S), which it reports as the effective degrees of freedom.
+extract_gtwr_local_inference <- function(sdf, focal_var, edf) {
+  n <- if (is.null(sdf)) 0L else nrow(sdf)
+  out <- list(
+    se = rep(NA_real_, n),
+    t = rep(NA_real_, n),
+    p = rep(NA_real_, n),
+    source = "absent_from_sdf"
+  )
+  if (n == 0L) return(out)
+
+  se_col <- paste0(focal_var, "_SE")
+  tv_col <- paste0(focal_var, "_TV")
+  if (!se_col %in% names(sdf) || !tv_col %in% names(sdf)) return(out)
+
+  se <- suppressWarnings(as.numeric(sdf[[se_col]]))
+  tv <- suppressWarnings(as.numeric(sdf[[tv_col]]))
+  df_resid <- suppressWarnings(as.numeric(edf))
+  # Fall back to a normal reference only if GWmodel reported no usable edf; with
+  # thousands of residual degrees of freedom the two agree to three decimals, so
+  # the fallback changes nothing material and is recorded rather than hidden.
+  if (!is.finite(df_resid) || df_resid <= 0) {
+    p <- 2 * stats::pnorm(-abs(tv))
+    src <- "gwmodel_sdf_normal_reference"
+  } else {
+    p <- 2 * stats::pt(-abs(tv), df = df_resid)
+    src <- "gwmodel_sdf"
+  }
+  list(se = se, t = tv, p = p, source = src)
 }
 
 empty_gtwr_collin_diag <- function(n = 0L) {
@@ -2533,6 +2595,10 @@ run_actual_gtwr_spec <- function(panel_xy,
   }
 
   focal_coef <- suppressWarnings(as.numeric(sdf[[focal_var]]))
+  # Hoisted above the beta panel because the local p-values need the effective
+  # residual degrees of freedom; the same object is reused for the summary row.
+  diag_tbl <- extract_gtwr_diagnostics(fit)
+  local_inf <- extract_gtwr_local_inference(sdf, focal_var, diag_tbl$gtw_edf[[1]])
   period_id <- period_meta$period_id
   beta_panel <- d_fit |>
     dplyr::transmute(
@@ -2545,6 +2611,10 @@ run_actual_gtwr_spec <- function(panel_xy,
       outcome = .env$outcome,
       focal_var = .env$focal_var,
       estimate = .env$focal_coef,
+      estimate_se = .env$local_inf$se,
+      estimate_t = .env$local_inf$t,
+      estimate_p = .env$local_inf$p,
+      estimate_inference_source = .env$local_inf$source,
       estimate_type = "local_beta",
       window_scope = "quarterly_full_window",
       status = "success",
@@ -2574,7 +2644,21 @@ run_actual_gtwr_spec <- function(panel_xy,
     dplyr::summarise(
       earliest_estimate = pick_period_value(estimate, time_id, .env$period_meta$earliest_period_id),
       latest_estimate = pick_period_value(estimate, time_id, .env$period_meta$latest_period_id),
+      latest_estimate_se = pick_period_value(estimate_se, time_id, .env$period_meta$latest_period_id),
+      latest_estimate_t = pick_period_value(estimate_t, time_id, .env$period_meta$latest_period_id),
+      latest_estimate_p = pick_period_value(estimate_p, time_id, .env$period_meta$latest_period_id),
       .groups = "drop"
+      ) |>
+      # One local test per dong at the reported quarter, so the reported surface
+      # is several hundred simultaneous tests. Benjamini-Hochberg is applied
+      # across dongs within the spec, matching the convention the ESDA layer uses
+      # for its local indicators, and the FDR flag rather than the raw p-value is
+      # what the summary counts.
+      dplyr::mutate(
+        latest_estimate_p_fdr = stats::p.adjust(.data$latest_estimate_p, method = "BH"),
+        latest_significant_fdr = is.finite(.data$latest_estimate_p_fdr) &
+          .data$latest_estimate_p_fdr < 0.05,
+        estimate_inference_source = .env$local_inf$source
       ) |>
       dplyr::mutate(
         estimate = .data$latest_estimate,
@@ -2632,7 +2716,6 @@ run_actual_gtwr_spec <- function(panel_xy,
     success_local <- local_tbl |>
       dplyr::filter(.data$status == "success", is.finite(.data$estimate))
     beta_stats <- summarise_numeric(success_local$estimate)
-    diag_tbl <- extract_gtwr_diagnostics(fit)
     warn_vals <- local_tbl$collinearity_warn_flag
     cn_vals <- local_tbl$local_cn_gtwr_latest
     cn_centered_vals <- local_tbl$local_cn_centered_latest
@@ -2644,6 +2727,19 @@ run_actual_gtwr_spec <- function(panel_xy,
       mean(is.finite(local_tbl$latest_estimate))
     } else {
       NA_real_
+    }
+
+    # share_positive over all local points mixes the estimates that are separable
+    # from zero with those that are not, and the latter split near 50/50 by
+    # construction. Reporting the significant subset beside it is what keeps a
+    # coin-flip from reading as sign heterogeneity.
+    sig_vals <- success_local$latest_significant_fdr
+    n_sig <- sum(sig_vals %in% TRUE, na.rm = TRUE)
+    sig_denom <- sum(!is.na(sig_vals))
+    inference_status <- if (all(is.na(success_local$latest_estimate_se))) {
+      "unavailable_local_se_absent_from_sdf"
+    } else {
+      unique(stats::na.omit(success_local$estimate_inference_source))[[1]]
     }
 
   summary_tbl <- empty_gtwr_main_tbl() |>
@@ -2665,6 +2761,15 @@ run_actual_gtwr_spec <- function(panel_xy,
       p50_beta = beta_stats$p50_beta,
       p75_beta = beta_stats$p75_beta,
       share_positive = beta_stats$share_positive,
+      median_local_se = stats::median(success_local$latest_estimate_se, na.rm = TRUE),
+      n_significant_fdr = as.integer(n_sig),
+      share_significant_fdr = if (sig_denom > 0L) n_sig / sig_denom else NA_real_,
+      share_positive_among_significant = if (n_sig > 0L) {
+        mean(success_local$latest_estimate[sig_vals %in% TRUE] > 0, na.rm = TRUE)
+      } else {
+        NA_real_
+      },
+      local_inference_status = inference_status,
       st_bw = as.numeric(st_bw),
         global_lm_r2 = diag_tbl$global_lm_r2[[1]],
         global_lm_r2_adj = diag_tbl$global_lm_r2_adj[[1]],
