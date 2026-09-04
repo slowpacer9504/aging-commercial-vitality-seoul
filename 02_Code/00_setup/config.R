@@ -895,6 +895,19 @@ cfg$get_gtwr_latest_summary_table_path <- function(control_set = cfg$gtwr_contro
 cfg$get_gtwr_latest_rankings_table_path <- function(control_set = cfg$gtwr_control_set) {
   file.path(cfg$dir_tables, sprintf("gtwr_latest_rankings_table_%s.csv", cfg$gtwr_main_output_tag(control_set)))
 }
+# Estimand and kernel-geometry diagnostics from
+# 80_optional/gtwr/11_diagnose_gtwr_estimand.R. These need distances and the
+# published beta panel only, never a refit, so they can be produced without
+# paying for a twelve-hour GTWR rerun.
+cfg$get_gtwr_estimand_comparison_path <- function(control_set = cfg$gtwr_control_set) {
+  file.path(cfg$dir_tables, sprintf("gtwr_estimand_comparison_%s.csv", cfg$gtwr_main_output_tag(control_set)))
+}
+cfg$get_gtwr_kernel_geometry_path <- function(control_set = cfg$gtwr_control_set) {
+  file.path(cfg$dir_tables, sprintf("gtwr_kernel_geometry_%s.csv", cfg$gtwr_main_output_tag(control_set)))
+}
+cfg$get_gtwr_temporal_edge_path <- function(control_set = cfg$gtwr_control_set) {
+  file.path(cfg$dir_tables, sprintf("gtwr_temporal_edge_%s.csv", cfg$gtwr_main_output_tag(control_set)))
+}
 cfg$get_gtwr_lamda_bw_cv_search_path <- function(control_set = cfg$gtwr_control_set) {
   file.path(cfg$dir_tables, sprintf("gtwr_lamda_bw_cv_search_%s.csv", cfg$gtwr_main_output_tag(control_set)))
 }
