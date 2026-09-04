@@ -167,10 +167,7 @@ loo_residuals <- function(mm, Y, w, i) {
 
 {
   control_set <- normalize_control_set_main(cfg$gtwr_control_set)
-  out_path <- file.path(
-    cfg$dir_tables,
-    sprintf("gtwr_lamda_bw_cv_search_%s.csv", cfg$gtwr_main_output_tag(control_set))
-  )
+  out_path <- cfg$get_gtwr_lamda_bw_cv_search_path(control_set)
 
   outcomes <- cfg$gtwr_main_outcomes
   focal_var <- cfg$gtwr_main_exposure_vars[[1]]

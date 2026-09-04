@@ -32,6 +32,11 @@ ensure_dirs(cfg$required_dirs)
 
 append_log(cfg$logs$model_run, sprintf("\n# Pipeline Start: %s", timestamp()))
 
+# Record R, renv.lock, and package versions next to the step timings. GTWR,
+# SPDM, and the permutation diagnostics are version-sensitive, so an output is
+# only auditable if the log states which environment produced it.
+log_run_environment(cfg$logs$model_run)
+
 
 #==============================================================================
 # 1. Ordered Pipeline Scripts

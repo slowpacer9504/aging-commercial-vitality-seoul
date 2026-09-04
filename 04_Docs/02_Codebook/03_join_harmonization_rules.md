@@ -1,5 +1,7 @@
 # Join/Harmonization Rules
 
+> **Last updated**: 2026-09-03
+
 ## 1) Basic Join Keys
 
 - Panel keys: `adm_cd`, `yq`

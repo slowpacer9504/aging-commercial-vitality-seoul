@@ -30,6 +30,10 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_gtwr_main", timestamp()))
 
+# GTWR is the most version-sensitive stage in the project and runs outside
+# run_all.R, so it records its own environment rather than inheriting one.
+log_run_environment(cfg$logs$model_run)
+
 #==============================================================================
 # 1. Resident-Only Quarterly GTWR Contract
 #==============================================================================

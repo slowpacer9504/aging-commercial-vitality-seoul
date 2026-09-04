@@ -54,7 +54,7 @@ The default pipeline runs **without any environment variables**. The following v
 
 > **Security note**: never commit real API keys. Set them in your local `.Renviron` file (loaded automatically by R at startup) or via `Sys.setenv()` in an untracked script.
 
-Optional sidecar analyses (GTWR, SPDM experiments, robustness checks) expose additional environment variables (e.g. `GTWR_CONTROL_SET`, `GTWR_PARALLEL_SPECS`, `LIVING_POP_HOURS`). See [02_Code/README.md](02_Code/README.md) for the full reference.
+Optional sidecar analyses (GTWR, SPDM experiments, robustness checks) expose additional environment variables. All of them, with defaults and purpose, are listed in [02_Code/README.md — Environment Variable Reference](02_Code/README.md#environment-variable-reference). Two are worth knowing before reading any output: `BUILD_OPTIONAL_APPENDIX_TABLES` (default `false`) gates the optional appendix tables, so a default run does not write them, and `GTWR_CONTROL_SET` (default `lean`) determines the suffix on every GTWR output file.
 
 ---
 

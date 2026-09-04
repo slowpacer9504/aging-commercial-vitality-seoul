@@ -1,5 +1,7 @@
 # Research Specification Index
 
+> **Last updated**: 2026-09-03
+
 This document serves as the central hub for core specifications to reference during coding. The current active contract is the **Seoul administrative dong quarterly panel (`adm_cd x yq`)**.
 
 Implementation scripts follow a role-based folder structure and a folder-local numbering system. The canonical dataset, key, timing, and output naming conventions to be interpreted strictly follow the quarterly contract declared in this codebook.

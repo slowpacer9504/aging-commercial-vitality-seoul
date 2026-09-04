@@ -1,5 +1,7 @@
 # Data Specification
 
+> **Last updated**: 2026-09-03
+
 ## 1) Hierarchical Structure
 
 - Raw: `01_Data/01_Raw_Data`

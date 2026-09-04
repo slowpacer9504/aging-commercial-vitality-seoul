@@ -18,9 +18,8 @@
 # Keep this utility focused on shared estimation mechanics. Specification
 # selection stays in the calling scripts, while this file handles safe fitting,
 # screening, metadata, and export-ready model tidying for already chosen inputs.
-value_or <- function(x, default) {
-  if (is.null(x) || length(x) == 0L) default else x
-}
+# `value_or()` lives in utils_io.R, which every caller of this file already
+# sources; defining it twice invites the two copies to drift apart.
 
 collapse_chr <- function(x) {
   vals <- unique(as.character(x))

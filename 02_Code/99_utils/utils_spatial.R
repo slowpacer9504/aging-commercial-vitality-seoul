@@ -286,6 +286,46 @@ build_listw <- function(sf_obj, type = "queen") {
 # 4. Moran Alignment Helpers
 #==============================================================================
 
+deterministic_seed_from_label <- function(label, base_seed = cfg$esda_seed) {
+  # Permutation inference must be reproducible per diagnostic rather than per
+  # session, so the seed is derived from the label of the thing being tested.
+  # Reordering or adding specs then leaves every other spec's draws unchanged.
+  ints <- utf8ToInt(enc2utf8(paste(label, collapse = "|")))
+  mod <- 2147483647
+  seed <- as.double(base_seed %% mod)
+
+  if (length(ints) > 0L) {
+    for (value in ints) {
+      seed <- (seed * 131 + as.double(value)) %% mod
+    }
+  }
+
+  seed <- floor(seed)
+  if (!is.finite(seed) || seed <= 0) seed <- 1
+  as.integer(seed)
+}
+
+with_deterministic_seed <- function(label, expr, base_seed = cfg$esda_seed) {
+  # Restore the caller's RNG state on exit so a seeded diagnostic cannot shift
+  # the random stream of whatever runs after it.
+  had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+  old_seed <- if (had_seed) get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
+
+  on.exit(
+    {
+      if (had_seed) {
+        assign(".Random.seed", old_seed, envir = .GlobalEnv)
+      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
+        rm(".Random.seed", envir = .GlobalEnv)
+      }
+    },
+    add = TRUE
+  )
+
+  set.seed(deterministic_seed_from_label(label, base_seed = base_seed))
+  eval.parent(substitute(expr))
+}
+
 get_listw_region_ids <- function(listw_obj) {
   # Stored region IDs are the alignment anchor between geometry, panel rows, and
   # residual Moran diagnostics.
