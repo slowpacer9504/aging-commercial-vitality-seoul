@@ -1,5 +1,13 @@
 # Variable Dictionary
 
+> **Last updated**: 2026-09-04
+
+## 0) How This Dictionary Is Split
+
+**This document is the index; `02_variable_dictionary.csv` is the dictionary.** This file groups variables by analytical role and states the rules that apply to a whole group. The per-variable record — definition, unit, formula, allowed range, missing rule, transform rule, timing rule, source periodicity, publication method, producing script, and consuming models, eighteen fields in all — lives one row per variable in the companion CSV.
+
+**The CSV's definitions are in Korean.** `definition_ko` and `raw_data_source` are written in Korean, matching the language of the source datasets and of the thesis; `publication_formula`, `publication_note`, and `source_dataset` mix Korean and English. There is no `definition_en`. A reader working only from this English document therefore sees which variables exist and how they are grouped, but reaches the authoritative definition only through the CSV. Variable names, formulas, and value ranges in the CSV are language-neutral and readable either way.
+
 ## 1) Key Variables
 
 - `adm_cd`
@@ -67,7 +75,11 @@ These variables are static metadata stored in `adm_region_lookup.parquet`. They 
 - `lag4_transit_accessibility`
 - `lag4_ln_workplace_worker_pop`
 
-These four variables serve as the baseline control candidate pool for TWFE/SPDM, corresponding to the 4-quarter lagged values of `ln_resident_pop`, `ln_land_price_adjusted`, `transit_accessibility`, and `ln_workplace_worker_pop`, respectively. The usable subset is finalized after checking for finite counts and multicollinearity.
+These four variables serve as the baseline control candidate pool for TWFE/SPDM. The usable subset is finalized after checking for finite counts and multicollinearity.
+
+Three of the four are exactly the 4-quarter lag of their contemporaneous counterpart: `lag4_ln_resident_pop`, `lag4_ln_land_price_adjusted`, and `lag4_ln_workplace_worker_pop` apply the same log or level transform to the lagged raw value, and `lag4_x[t] == x[t-4]` holds to the last floating-point digit across all 10,200 comparable rows.
+
+**`lag4_transit_accessibility` is the exception and is not the 4-quarter lag of `transit_accessibility`.** Both are the mean of the pooled z-scores of `bus_stop_count_aux` and `subway_station_count_aux`, but each is standardized over its own sample: the contemporaneous composite uses the moments of the `2019Q4~2025Q4` values, while the lagged composite uses the moments of the lagged series over the same estimation rows, that is the `2018Q4~2024Q4` values. Because bus and subway counts trend at different rates, the two z-scores are rescaled by different factors in the two samples, so the composite is not merely shifted but slightly reweighted between its components. Measured on the current panel the two series correlate at `0.999993` with an `R^2` of `0.999986` against a linear fit, and the largest deviation from an exact affine map is `1.2e-2`; the difference is therefore numerically negligible but not exactly absorbed by fixed effects. Standardizing the control over the sample in which it is used is a defensible choice, and it is retained rather than changed because unifying it would alter every published TWFE and SPDM table for no substantive gain; the option is recorded in [decision_log.md](../03_Log/decision_log.md) for the next scheduled rerun.
 `ln_land_price_adjusted` is a land price variable constructed by applying the quarterly average correction factor from the Korea Real Estate Board's monthly land price index to the annual official assessed land price.
 `ln_workplace_worker_pop` is the log of the workplace worker population, mapped to 2020 administrative district boundaries using Seoul's administrative district-level statistics on the number of workers by establishment size.
 Since `ln_floating_pop` is a component of social vitality, it is not used as a main control variable.
@@ -111,6 +123,23 @@ For `subway_station_count_aux`, the opening date rules are applied to the statio
   - `age30_floating_share`
   - `age40_floating_share`
   - `age50_floating_share`
+
+## 5A) Dictionary Scope and Uncovered Panel Columns
+
+`panel_main.parquet` currently carries 192 columns, of which 72 are individually specified in this document and `02_variable_dictionary.csv`. The dictionary is deliberately scoped to the **analytical surface**: every variable that enters an active or appendix model as an outcome, exposure, mediator, control, or vitality component is covered, and coverage of that set is complete. The remaining 120 columns are source passthrough, provenance, and diagnostic fields that no model reads. They are retained in the panel so that any published figure can be traced back to its inputs, and they are defined by the script that creates them rather than here.
+
+Those columns fall into the following families. When one is needed, read the producing script named beside it.
+
+- **Unlogged source levels of documented variables** — `total_sales`, `sales_count`, `total_store_count`, `floating_pop`, `spend_total`, `official_land_price`, `age60_floating_pop`, `age60_sales_amount`, `apartment_count`. The log or share form used by models is documented above. Producer: [02_build_seoul_quarter_base.R](../../02_Code/01_preprocess/02_build_seoul_quarter_base.R), [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R).
+- **Commercial-structure passthrough** — `sales_cs1`-`sales_cs3`, `sales_share_cs1`-`sales_share_cs3`, `store_cs1`-`store_cs3`, `store_share_cs1`-`store_share_cs3`, `commercial_change_index_code`, `commercial_change_index_name`, `instability_index`, `income_level`, `total_household_commercial`, `operating_months_avg`, `closure_months_avg`, `seoul_operating_months_avg`. Producer: [02_build_seoul_quarter_base.R](../../02_Code/01_preprocess/02_build_seoul_quarter_base.R).
+- **Auxiliary facility and built-environment counts** — the `*_aux` medical, retail, senior-facility, and transit families, plus `park_area`, `road_length_km`, `sidewalk_length_km`, `intersection_density`, `avg_slope_degree`, `betweenness_centrality`, `apartment_building_count`. Producer: [03_build_auxiliary_covariates.R](../../02_Code/01_preprocess/03_build_auxiliary_covariates.R). The Seoul Commercial Service counterparts `apartment_complex_count`, `apartment_mean_price`, `facility_count`, and the retired `apartment_count`, along with the geometry field `adm_area_km2`, are attached in [02_build_seoul_quarter_base.R](../../02_Code/01_preprocess/02_build_seoul_quarter_base.R) and [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R).
+- **Provenance and coverage flags** — `*_source_*`, `*_source_precision`, `survival_area_name`, `survival_area_gubun`, `land_price_lpi_source_bjd_n`, `land_price_lpi_weight_coverage`, `workplace_worker_source_year`, `workplace_worker_raw_dong_n`, `workplace_worker_source_rule`, `registered_month_n`, `age_group_total_abs_diff_max`, `registered_boundary_proxy_*`, `inner_n_slots`, `metro_n_slots`, `inner_n_months`, `metro_n_months`, `facility_available`, `apartment_available`. These carry the as-of rule, the boundary-proxy allocation, and the source coverage that section 7 and section 8 describe as principles, and they are what the QC logs check.
+- **Non-active survival horizons** — `survival_1y`, `survival_5y` and their `*_survived` / `*_cohort` denominators. Only `survival_3y` enters the active stability sub-index.
+- **Derived densities and ratios kept as diagnostics** — `store_density`, `resident_pop_density`, `floating_pop_density`, `total_household_commercial_density`, their `ln_` forms, `sales_per_store`, `sales_per_capita`, `ln_age60_resident_pop`, `ln_age60_floating_pop`, `ln_spend_total`, `city_age60_sales_share`, `age60_sales_lq`. Producer: [06_build_analysis_panel.R](../../02_Code/01_preprocess/06_build_analysis_panel.R).
+- **Age-band resident population levels** — `age20_resident_pop` through `age50_resident_pop`, inputs to the age-mix sidecars that derive `ln_young_resident_pop`, `ln_middle_resident_pop`, and `ln_old_resident_pop` in `utils_age_mix.R`.
+- **Alternative entropy windows** — `sales_time_entropy_06_24`, `floating_time_entropy_06_24`, the 06-24 hour restriction of the documented full-day entropies.
+
+Nine dictionary entries do not appear in `panel_main` by design: `adm_nm`, `adstrd_nm`, `gu_prefix`, `gu_name`, and `living_area` live in `adm_region_lookup.parquet`; `ln_young_resident_pop`, `ln_middle_resident_pop`, and `ln_old_resident_pop` are derived inside the age-mix sidecars; and `economic_transaction_scale` is an internal axis of [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R) rather than a published column.
 
 ## 6) Design Principles
 

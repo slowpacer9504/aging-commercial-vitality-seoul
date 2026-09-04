@@ -52,10 +52,13 @@ The active default order is:
 - `02_Code/01_preprocess/07_build_vitality_index.R`
 - `02_Code/02_esda/01_build_spatial_weights.R`
 - `02_Code/02_esda/02_run_esda.R`
+- `02_Code/02_esda/03_run_exploratory_diagnostics.R`
 - `02_Code/03_models/01_run_twfe_main.R`
 - `02_Code/03_models/02_run_spdm_main.R`
 - `02_Code/04_robustness/01_run_spdm_w_robustness.R`
 - `02_Code/04_robustness/02_run_robustness.R`
+- `02_Code/04_robustness/03_run_influence_robustness.R`
+- `02_Code/04_robustness/04_run_identification_diagnostics.R`
 - `02_Code/06_qc/01_validate_method_dataset_alignment.R`
 - `02_Code/05_reporting/01_make_tables_figures.R`
 
@@ -84,6 +87,8 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
   - `GTWR_BANDWIDTH_STRATEGY`: `fixed` (default), `full_panel_bw_gtwr`, or `anchor_quarter_bw_gtwr`.
   - `GTWR_ST_BW`: Spatiotemporal bandwidth (default: 60).
   - Search script: `02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R` (Use `GTWR_REFRESH_BW_CACHE=TRUE` to recompute cache).
+- **Kernel and angle**: `GTWR_KERNEL=bisquare` (default) and `GTWR_KSI=0` (default). Both are required reporting items for a GTWR specification.
+- Full list: see [Environment Variable Reference](#environment-variable-reference) below.
 
 **Outputs:**
 - Main outputs are tagged by control set (e.g., `gtwr_main_models_lean.csv`).
@@ -112,6 +117,8 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 - `02_Code/80_optional/gtwr/05_run_gtwr_experiment.R`
 - `02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R`
 - `02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R`
+- `02_Code/80_optional/gtwr/09_backfill_gtwr_collin_diag.R` — recomputes the three local collinearity diagnostics for already-estimated specs without refitting
+- `02_Code/80_optional/gtwr/10_search_gtwr_lamda_bw_cv.R` — leave-one-out CV search over the lamda and bandwidth grids without fitting GTWR; a search tool, not a reporting one
 
 > Note: `06_select_gtwr_bandwidth.R` is a bandwidth *search* utility rather than an experiment runner; it is documented under the GTWR local-analysis section above.
 
@@ -121,6 +128,110 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 - **Review Outputs in RStudio**: `02_Code/06_qc/03_open_outputs_for_rstudio_review.R`
 - **Build Presentation Artifacts**: `02_Code/05_reporting/02_build_presentation_artifacts.R`
 - **Build GTWR Level Artifacts**: `02_Code/05_reporting/03_build_gtwr_level_artifacts.R`
+
+## Environment Variable Reference
+
+This is the complete list of environment variables read by the pipeline. The default pipeline runs with **none** of them set. Values are read once in `00_setup/config.R` unless another script is noted; an invalid value falls back to the default rather than raising, and every such fallback is warned at config time and recorded in the `### Run environment` block of `model_run_log.md`, so a run that silently used a default instead of the value you asked for is visible in the log.
+
+### Pipeline-wide
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `CFG_OUTPUT_TAG` | *(empty)* | Suffix appended to output paths to isolate a run |
+| `RSTUDIO` | set by RStudio | Read, not set by the user; `06_qc/03_open_outputs_for_rstudio_review.R` opens viewers only when it is `1` |
+| `BUILD_OPTIONAL_APPENDIX_TABLES` | `false` | Gate for the optional appendix tables in `05_reporting/01_make_tables_figures.R` (`spatial_family_main_table.csv`, `gtwr_latest_*`, `gtwr_delta_*`, `gwr_delta_summary_table.csv`). They are **not** written by a default run |
+| `QC_CONTRACT_GATE` | `true` | When true, `06_qc/01_validate_method_dataset_alignment.R` stops the run if any method-dataset contract check is `FAIL`, before `05_reporting` builds tables on it. The QC table and log line are written first, so a failing run still leaves the full diagnostic behind. Set to `false` only to inspect downstream artifacts while knowingly working against a failing contract; the bypass is warned and logged |
+| `EDA_EXPOSURE_BINS` | `20` | Read by `02_esda/03_run_exploratory_diagnostics.R`. Number of equal-count exposure bins used for the binned response table and the lack-of-fit test. More bins resolve finer departures from linearity at the cost of noisier bin means |
+| `INFLUENCE_TAIL_Z` | `5` | Read by `04_robustness/03_run_influence_robustness.R`. Pooled-z threshold used to name outcome-tail dongs. Not a rejection rule; only a way to identify dongs far enough out to move a pooled standard deviation |
+| `INFLUENCE_TOP_K` | `10` | Read by `04_robustness/03_run_influence_robustness.R`. Number of highest-`\|dfbeta\|` dongs dropped in the `top_k` exclusion variant |
+
+### Preprocessing
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `KAKAO_REST_API_KEY` | *(empty)* | Kakao geocoding key; needed only for fresh geocoding beyond the cache (`01_preprocess/03_build_auxiliary_covariates.R`) |
+| `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET` | *(empty)* | Naver geocoding keys, same condition |
+| `GOLMOK_COOKIE` | *(empty)* | Session cookie for the `selectSurvivalRate.json` endpoint when the survival-rate layer is rebuilt |
+| `GOLMOK_SURVIVAL_FORCE_REBUILD` | `false` | Refetch the survival-rate JSON instead of reusing the saved responses |
+| `LIVING_POP_HOURS` | `0-23` | Hour window aggregated for the living-population inflow layer |
+| `LIVING_POP_CORES` | `1` | Parallel workers for monthly ZIP processing; the parquet, manifest, and QC files are still written once by the parent |
+| `LIVING_POP_FORCE_REBUILD` | `false` | Rebuild the inflow layer even when the output exists |
+| `LIVING_POP_SAMPLE_MONTHS` | *(empty)* | Stream only a sample month (e.g. `201901`) for a smoke test; writes sample-tagged outputs |
+| `LIVING_POP_ENCODING` | `UTF-8` | Encoding used to read the living-population ZIP members |
+| `LIVING_POP_SUPPRESSED_VALUE` | `0` | Value substituted for suppressed cells in the source |
+
+### SPDM
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SPDM_MIN_PERIODS` | `20` | Minimum number of quarters a balanced estimation panel must retain for a specification to be accepted. A floor on panel length, not a per-dong observation count |
+| `SPDM_OPTIONAL_SPEC_CORES` | `1` | Parallel spec workers for the optional SPDM sidecars |
+| `SPDM_OPTIONAL_IMPACT_CORES` | `1` | Parallel workers for impact simulation in the optional SPDM sidecars |
+| `RUN_SPDM_CHANNEL_BOOTSTRAP` | `true` | Run the wild residual bootstrap in the channel-path sidecar; when disabled, inference falls back to `delta_independent_approx` |
+| `SPDM_CHANNEL_BOOTSTRAP_R` | `1000` | Bootstrap draws |
+| `SPDM_CHANNEL_BOOTSTRAP_CORES` | `4` | Parallel bootstrap workers (Windows falls back to sequential) |
+| `SPDM_CHANNEL_BOOTSTRAP_METHOD` | `adm_cd_wild_residual` | Bootstrap scheme, clustered at the administrative dong |
+| `SPDM_CHANNEL_BOOTSTRAP_SEED` | `cfg$esda_seed` | Seed for the bootstrap draws |
+| `SPDM_CHANNEL_IMPACT_SIM_R` | `1000` | Impact simulation draws |
+| `SPDM_CHANNEL_IMPACT_CORES` | `4` | Parallel workers for impact simulation |
+
+### GTWR specification
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `GTWR_CONTROL_SET` | `lean` | `lean` (resident population + land price) or `extended` (adds transit accessibility + workplace workers) |
+| `GTWR_KERNEL` | `bisquare` | Local weighting kernel; also accepts `gaussian`, `exponential`, `tricube`, `boxcar`. **Required reporting item** |
+| `GTWR_ADAPTIVE` | `true` | Adaptive kernel, so a bandwidth counts neighbours rather than metres |
+| `GTWR_ST_BW` | `60` | Fixed adaptive spatiotemporal bandwidth of the active contract |
+| `GTWR_LAMDA` | `0.5` | Dimensionless share of weight on the full spatial extent; `0.5` weights space and time equally. Values recorded before 2026-09-02 follow the raw-unit convention and are not comparable |
+| `GTWR_KSI` | `0` | Angle parameter of the Huang et al. (2010) spatiotemporal distance; held at the default outside the experiment sidecar. **Required reporting item** |
+| `GTWR_BANDWIDTH_STRATEGY` | `fixed` | `fixed`, `full_panel_bw_gtwr`, or `anchor_quarter_bw_gtwr`. The main GTWR never runs `bw.gtwr()` even if this is changed |
+| `GTWR_BW_APPROACH` | `CV` | Criterion used by `bw.gtwr()` in the selection sidecar |
+| `GTWR_BW_ANCHOR_YQ` | first active quarter | Anchor quarter for `anchor_quarter_bw_gtwr` |
+| `GTWR_LOCAL_VIF_WARN_THRESHOLD` | `10` | Local collinearity warning cut-off on `local_vif_max`, the only one of the three measures with an established rule of thumb |
+| `GTWR_LOCAL_CN_WARN_THRESHOLD` | `100` | Retained for reference reporting only; does not raise the warning flag |
+
+### GTWR runtime and caching
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `GTWR_PARALLEL_SPECS` | `5` | Parallel spec workers |
+| `GTWR_RESUME_SPECS` | `true` | Reuse valid completed spec caches after an interruption |
+| `GTWR_REFRESH_SPEC_CACHE` | `false` | Clear the spec cache and recompute |
+| `GTWR_REFRESH_BW_CACHE` | `false` | Recompute the bandwidth-selection cache |
+| `GTWR_USE_FROZEN_SPEC` | `true` | Reuse the frozen control/spec contract so sidecars match the baseline |
+| `GTWR_REFRESH_FROZEN_SPEC` | `false` | Rebuild the frozen spec record |
+| `GTWR_REUSE_ST_DMAT` | `false` | Reuse a cached spatiotemporal distance matrix across specs |
+| `GTWR_REFRESH_BANDWIDTH_SENSITIVITY_CACHE` | `false` | Recompute the bandwidth-sensitivity cache |
+| `GTWR_REFRESH_LAMDA_SENSITIVITY_CACHE` | `false` | Recompute the lamda-sensitivity cache |
+| `GTWR_LEVEL_CONTROL_SET` | `auto` | Force one source family in `05_reporting/03_build_gtwr_level_artifacts.R` |
+| `GTWR_LEVEL_TABLE_DIR` | *(empty)* | Override the table directory for GTWR level artifacts |
+| `GTWR_LEVEL_INPUT_ROOT` | project root | Override the root the GTWR level artifact builder reads inputs from |
+
+### GTWR sensitivity and search grids
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `GTWR_BANDWIDTH_SENSITIVITY_GRID` | `30,60,90,120,180` | Fixed adaptive bandwidth grid for `07_run_gtwr_bandwidth_sensitivity.R` |
+| `GTWR_LAMDA_SENSITIVITY_GRID` | `0.1,0.25,0.5,0.75,0.9` | Dimensionless lamda grid for `08_run_gtwr_lamda_sensitivity.R` |
+| `GTWR_CV_SEARCH_LAMDA_GRID` | `0.1,0.25,0.5,0.75,0.9,0.9867` | Lamda grid for the CV search (`10_search_gtwr_lamda_bw_cv.R`) |
+| `GTWR_CV_SEARCH_BW_GRID` | `30,60,90,120,180` | Bandwidth grid for the CV search |
+| `GTWR_CV_SEARCH_FOCAL_N` | `300` | Focal subsample size used to estimate the CV surface |
+| `GTWR_CV_SEARCH_SEED` | `20260902` | Seed for the focal subsample |
+
+### GTWR experiment sidecar (`05_run_gtwr_experiment.R`)
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `GTWR_EXPERIMENT_OUTCOMES` | *(empty)* | Outcome subset; empty means the standard five |
+| `GTWR_EXPERIMENT_REQUIRED_CONTROLS` | *(empty)* | Controls forced into every candidate |
+| `GTWR_EXPERIMENT_OPTIONAL_POOL` | *(empty)* | Optional control pool searched over |
+| `GTWR_EXPERIMENT_CONTROL_STRATEGIES` | `baseline` | Control-strategy grid |
+| `GTWR_EXPERIMENT_BW_APPROACHES` | `CV` | Bandwidth criteria searched |
+| `GTWR_EXPERIMENT_MIN_ST_BW_GRID` | `30` | Minimum bandwidth grid |
+| `GTWR_EXPERIMENT_LAMDA_GRID` | `0.05` | Lamda grid. **Raw-unit legacy value**: under the dimensionless convention adopted 2026-09-02, `0.05` no longer means what it did before |
+| `GTWR_EXPERIMENT_KSI_GRID` | `0` | Angle-parameter grid; the only place `ksi` is varied |
+| `GTWR_EXPERIMENT_TOPN_RAW` | `1` | Number of top candidates whose raw local surfaces are persisted |
 
 ## Directory Roles
 
@@ -134,6 +245,17 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 - `06_qc/`: active QC plus manual audit helpers
 - `80_optional/`: manual direct-run preprocessing, TWFE, SPDM, and GTWR sidecars
 - `90_templates/`: preprocessing and modeling templates (`00_template_preprocessing_aging_commerce.R`, `00_template_modeling_aging_commerce.R`)
+- `95_tests/`: numeric regression tests for the utility functions that produce reported quantities
+
+## Tests
+
+```bash
+Rscript 02_Code/95_tests/run_tests.R    # exits 0 on pass, 1 on failure
+```
+
+65 assertions over `compute_true_sdm_effects()` (LeSage-Pace direct/indirect/total impacts), `build_gtwr_st_dmat()` with its `gtwr_st_combine()` / `gtwr_st_scales()` helpers (the symmetric spatiotemporal distance that replaced the defective `GWmodel::ti.distv()` time comparison), and `weighted_design_collin_diag()` (local VIF and condition numbers).
+
+The suite is base R with no `testthat` dependency, runs in a few seconds, needs no pipeline output, and should be run before committing any change to `99_utils/`. Checks that compare against `03_Output/01_Tables/spdm_impacts.csv` skip rather than fail when the outputs are absent, so it works on a fresh clone.
 
 ## Specification Navigation
 

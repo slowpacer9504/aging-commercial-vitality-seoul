@@ -1,6 +1,6 @@
 # Research Procedure
 
-> **Last updated**: 2026-08-13
+> **Last updated**: 2026-09-04
 
 ## 0. Document Purpose
 
@@ -299,6 +299,18 @@ Additionally, the following supplementary composites are created:
 
 The standardization baseline is the active analysis period sample, `2019Q4-2025Q4 adm_cd-yq`. [07_build_vitality_index.R](../../02_Code/01_preprocess/07_build_vitality_index.R) standardizes individual components using pooled z-scores to create sub-indices, which are then standardized again via pooled z-scores to calculate the composites. Cross-sectional standardization per quarter is not used in the active workflow.
 
+#### Outlier policy: none, by design, and what follows from it
+
+No winsorising, trimming, or robust standardization is applied at any stage of preprocessing. Every extreme value a source produces reaches the models. This is a deliberate choice, because the extremes here are real events rather than data errors, but it has three consequences that must be reported rather than discovered:
+
+1. **The sub-indices are strongly left-skewed.** In the active window the minima reach `-7.1` standard deviations for `vitality_sub_economic`, `-6.8` for `vitality_sub_social`, `-9.1` for `vitality_sub_stability`, and `-14.3` for `vitality_sub_temporal`, against maxima of only `+2.2` to `+3.3`. The quarterly stability components are the source: they are bounded above and unbounded below, so a z-score is a poor summary of them. The time-of-day entropy components are well behaved.
+2. **A few dongs set the scale for everyone else.** Dongs beyond five pooled z units inflate the pooled standard deviation by `22.1%` for `vitality_sub_temporal` and by `6%` to `11%` for the other sub-indices. A coefficient reported per standard deviation is therefore denominated in a unit those dongs helped define.
+3. **The affected dongs are shocked, not aging.** They fall into two groups: large-scale residential redevelopment (`개포1동`, `반포본동`, `잠실6동`, `둔촌1동`, `고덕2동`, `항동`), where the housing stock is demolished and quarterly sales collapse, and the COVID tourism collapse in the central business district (`명동`, `회현동`, `소공동`). Neither mechanism is population aging.
+
+The same redevelopment shock also drives the panel's only missing data: `둔촌1동` lacks 24 of 25 quarters of vitality and `항동` lacks 8, which is why the SPDM balanced-sample rule reports `n_units` of 423 or 424 for some outcomes.
+
+Because these are real events, the policy is retained rather than replaced by a trimming rule. What the design owes the reader instead is the sensitivity, which [03_run_influence_robustness.R](../../02_Code/04_robustness/03_run_influence_robustness.R) produces: leave-one-dong-out influence on the exposure coefficient, and re-estimation without the tail and the most influential dongs. Its results must accompany any main-text claim about `vitality_sub_temporal` in particular.
+
 ### 2.10 [01_build_spatial_weights.R](../../02_Code/02_esda/01_build_spatial_weights.R): Spatial Weights Matrix Construction
 
 This step constructs the common spatial contract using the 2020 base Seoul administrative dong boundaries.
@@ -312,12 +324,24 @@ All models and map visualizations must share the same `adm_cd` ordering and same
 
 ESDA is the stage to confirm the presence of spatial patterns before estimating models.
 
-- Distribution maps and LISA are saved focusing on the latest quarter cross-section.
+- Distribution maps, LISA, bivariate LISA, and global bivariate Moran are computed on the latest quarter cross-section. Global Moran's I is computed for **every quarter** of the active window; EHSA uses the full sequence by construction.
 - Global Moran's I uses a reproducible permutation p-value, and alternative W sensitivity is calculated the same way.
+- **Levels and within, side by side.** `global_morans_i_within.csv` reports Moran's I on the levels and on the two-way within transform for every variable-quarter. The reason is that the estimators identify from within-dong, within-quarter deviations, so autocorrelation that lives only in the cross-sectional levels is removed by the fixed effects before estimation and cannot on its own motivate a spatial model. Over the 25 quarters the level scale is significant in 175 of 175 variable-quarters against 102 for the within scale, and the split is asymmetric: the exposures keep their spatial structure (`age60_resident_share` 92% of quarters, `age60_floating_share` 96%) while the outcomes largely lose it (`vitality_sub_economic` 64%, `vitality_sub_social` 44%, `vitality_sub_stability` 8%). That asymmetry is why the surviving SPDM spillovers run through `W X` rather than `W y`, and it is also why the TWFE residual Moran is near zero.
+- **Multiplicity.** LISA performs one test per dong, so about `alpha * n` rejections are expected under the null before any real cluster exists. Local and summary tables carry the Benjamini-Hochberg `p_value_fdr`, `significant_fdr`, `cluster_fdr`, and `n_expected_by_chance` beside the uncorrected columns. Cluster counts quoted as findings must be the corrected ones.
+- Permutation counts live in `config.R`, not in the script. LISA and bivariate use 9,999 rather than the previous hard-coded 499, whose two-sided p-value floor of 0.004 made a Bonferroni threshold for 425 tests unreachable by construction.
 - LISA quadrants are classified based on the signs of `z(x)` and `W z(x)` for univariate, and `z(x)` and `W z(y)` for bivariate cases.
 - Bivariate LISA maps are generated for all combinations of `age60_resident_share`/`age60_floating_share` and the vitality indicators.
 - EHSA is calculated using the quarterly sequence. Following the Gi* convention in `sfdep::emerging_hotspot_analysis()`, EHSA uses `queen_include_self` weights that include self-neighbors in the queen contiguity.
 - Key variables are `age60_resident_share`, `age60_floating_share`, `vitality_sub_*`, and `vitality_index_base`.
+
+### 2.11A [03_run_exploratory_diagnostics.R](../../02_Code/02_esda/03_run_exploratory_diagnostics.R): Functional Form and Temporal Shape
+
+Two exploratory questions the spatial ESDA does not address, both run by default.
+
+- **Functional form.** Every active model enters `lag4_age60_resident_share` linearly over an exposure ranging from about 0.11 to 0.49, and that assumption had never been inspected. `exposure_response_bins.csv` bins the exposure into equal-count bins on the two-way within transform and reports the mean outcome per bin; `exposure_linearity_tests.csv` tests the linear specification against a quadratic term and, separately, against bin dummies, the latter making no assumption about the form of the departure.
+- **Temporal shape.** `outcome_quarterly_trend.csv` and its figure report the cross-sectional mean, median, p10, p90, and standard deviation of each outcome by quarter with the `covid_period` flag attached. A 25-quarter window containing the COVID shock warrants more than the single sales-trend figure the reporting layer previously produced.
+
+Both are diagnostics. A rejected linearity test is an input to a modelling decision recorded in [decision_log.md](../03_Log/decision_log.md), not an automatic respecification.
 
 ### 2.12 [01_run_twfe_main.R](../../02_Code/03_models/01_run_twfe_main.R): Quarterly TWFE Baseline
 
@@ -325,7 +349,9 @@ TWFE provides non-spatial baselines and residual Moran diagnostics.
 
 - Input: `panel_main.parquet`, `W_queen.rds`
 - Base specification: `y_it ~ lag4_age60_resident_share + lag4_controls_it | adm_cd + yq`
-- Standard Errors: `cluster = ~ adm_cd`
+- Standard Errors: `cluster = ~ adm_cd` is the primary contract. `twfe_main_models.csv` additionally carries `std.error_twoway` and `p.value_twoway` from clustering on `adm_cd + yq`, because clustering on the dong alone absorbs within-dong serial correlation but nothing about contemporaneous correlation across dongs in the same quarter, which is difficult to defend in a project premised on spatial dependence. Two-way clustering inflates the standard errors by 6% to 32% and changes no conclusion at the 5% level on this panel, which is why it is reported beside the primary rather than replacing it.
+- Residual serial correlation: `twfe_main_diagnostics.csv` reports `resid_ar1`, the AR(1) coefficient of the within-transformed residuals inside each dong. It runs between `0.61` and `0.81` with p-values below `1e-170` for every outcome. This does not invalidate the estimates, since dong clustering is valid under arbitrary within-dong dependence, but it states how much dependence the clustering is absorbing and makes clear that any independent-error specification would be badly wrong.
+- Global multicollinearity: `max_vif_within` and per-term `vif_within_terms`, computed on the two-way within transform because that is the design the estimator inverts. The realized maximum is `1.17`, so collinearity among the global regressors is negligible.
 - Dependent Variables: `vitality_sub_*`, `vitality_index_base`
 
 Required outputs are as follows:
@@ -335,6 +361,16 @@ Required outputs are as follows:
 - `twfe_main_diagnostics.csv`
 - `twfe_main_residual_moran.csv`
 - `twfe_main_residual_moran_by_yq.csv`
+
+### 2.12A [04_run_identification_diagnostics.R](../../02_Code/04_robustness/04_run_identification_diagnostics.R): Identification Diagnostics
+
+The 4-quarter lag is justified in the design as avoiding simultaneous response. A lag imposes temporal ordering, but ordering is not identification. This step measures whether the lag actually separates an aging effect from a dong-level trend, and it runs by default.
+
+- **Exposure persistence.** `age60_resident_share` is close to a deterministic within-dong linear trend: median absolute correlation with `quarter_index` of `0.993`, above `0.9` in `85.4%` of dongs, over a median within-dong range of `5.76` percentage points. Under two-way fixed effects the identifying variation is therefore differential trend slope.
+- **Placebo lead.** A 4-quarter lead of the exposure is built in-script, never written to `panel_main`, and entered in place of the lag. Under a causal reading the lead should not perform; it performs at least as well for `vitality_sub_economic` (p = .032) and `vitality_sub_social` (p = .011). In a horse race the lag collapses for `vitality_sub_economic`, from `-0.961` to `-0.212` (p = .639). The two are separable enough for this to be informative: their within correlation is `0.674`, a variance inflation factor of `1.8`.
+- **Dong-specific trends.** Adding `adm_cd[quarter_index]` absorbs the differential-trend variation. Only `vitality_index_base` survives. `vitality_sub_social` falls from `-1.840` (p < .001) to `-0.607` (p = .248).
+
+The consequence for the design is stated in [research_plan.md section 3.1](research_plan.md): H1 is tested as a conditional association, not a causal effect. The step changes no specification.
 
 ### 2.13 [02_run_spdm_main.R](../../02_Code/03_models/02_run_spdm_main.R): Quarterly SPDM Main Model
 
@@ -347,6 +383,7 @@ SPDM is the main global model of the active design.
 - Main output: `direct / indirect / total effects`
 - Impact: Uses true SDM matrix impacts based on `S = (I - rho W)^(-1)` and `S(beta I + theta W)`.
 - Standard Errors: Coefficients and spatial parameters use model-based asymptotic ML `vcov` from `splm::spml()`, and impact SEs/CIs are computed via simulation from the same `vcov`. This output is reported as model-based inference, not robust SEs.
+- Sample rule: each outcome-control specification is reduced to complete cases, and only dongs observed in every remaining quarter are kept, so the estimation panel is strictly balanced. A specification is accepted only if at least 20 dongs and at least `SPDM_MIN_PERIODS` quarters survive; the default of 20 is a floor on the length of the balanced panel, not a per-dong observation count. This is why `n_units` differs across outcomes (423 to 425) instead of always equalling 425, and the realized dimensions are logged per outcome in `spdm_main_models.csv` and `spdm_impacts.csv`.
 
 Core outputs are as follows:
 
@@ -390,23 +427,26 @@ This step is a manual sidecar for the appendix. It reconstructs the exact quarte
 
 GTWR main is a quarterly resident-only local sidecar.
 
+> **Parameter values are contracted elsewhere.** Bandwidth, kernel, `lamda`, angle parameter, control set, and the local VIF warning threshold live in the authoritative table at [04_model_spec.md section 7.0](../02_Codebook/04_model_spec.md); section 7.1 there records how the currently published GTWR outputs differ from that contract. This section describes how the step is executed, not what the parameters are set to.
+
 - Execution Condition: Direct execution of [03_models/03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R)
 - Inputs: `panel_main.parquet`, 2020 base Seoul administrative dong boundaries
 - Interpretation level: Local heterogeneity description
 - Execution method: Computations run per outcome-exposure spec, utilizing parallel workers up to `GTWR_PARALLEL_SPECS`.
 - Resumption method: Per-spec RDS caches are saved to `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/`, and if interrupted and restarted, valid completed specs are reused.
-- Control set: Default is `GTWR_CONTROL_SET=lean`. `lean` only uses resident-population-based `lag4_ln_resident_pop` and `lag4_ln_land_price_adjusted`. `extended` adds `lag4_transit_accessibility` and `lag4_ln_workplace_worker_pop` to these.
-- Bandwidth strategy: Main GTWR uses fixed adaptive `GTWR_ST_BW=60`. Based on `adaptive=TRUE`, 60 spatiotemporal neighbors around each estimation point are used. `full_panel_bw_gtwr` and `anchor_quarter_bw_gtwr` searches are only performed in [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), and the selected results are saved to `gtwr_bandwidth_selection_<control_set>.csv` and the bandwidth cache. [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R) applies the default `GTWR_BANDWIDTH_SENSITIVITY_GRID` (`30,60,90,120,180`) iteratively to the same outcome-control-spec, saving beta correlations against the baseline 60, absolute changes, sign flips, and local collinearity diagnostic shifts to `gtwr_bandwidth_sensitivity_<control_set>.csv`.
+- Control set: selected by `GTWR_CONTROL_SET`. `lean` uses the resident-population and land-price controls only; `extended` adds the transit accessibility composite and the workplace worker population. The member variables of each set are listed in [research_plan.md section 6.3](research_plan.md).
+- Bandwidth strategy: Main GTWR uses a fixed adaptive bandwidth, so under `adaptive=TRUE` the bandwidth counts spatiotemporal neighbours around each estimation point rather than a metric radius. `full_panel_bw_gtwr` and `anchor_quarter_bw_gtwr` searches are only performed in [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), and the selected results are saved to `gtwr_bandwidth_selection_<control_set>.csv` and the bandwidth cache; they are never injected into the main run. [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R) applies `GTWR_BANDWIDTH_SENSITIVITY_GRID` iteratively to the same outcome-control-spec, saving beta correlations against the contracted baseline, absolute changes, sign flips, and local collinearity diagnostic shifts to `gtwr_bandwidth_sensitivity_<control_set>.csv`.
 - Lamda sensitivity: Executed exclusively in [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R). It re-estimates GTWR applying each value in `GTWR_LAMDA_SENSITIVITY_GRID` to the same outcome-control-spec, logging correlations, absolute changes, sign flips, and local collinearity diagnostic shifts against baseline latest-quarter betas to `gtwr_lamda_sensitivity_<control_set>.csv`.
-- Local collinearity diagnostics: Three measures are computed per estimation point from the same GTWR spatiotemporal weights. `local_vif_max` is the largest weighted variance inflation factor, following the weighted-correlation convention `GWmodel::gwr.collin.diagno()` uses for its own local VIFs. `local_cn_centered` is the condition number of the weighted, centered local design. `local_cn_gtwr` follows the uncentered `local_CN` calculation convention of `GWmodel::gwr.collin.diagno()`. The warning flag is raised when `local_vif_max >= GTWR_LOCAL_VIF_WARN_THRESHOLD` (default 10). `local_cn_centered` and `local_cn_gtwr` are reported without thresholds: no established cut-off exists for a condition number computed on a centered design, and Belsley's 30 applies to the uncentered construction that `local_cn_gtwr` implements. The uncentered measure conditions on the local intercept as well as the predictors, which is why it is large here.
+- Local collinearity diagnostics: Three measures are computed per estimation point from the same GTWR spatiotemporal weights. `local_vif_max` is the largest weighted variance inflation factor, following the weighted-correlation convention `GWmodel::gwr.collin.diagno()` uses for its own local VIFs. `local_cn_centered` is the condition number of the weighted, centered local design. `local_cn_gtwr` follows the uncentered `local_CN` calculation convention of `GWmodel::gwr.collin.diagno()`. The warning flag is raised when `local_vif_max >= GTWR_LOCAL_VIF_WARN_THRESHOLD`. `local_cn_centered` and `local_cn_gtwr` are reported without thresholds: no established cut-off exists for a condition number computed on a centered design, and Belsley's 30 applies to the uncentered construction that `local_cn_gtwr` implements. The uncentered measure conditions on the local intercept as well as the predictors, which is why it is large here. Until the pending rerun, these three columns exist only in `gtwr_collin_diag_backfill_<control_set>.csv`; the published `gtwr_local_coefficients_<control_set>.csv` and the `collinearity_warn_share` of `gtwr_main_models_<control_set>.csv` predate this schema.
+- Kernel and angle parameter: the weighting kernel is set by `GTWR_KERNEL` and applied to the combined spatiotemporal distance, with `bisquare`, `gaussian`, `exponential`, `tricube`, and `boxcar` accepted. `GTWR_KSI` is the angle parameter of the Huang et al. (2010) distance and is held at its default everywhere except the experiment sidecar, so the interaction term enters at full weight. Both are required reporting items wherever GTWR results are presented.
 - Spatiotemporal distance: Built directly by `build_gtwr_st_dmat()` rather than by `GWmodel::st.dist()`, and passed to `bw.gtwr()` and `gtwr()` as `st.dMat`. `GWmodel::ti.distv()` compares observation times with `as.character()`, so the integer period ids this panel uses make `"25" >= "3"` false and assign a 1e50 "future" distance to genuinely past quarters. The project therefore supplies the symmetric temporal distance `|t_i - t_j|` of Huang et al. (2010) and never lets GWmodel reach `ti.distm()`; a fit or bandwidth search that would have to rebuild the matrix internally is refused rather than silently run on corrupted weights.
-- Dimensionless `lamda`: the spatial and temporal distances are divided by their own observed spans before being combined, so `lamda` is the share of weight placed on the full spatial extent and `0.5` weights space and time equally. `GWmodel::st.dist()` combines raw units instead, which folds the metre-versus-quarter scale gap into the parameter: on this panel space spans 338-33,772 metres against 0-24 quarters, so the previous raw-unit `lamda` of `0.05` corresponds to roughly `0.987` here, about 76:1 in favour of space. `GTWR_LAMDA` defaults to `0.5` and `GTWR_LAMDA_SENSITIVITY_GRID` spans the dimensionless range with interior points, so the criterion can be bracketed rather than pinned at a grid boundary as it was under the raw-unit grid. Lamda values recorded before 2026-09-02 follow the raw-unit convention and are not comparable with later ones.
+- Dimensionless `lamda`: the spatial and temporal distances are divided by their own observed spans before being combined, so `lamda` is the share of weight placed on the full spatial extent and the midpoint weights space and time equally. `GWmodel::st.dist()` combines raw units instead, which folds the metre-versus-quarter scale gap into the parameter: on this panel space spans 338-33,772 metres against 0-24 quarters, so the previous raw-unit `lamda` of `0.05` corresponds to roughly `0.987` here, about 76:1 in favour of space. `GTWR_LAMDA_SENSITIVITY_GRID` spans the dimensionless range with interior points, so the criterion can be bracketed rather than pinned at a grid boundary as it was under the raw-unit grid. Lamda values recorded before 2026-09-02 follow the raw-unit convention and are not comparable with later ones.
 
 The core operational principles for GTWR are:
 
 1. Only quarterly samples are used.
 2. The main control pool is selected via `GTWR_CONTROL_SET`. The default `lean` uses only resident population scale and land price controls, while `extended` adds transit accessibility composites.
-3. The main bandwidth is unified to a fixed `GTWR_ST_BW=60`. `bw.gtwr()` searches (full-panel or anchor-quarter), fixed bandwidth grid sensitivities, and lamda grid sensitivities are strictly separated into [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R), and [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R) respectively.
+3. The main bandwidth is unified to the fixed adaptive value contracted in [04_model_spec.md section 7.0](../02_Codebook/04_model_spec.md). `bw.gtwr()` searches (full-panel or anchor-quarter), fixed bandwidth grid sensitivities, and lamda grid sensitivities are strictly separated into [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R), and [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R) respectively.
 4. Main raw/output surfaces are constructed based on latest-quarter local betas.
 5. Earliest-to-latest deltas are derived exclusively for `gtwr_delta_*` auxiliary reporting tables.
 6. The final CSV bundle aggregates and refreshes from the entire spec cache on every run.
@@ -421,11 +461,24 @@ Additional GTWR appendix sidecars share the same quarterly panel, `GWmodel::gtwr
 - [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R): Saves `bw.gtwr()` search results for the resident-only main spec when `GTWR_BANDWIDTH_STRATEGY=full_panel_bw_gtwr` or `anchor_quarter_bw_gtwr`.
 - [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R): Direct execution runs fixed bandwidth grid sensitivity against the resident-only main baseline output.
 - [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R): Direct execution runs lamda grid sensitivity against the resident-only main baseline output.
+- [09_backfill_gtwr_collin_diag.R](../../02_Code/80_optional/gtwr/09_backfill_gtwr_collin_diag.R): Direct execution recomputes the three local collinearity diagnostics for already-estimated specs without refitting, reporting each under both the legacy string-comparison and the symmetric time distance, and gating on reproduction of the stored `local_cn_gtwr_latest`. Writes `gtwr_collin_diag_backfill_<control_set>.csv`.
+- [10_search_gtwr_lamda_bw_cv.R](../../02_Code/80_optional/gtwr/10_search_gtwr_lamda_bw_cv.R): Direct execution runs a leave-one-out CV search over the lamda and bandwidth grids without fitting GTWR, on a seeded focal subsample of a common complete-case sample. Writes `gtwr_lamda_bw_cv_search_<control_set>.csv`. It is a search tool: the reported bandwidth still comes from `06_select_gtwr_bandwidth.R` and the active contract, and the output flags whether an optimum sits on a grid edge.
 - [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R) derives latest-minus-earliest delta summaries/rankings whenever sidecar raw local coefficients are present.
 
 ### 2.18 [02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R) and Reporting
 
 [02_run_robustness.R](../../02_Code/04_robustness/02_run_robustness.R) checks outcome-definition, sample-window, and W-Moran sensitivities against the quarterly contract. [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R) bundles tables and figures for the main text/appendices, and additionally publishes Pearson correlation matrices and pairwise correlation tables for main analysis variables. Reporting selectively attaches optional artifacts only when source inputs exist.
+
+### 2.19 [03_run_influence_robustness.R](../../02_Code/04_robustness/03_run_influence_robustness.R): Influence Robustness
+
+This step measures how much of each reported effect rests on individual administrative dongs, and it runs by default rather than on request.
+
+- Primary measure: leave-one-dong-out `dfbeta` on the TWFE exposure coefficient, one refit per dong per outcome, about two minutes for the five outcomes. It re-estimates TWFE rather than the SPDM main because several hundred refits are tractable under TWFE and are not under SPDM, where a single five-outcome run takes roughly eleven minutes; TWFE shares the exposure and control contract and is the declared diagnostic layer.
+- Secondary measure: the outcome-tail listing and the percentage by which tail dongs inflate the pooled standard deviation, which is the unit every "per standard deviation" coefficient is quoted in.
+- Three exclusion variants per outcome, `tail`, `top_k`, and `union_tail`, each recording sign flips and changes in 5% significance.
+- Outputs: `influence_dfbeta.csv`, `influence_outlier_dongs.csv`, `influence_robustness_summary.csv`.
+
+**Why it is canonical.** The 2026-09-04 decision is to keep the full sample as the main specification rather than excluding shocked districts, because redevelopment and the COVID collapse of the central business district are real events rather than data errors, and excluding them would introduce a sample definition chosen after seeing the results. That decision is only defensible if the reader can see which effects depend on a handful of districts, so the diagnostic is not an optional check that may or may not be current; it must be produced by the same run that produces the impacts it qualifies. `influence_robustness_summary.csv` belongs in the main text with the effects, and the per-dong `influence_dfbeta.csv` in the appendix. The specific reading requirement, including which dimensions the current evidence does and does not support, is in [04_model_spec.md section 6A.1](../02_Codebook/04_model_spec.md).
 
 ## 3. Active QC Rules
 

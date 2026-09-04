@@ -1,5 +1,7 @@
 # Project File Tree
 
+> **Last updated**: 2026-09-04
+
 This document provides a comprehensive snapshot of all tracked files in the repository. 
 For detailed information regarding code execution or variables, please refer to `02_Code/README.md` and the documents in `04_Docs/02_Codebook/`.
 
@@ -66,7 +68,8 @@ For detailed information regarding code execution or variables, please refer to 
 │   │
 │   ├── 02_esda/                                   # Spatial weights and autocorrelation
 │   │   ├── 01_build_spatial_weights.R
-│   │   └── 02_run_esda.R
+│   │   ├── 02_run_esda.R
+│   │   └── 03_run_exploratory_diagnostics.R      # Functional form and quarterly outcome trends
 │   │
 │   ├── 03_models/                                 # Core canonical models
 │   │   ├── 01_run_twfe_main.R                     # TWFE baseline
@@ -75,7 +78,9 @@ For detailed information regarding code execution or variables, please refer to 
 │   │
 │   ├── 04_robustness/                             # Robustness checks
 │   │   ├── 01_run_spdm_w_robustness.R             # SPDM spatial weights robustness
-│   │   └── 02_run_robustness.R                    # Alternative robustness checks
+│   │   ├── 02_run_robustness.R                    # Alternative robustness checks
+│   │   ├── 03_run_influence_robustness.R          # Leave-one-dong-out influence on the exposure coefficient
+│   │   └── 04_run_identification_diagnostics.R      # Placebo lead, dong-trend spec, exposure persistence
 │   │
 │   ├── 05_reporting/                              # Outputs, tables, and visualization
 │   │   ├── 01_make_tables_figures.R
@@ -96,7 +101,9 @@ For detailed information regarding code execution or variables, please refer to 
 │   │   │   ├── 05_run_gtwr_experiment.R
 │   │   │   ├── 06_select_gtwr_bandwidth.R
 │   │   │   ├── 07_run_gtwr_bandwidth_sensitivity.R
-│   │   │   └── 08_run_gtwr_lamda_sensitivity.R
+│   │   │   ├── 08_run_gtwr_lamda_sensitivity.R
+│   │   │   ├── 09_backfill_gtwr_collin_diag.R     # Recompute local collinearity diagnostics without refitting
+│   │   │   └── 10_search_gtwr_lamda_bw_cv.R       # Leave-one-out CV search over lamda / bandwidth, no GTWR fit
 │   │   ├── preprocess/
 │   │   │   └── 01_build_living_population_inflow.R
 │   │   ├── spdm/
@@ -116,6 +123,12 @@ For detailed information regarding code execution or variables, please refer to 
 │   ├── 90_templates/                              # Boilerplate templates
 │   │   ├── 00_template_modeling_aging_commerce.R
 │   │   └── 00_template_preprocessing_aging_commerce.R
+│   │
+│   ├── 95_tests/                                  # Numeric regression tests (base R, no testthat)
+│   │   ├── run_tests.R                            # Runner; exits non-zero on failure
+│   │   ├── test_collin_diag.R                     # weighted_design_collin_diag(): VIF and condition numbers
+│   │   ├── test_gtwr_st_distance.R                # build_gtwr_st_dmat(): symmetric time distance (ti.distv regression)
+│   │   └── test_sdm_impacts.R                     # compute_true_sdm_effects(): LeSage-Pace direct/indirect/total
 │   │
 │   └── 99_utils/                                  # Utility scripts for reuse
 │       ├── utils_age_mix.R

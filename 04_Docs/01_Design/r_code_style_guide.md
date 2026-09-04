@@ -1,5 +1,7 @@
 # R Code Style Guide
 
+> **Last updated**: 2026-09-04
+
 This document defines the R coding standards specific to this project to implement the active quarterly workflow. It has three main objectives:
 
 - Align the contract between documentation and code.
@@ -8,19 +10,13 @@ This document defines the R coding standards specific to this project to impleme
 
 ## 1. Design Alignment Principles
 
-The following principles must not be compromised in the code.
+The research contract that code must not compromise is the seventeen-item list in [research_procedure.md section 1.2](research_procedure.md), and model parameter values are contracted in [04_model_spec.md](../02_Codebook/04_model_spec.md). Both are authoritative; this guide does not restate them, because an earlier copy of eleven of those seventeen items here made this document a fourth place a contract value could silently diverge.
 
-1. The spatial unit is the Seoul administrative dong (`adm_cd`) based on `2020` boundaries.
-2. The active canonical panel construction period is `2019Q1~2025Q4`, and the active analysis sample is `2019Q4~2025Q4`.
-3. The time keys of the active shared panel are `year`, `quarter`, `yq`, and `quarter_index`. The unique key is `adm_cd-yq`.
-4. The main exposure is `lag4_age60_resident_share`.
-5. The canonical timing contract uses a 4-quarter lag for exposure and controls, and a 2-quarter lag for channel mediators.
-6. The default spatial weights matrix W is `Queen`, while `Rook`, `kNN6`, and `kNN8` are for robustness checks.
-7. The active method stack is `ESDA -> TWFE -> SPDM -> GTWR (optional)`.
-8. TWFE serves as the baseline / spatial diagnostic layer.
-9. SPDM is the main global model.
-10. GTWR is a resident-only optional local sidecar.
-11. Quarterly raw data is directly issued as the base time unit of the active shared panel. Yearly/static sources are joined to `adm_cd-yq` via explicit as-of rules.
+What this guide adds is the code-side obligation attached to that contract:
+
+1. Read contract values from `cfg`, never as literals in a script. A hard-coded bandwidth, analysis window, key set, or lag depth is a defect even when the number is currently correct, because it cannot be changed in one place.
+2. Assert the contract at input validation rather than assuming it. A script that requires the `adm_cd-yq` unique key must check it and fail loudly, not proceed on a silently duplicated key.
+3. When a script must deviate from the contract, record the deviation in [decision_log.md](../03_Log/decision_log.md) and in the affected design document in the same change, not afterwards.
 
 ## 2. Interpreting the Project Structure
 
@@ -35,7 +31,16 @@ The directory structure should be read as follows to instantly differentiate the
 - `06_qc`: active QC plus manual audit helpers
 - `80_optional`: manual direct-run preprocessing, TWFE, SPDM, and GTWR sidecars
 - `90_templates`: shared implementation pattern. Refer to [00_template_preprocessing_aging_commerce.R](../../02_Code/90_templates/00_template_preprocessing_aging_commerce.R) for preprocessing scripts and [00_template_modeling_aging_commerce.R](../../02_Code/90_templates/00_template_modeling_aging_commerce.R) for modeling/diagnostics scripts as specific templates.
+- `95_tests`: numeric regression tests, run with `Rscript 02_Code/95_tests/run_tests.R`
 - `99_utils`: shared utilities, including GTWR helper logic used by optional sidecars
+
+## 2.1 Testing Obligation
+
+A utility function that computes a **reported quantity** needs a test, because a wrong number is silent in a way that a wrong pipeline is not: the run succeeds, the table is written, and only the value is incorrect. `95_tests` covers the impact formula, the spatiotemporal distance, and the local collinearity diagnostics on that basis.
+
+Prefer closed-form assertions to stored snapshots. A snapshot only proves the output has not changed; an identity proves it is right. The suite uses, for example, `total = (beta + theta)/(1 - rho)`, which holds exactly for any row-standardised `W`, and the weighted VIF identity `1/(1 - r^2)`. Where a historical defect motivated a rewrite, pin the defect directly, as the `ti.distv()` time-comparison tests do.
+
+Run the suite before committing a change to `99_utils`, and mutation-test any new assertion by breaking the function on purpose and confirming the suite goes red. The suite adds no dependency: it is base R, because `testthat` is not in `renv.lock` and a test harness is a poor reason to change a pinned analysis environment.
 
 ## 3. Filenames and Script Roles
 
@@ -50,12 +55,15 @@ The active canonical surface follows this execution order:
 - `07_build_vitality_index.R`
 - `01_build_spatial_weights.R`
 - `02_run_esda.R`
+- `03_run_exploratory_diagnostics.R`
 - `01_run_twfe_main.R`
 - `02_run_spdm_main.R`
 - `01_run_spdm_w_robustness.R`
 - `02_run_robustness.R`
-- `01_make_tables_figures.R`
+- `03_run_influence_robustness.R`
+- `04_run_identification_diagnostics.R`
 - `01_validate_method_dataset_alignment.R`
+- `01_make_tables_figures.R`
 - `run_all.R`
 
 The optional/manual surface is separated from the active canonical surface by directories and filenames such as `80_optional/**`, `05_reporting/02_*`, `05_reporting/03_*`, `06_qc/02_*`, and `06_qc/03_*`.
@@ -89,7 +97,14 @@ Scripts must explicitly maintain the following flow:
 5. output write
 6. log append
 
-When reading intermediate outputs, prioritize the canonical path registry. Do not invent new filenames within the script.
+Output and intermediate paths belong in the canonical registry in [config.R](../../02_Code/00_setup/config.R) (`cfg$paths`, `cfg$logs`, `cfg$get_*_path()`), not in the script that happens to write them. A path in the registry can be validated by QC, reused by reporting, and changed in one place.
+
+Two honest qualifications, so the rule is followed rather than admired:
+
+1. **Dynamic paths are exempt.** A filename built from a variable name or a control-set token — `distribution_map__%s.png`, `gtwr_main_models_<control_set>.csv` — cannot be a static registry entry. Build these with `sprintf()` at the call site, or with a registry *getter* that takes the varying part as an argument, which is the pattern `cfg$get_gtwr_main_models_path(control_set)` uses.
+2. **Do not reintroduce the defensive fallback.** Patterns like `value_or(cfg$paths$x, file.path(cfg$dir_tables, "x.csv"))` and its `if (!is.null(cfg$paths$x)) ... else ...` equivalent were removed on 2026-09-04. They read as safety but are dead code: `config.R` always defines the entry, so the literal never fires — except on the one path that matters, where someone renames the registry key and the fallback silently starts writing to the old filename instead of failing. Call the registry entry directly and let a missing key be an error.
+
+As of 2026-09-04 every output and log path in `02_Code/**` comes from the registry. The four remaining `file.path(cfg$dir_*, "literal")` expressions are raw **input** directory names (`cfg$dir_raw` and `cfg$dir_boundary` source folders), which are a separate contract from the output registry and are deliberately left in place.
 
 ## 6. Variable Naming Conventions
 
@@ -169,6 +184,8 @@ Comments to avoid:
 
 ## 10. Logging and QC
 
+- The canonical pipeline and the heavy manual GTWR entry point record their execution environment before the first step. `run_all.R` and `03_run_gtwr_main.R` call `log_run_environment()` from `utils_io.R`, which appends the R version, platform, renv library, `renv.lock` md5 and lock R version, output tag, and the version of every project package to `model_run_log.md`. GTWR, SPDM, and the permutation diagnostics are version-sensitive, so an output is only auditable when the log states which environment produced it. Environment capture must never abort a run: it is wrapped so a missing optional package or unreadable lockfile degrades to a logged note.
+- Shared helpers live in one file only. `value_or()` belongs to `utils_io.R`, and the deterministic permutation seeding pair `deterministic_seed_from_label()` / `with_deterministic_seed()` belongs to `utils_spatial.R` next to the Moran alignment helpers. Do not redefine a shared helper inside a script: because every script sources the utilities into one environment, a local copy silently shadows the shared one for that whole script and the two definitions drift apart unnoticed.
 - Halt immediately with a clear error on input missing.
 - For optional source missing, clear or skip the source-dependent artifact without failing the entire active run.
 - QC failures must be determined based solely on the active quarterly contract. Exclude optional/sidecar scripts from the required test plan.
