@@ -645,6 +645,10 @@ cfg$gtwr_lamda <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LAMDA", unset = "
 if (!is.finite(cfg$gtwr_lamda) || cfg$gtwr_lamda < 0 || cfg$gtwr_lamda > 1) cfg$gtwr_lamda <- cfg_coerced(
   "GTWR_LAMDA", Sys.getenv("GTWR_LAMDA", unset = "0.5"), 0.5, "not a number in [0, 1]"
 )
+# Stamped into every GTWR output so a reader never has to date a table to work
+# out which lamda convention it is on. Tables written before 2026-09-02 carry no
+# stamp, which is itself the answer: they are on the retired raw-unit convention.
+cfg$gtwr_lamda_convention <- "dimensionless_span_normalized"
 cfg$gtwr_ksi <- suppressWarnings(as.numeric(Sys.getenv("GTWR_KSI", unset = "0")))
 if (!is.finite(cfg$gtwr_ksi) || cfg$gtwr_ksi < 0) cfg$gtwr_ksi <- cfg_coerced(
   "GTWR_KSI", Sys.getenv("GTWR_KSI", unset = "0"), 0, "not a non-negative number"
@@ -671,7 +675,13 @@ cfg$gtwr_refresh_lamda_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFR
 cfg$gtwr_bandwidth_sensitivity_grid <- trimws(Sys.getenv("GTWR_BANDWIDTH_SENSITIVITY_GRID", unset = "30,60,90,120,180"))
 cfg$gtwr_refresh_bandwidth_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BANDWIDTH_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_experiment_bw_approaches <- trimws(Sys.getenv("GTWR_EXPERIMENT_BW_APPROACHES", unset = "CV"))
-cfg$gtwr_experiment_lamda_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_LAMDA_GRID", unset = "0.05"))
+# Dimensionless, like every other lamda in the active contract. The default was
+# 0.05 until 2026-09-04, which was a raw-unit value the normalization sweep did
+# not reach: under the current convention 0.05 means 5% of the weight on the full
+# spatial extent, the near-opposite of what it meant before (roughly 76:1 in
+# favour of space). Any lamda recorded by this appendix before that date is on
+# the retired convention and is not comparable with a later one.
+cfg$gtwr_experiment_lamda_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_LAMDA_GRID", unset = "0.25,0.5,0.75"))
 cfg$gtwr_experiment_ksi_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_KSI_GRID", unset = "0"))
 cfg$gtwr_experiment_min_st_bw_grid <- trimws(Sys.getenv("GTWR_EXPERIMENT_MIN_ST_BW_GRID", unset = "30"))
 cfg$gtwr_experiment_control_strategies <- trimws(Sys.getenv("GTWR_EXPERIMENT_CONTROL_STRATEGIES", unset = "baseline"))

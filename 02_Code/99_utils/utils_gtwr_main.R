@@ -398,6 +398,7 @@ empty_gtwr_frozen_spec_tbl <- function() {
     kernel = character(),
     adaptive = logical(),
     lamda = numeric(),
+    lamda_convention = character(),
     ksi = numeric(),
     bw_source = character(),
     status = character(),
@@ -449,6 +450,9 @@ empty_gtwr_lamda_sensitivity_tbl <- function() {
     p50_abs_delta_vs_main = numeric(),
     max_abs_delta_vs_main = numeric(),
     sign_flip_share_vs_main = numeric(),
+    n_significant_fdr = integer(),
+    share_significant_fdr = numeric(),
+    sign_flip_share_among_significant = numeric(),
     status = character(),
     message = character(),
     elapsed_sec = numeric()
@@ -499,6 +503,9 @@ empty_gtwr_bandwidth_sensitivity_tbl <- function() {
     p50_abs_delta_vs_main = numeric(),
     max_abs_delta_vs_main = numeric(),
     sign_flip_share_vs_main = numeric(),
+    n_significant_fdr = integer(),
+    share_significant_fdr = numeric(),
+    sign_flip_share_among_significant = numeric(),
     status = character(),
     message = character(),
     elapsed_sec = numeric()
@@ -1137,6 +1144,11 @@ build_frozen_spec_row <- function(outcome,
       kernel = cfg$gtwr_kernel,
       adaptive = isTRUE(cfg$gtwr_adaptive),
       lamda = suppressWarnings(as.numeric(cfg$gtwr_lamda)),
+      # Which convention that lamda is on. Without it a reader has to date the
+      # file: the published bundle records lamda = 0.05 under the retired
+      # raw-unit convention, where the same number means the near-opposite of
+      # what it means under the span-normalized one now in force.
+      lamda_convention = as.character(cfg$gtwr_lamda_convention),
       ksi = suppressWarnings(as.numeric(cfg$gtwr_ksi)),
       bw_source = bw_source,
       status = status,
@@ -1690,6 +1702,14 @@ build_gtwr_lamda_sensitivity_deferred_row <- function(outcome,
     )
 }
 
+# A sign flip between two local coefficient surfaces is only informative where
+# the coefficients are separable from zero. Among local estimates that are not,
+# the sign is a coin toss and flips at roughly 50% by construction, so an
+# unqualified flip share understates stability wherever the local surface is
+# mostly noise. The comparison therefore reports the flip share twice: over all
+# matched dongs, and over the dongs where this variant's own local coefficient
+# survives the FDR screen. The baseline column carries no p-values until the main
+# GTWR is re-run, so the qualification uses the variant side only.
 summarise_main_beta_comparison <- function(latest_beta, baseline_latest) {
   empty <- list(
     n_compare_with_main = 0L,
@@ -1697,7 +1717,10 @@ summarise_main_beta_comparison <- function(latest_beta, baseline_latest) {
     mean_abs_delta_vs_main = NA_real_,
     p50_abs_delta_vs_main = NA_real_,
     max_abs_delta_vs_main = NA_real_,
-    sign_flip_share_vs_main = NA_real_
+    sign_flip_share_vs_main = NA_real_,
+    n_significant_fdr = NA_integer_,
+    share_significant_fdr = NA_real_,
+    sign_flip_share_among_significant = NA_real_
   )
   if (is.null(baseline_latest) || nrow(baseline_latest) == 0L || nrow(latest_beta) == 0L) {
     return(empty)
@@ -1726,13 +1749,24 @@ summarise_main_beta_comparison <- function(latest_beta, baseline_latest) {
     NA_real_
   }
 
+  flip <- sign(cmp$estimate) != sign(cmp$main_estimate)
+  sig <- if ("significant_fdr" %in% names(cmp)) cmp$significant_fdr %in% TRUE else rep(NA, n_compare)
+  n_sig <- if (all(is.na(sig))) NA_integer_ else as.integer(sum(sig, na.rm = TRUE))
+
   list(
     n_compare_with_main = as.integer(n_compare),
     beta_corr_with_main = corr,
     mean_abs_delta_vs_main = mean(cmp$abs_delta, na.rm = TRUE),
     p50_abs_delta_vs_main = as.numeric(stats::median(cmp$abs_delta, na.rm = TRUE)),
     max_abs_delta_vs_main = max(cmp$abs_delta, na.rm = TRUE),
-    sign_flip_share_vs_main = mean(sign(cmp$estimate) != sign(cmp$main_estimate), na.rm = TRUE)
+    sign_flip_share_vs_main = mean(flip, na.rm = TRUE),
+    n_significant_fdr = n_sig,
+    share_significant_fdr = if (is.na(n_sig)) NA_real_ else n_sig / n_compare,
+    sign_flip_share_among_significant = if (is.na(n_sig) || n_sig == 0L) {
+      NA_real_
+    } else {
+      mean(flip[sig], na.rm = TRUE)
+    }
   )
 }
 
@@ -1791,6 +1825,13 @@ build_gtwr_lamda_baseline_rows <- function(summary_tbl) {
       p50_abs_delta_vs_main = dplyr::if_else(.data$status == "success", 0, NA_real_),
       max_abs_delta_vs_main = dplyr::if_else(.data$status == "success", 0, NA_real_),
       sign_flip_share_vs_main = dplyr::if_else(.data$status == "success", 0, NA_real_),
+      # The baseline row is the comparison target, so it flips against itself
+      # zero times by definition; the significance-qualified columns are left NA
+      # because the published baseline carries no local p-values until the main
+      # GTWR is re-run under the corrected extraction.
+      n_significant_fdr = NA_integer_,
+      share_significant_fdr = NA_real_,
+      sign_flip_share_among_significant = NA_real_,
       status,
       message = dplyr::if_else(
         .data$status == "success",
@@ -1900,6 +1941,13 @@ build_gtwr_bandwidth_baseline_rows <- function(summary_tbl) {
       p50_abs_delta_vs_main = dplyr::if_else(.data$status == "success", 0, NA_real_),
       max_abs_delta_vs_main = dplyr::if_else(.data$status == "success", 0, NA_real_),
       sign_flip_share_vs_main = dplyr::if_else(.data$status == "success", 0, NA_real_),
+      # The baseline row is the comparison target, so it flips against itself
+      # zero times by definition; the significance-qualified columns are left NA
+      # because the published baseline carries no local p-values until the main
+      # GTWR is re-run under the corrected extraction.
+      n_significant_fdr = NA_integer_,
+      share_significant_fdr = NA_real_,
+      sign_flip_share_among_significant = NA_real_,
       status,
       message = dplyr::if_else(
         .data$status == "success",
@@ -1998,6 +2046,9 @@ build_gtwr_bandwidth_sensitivity_row_from_payload <- function(payload,
       p50_abs_delta_vs_main = if (identical(status, "success")) cmp_stats$p50_abs_delta_vs_main else NA_real_,
       max_abs_delta_vs_main = if (identical(status, "success")) cmp_stats$max_abs_delta_vs_main else NA_real_,
       sign_flip_share_vs_main = if (identical(status, "success")) cmp_stats$sign_flip_share_vs_main else NA_real_,
+      n_significant_fdr = if (identical(status, "success")) cmp_stats$n_significant_fdr else NA_integer_,
+      share_significant_fdr = if (identical(status, "success")) cmp_stats$share_significant_fdr else NA_real_,
+      sign_flip_share_among_significant = if (identical(status, "success")) cmp_stats$sign_flip_share_among_significant else NA_real_,
       status = status,
       message = dplyr::case_when(
         status == "success" ~ "actual_gtwr_bandwidth_sensitivity_estimated",
@@ -2153,6 +2204,12 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
   }
 
   focal_coef <- suppressWarnings(as.numeric(sdf[[focal_var]]))
+  # This path builds its own SDF extraction rather than going through
+  # run_actual_gtwr_spec(), so the local standard errors have to be read here as
+  # well; otherwise the sign-flip columns below could not be qualified by whether
+  # the coefficients that flipped were distinguishable from zero at all.
+  lam_diag <- extract_gtwr_diagnostics(fit)
+  local_inf <- extract_gtwr_local_inference(sdf, focal_var, lam_diag$gtw_edf[[1]])
   period_id <- period_meta$period_id
   latest_beta <- d_fit |>
     dplyr::transmute(
@@ -2160,10 +2217,17 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
       outcome = .env$outcome,
       focal_var = .env$focal_var,
       period_id = .env$period_id,
-      estimate = .env$focal_coef
+      estimate = .env$focal_coef,
+      estimate_p = .env$local_inf$p
     ) |>
     dplyr::filter(.data$period_id == .env$period_meta$latest_period_id) |>
-    dplyr::select(adm_cd, outcome, focal_var, estimate)
+    dplyr::mutate(
+      significant_fdr = {
+        adj <- stats::p.adjust(.data$estimate_p, method = "BH")
+        is.finite(adj) & adj < 0.05
+      }
+    ) |>
+    dplyr::select(adm_cd, outcome, focal_var, estimate, significant_fdr)
 
   cn_tbl <- local_collin_diag_for_window(
     d_fit,
@@ -2250,6 +2314,9 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
       p50_abs_delta_vs_main = cmp_stats$p50_abs_delta_vs_main,
       max_abs_delta_vs_main = cmp_stats$max_abs_delta_vs_main,
       sign_flip_share_vs_main = cmp_stats$sign_flip_share_vs_main,
+      n_significant_fdr = cmp_stats$n_significant_fdr,
+      share_significant_fdr = cmp_stats$share_significant_fdr,
+      sign_flip_share_among_significant = cmp_stats$sign_flip_share_among_significant,
       status = "success",
       message = "actual_gtwr_lamda_sensitivity_estimated",
       elapsed_sec = elapsed_sec
