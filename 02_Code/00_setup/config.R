@@ -758,6 +758,13 @@ cfg$paths <- list(
   influence_dfbeta = file.path(cfg$dir_tables, "influence_dfbeta.csv"),
   influence_outlier_dongs = file.path(cfg$dir_tables, "influence_outlier_dongs.csv"),
   influence_robustness_summary = file.path(cfg$dir_tables, "influence_robustness_summary.csv"),
+  # Evidence synthesis from 04_robustness/05_run_evidence_synthesis.R. Every
+  # diagnostic above reads, on its own, as a survivable result, but a different
+  # subset of outcomes survives each one. These tables cross-tabulate all of them
+  # so that what holds jointly is computed rather than recalled.
+  evidence_synthesis_gates = file.path(cfg$dir_tables, "evidence_synthesis_gates.csv"),
+  evidence_synthesis = file.path(cfg$dir_tables, "evidence_synthesis.csv"),
+  evidence_synthesis_matrix = file.path(cfg$dir_figures, "evidence_synthesis_matrix.png"),
   twfe_main_models = file.path(cfg$dir_tables, "twfe_main_models.csv"),
   twfe_main_models_html = file.path(cfg$dir_tables, "twfe_main_models.html"),
   twfe_main_controls_used = file.path(cfg$dir_tables, "twfe_main_controls_used.csv"),
@@ -1146,6 +1153,11 @@ cfg$canonical_pipeline_scripts <- c(
   # estimates are separable from those trends is a standing question about every
   # reported effect, not an occasional check.
   "02_Code/04_robustness/04_run_identification_diagnostics.R",
+  # Runs last among the robustness steps because it reads their published tables
+  # rather than re-estimating. Canonical because the per-audit pass counts
+  # overstate what is jointly defensible, and the intersection is what the
+  # main-text claims have to be written against.
+  "02_Code/04_robustness/05_run_evidence_synthesis.R",
   "02_Code/06_qc/01_validate_method_dataset_alignment.R",
   "02_Code/05_reporting/01_make_tables_figures.R"
 )
@@ -1230,6 +1242,21 @@ cfg$active_output_contract <- list(
   robustness = c(
     cfg$paths$robustness_summary,
     cfg$paths$robustness_compare
+  ),
+  influence = c(
+    cfg$paths$influence_dfbeta,
+    cfg$paths$influence_outlier_dongs,
+    cfg$paths$influence_robustness_summary
+  ),
+  identification = c(
+    cfg$paths$identification_placebo,
+    cfg$paths$identification_trend_spec,
+    cfg$paths$identification_exposure_persistence
+  ),
+  evidence_synthesis = c(
+    cfg$paths$evidence_synthesis_gates,
+    cfg$paths$evidence_synthesis,
+    cfg$paths$evidence_synthesis_matrix
   ),
   qc = c(cfg$paths$method_dataset_contract_check),
   reporting = c(
