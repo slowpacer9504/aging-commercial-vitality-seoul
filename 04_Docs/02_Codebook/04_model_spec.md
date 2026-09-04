@@ -495,6 +495,7 @@ This table is the single source of truth for GTWR specification parameters. Ever
 | | Contracted (7.0) | Published output |
 | --- | --- | --- |
 | `st_bw` | `60` | **`90`** (explicit run-time override; see [decision_log.md](../03_Log/decision_log.md), 2026-09-04 entry) |
+| `lamda` | `0.5` dimensionless | **`0.05` raw-unit** (retired convention; roughly 76:1 in favour of space, against the contract's 1:1) |
 | Time distance | symmetric `abs(t_i - t_j)` | legacy `GWmodel::ti.distv()` string comparison |
 | Collinearity schema | `local_vif_max`, `local_cn_centered`, `local_cn_gtwr` | `local_cn_gtwr` only |
 | Local inference | `estimate_se`, `estimate_t`, `estimate_p`, BH-FDR flag | **absent** (see below) |
@@ -533,7 +534,7 @@ QC checks `G02` and `G03` run whenever the GTWR outputs exist, not only under th
   - The spatiotemporal distance matrix is built by `build_gtwr_st_dmat()` with the symmetric temporal distance `|t_i - t_j|` and passed to `bw.gtwr()` and `gtwr()` as `st.dMat`, bypassing `GWmodel::st.dist()`/`ti.distm()` whose string time comparison mislabels past quarters as future for integer period ids.
   - `lamda` is dimensionless: spatial and temporal distances are divided by their own observed spans before combining, so `0.5` weights space and time equally and the default is `GTWR_LAMDA=0.5`. The previous raw-unit `lamda=0.05` corresponds to roughly `0.987` under this convention; values from the two conventions are not comparable.
   - The weighting kernel is `GTWR_KERNEL=bisquare` by default, applied to the combined spatiotemporal distance. `gaussian`, `exponential`, `tricube`, and `boxcar` are accepted alternatives; any other value falls back to `bisquare`. The kernel is a required reporting item for the specification and must be stated wherever GTWR results are presented.
-  - `GTWR_KSI` is the angle parameter of the Huang et al. (2010) spatiotemporal distance `lamda * d_S + (1 - lamda) * d_T + 2 * sqrt(lamda * (1 - lamda) * d_S * d_T) * cos(ksi)` and defaults to `0`, which makes the interaction term enter at full weight. It is held at the default in every active and appendix specification; only [05_run_gtwr_experiment.R](../../02_Code/80_optional/gtwr/05_run_gtwr_experiment.R) varies it, through `GTWR_EXPERIMENT_KSI_GRID`.
+  - `GTWR_KSI` is the angle parameter of the Huang et al. (2010) spatiotemporal distance `lamda * d_S + (1 - lamda) * d_T + 2 * sqrt(lamda * (1 - lamda) * d_S * d_T) * cos(ksi)` and defaults to `0`, which makes the interaction term enter at full weight. It is held at the default in every specification that is actually estimated. [05_run_gtwr_experiment.R](../../02_Code/80_optional/gtwr/05_run_gtwr_experiment.R) records varying values of it but estimates nothing (section 7X), so the only working sensitivity on the angle is the geometric sweep of section 7Z, which reports what the kernel averages over at each angle without refitting.
   - The default bandwidth is uniformly fixed at `GTWR_ST_BW=60`.
   - Under `GTWR_ADAPTIVE=true` (the default), a bandwidth of 60 means 60 spatiotemporal neighbors around each estimation point rather than a fixed metric radius.
   - [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R) does not run `bw.gtwr()` even if `GTWR_BANDWIDTH_STRATEGY` is not fixed.
@@ -624,6 +625,19 @@ QC checks `G02` and `G03` run whenever the GTWR outputs exist, not only under th
   - Only the `bw.gtwr()` search results for resident-only main GTWR specs are saved.
   - The selection results are not automatically applied to the main GTWR; they must be explicitly applied via `GTWR_ST_BW` if needed.
 
+### 7E.1) Status of the Published Selection and Sensitivity Bundle
+
+> **The published outputs of 7E, 7F and 7G are on the retired raw-unit `lamda` convention and cannot be read against the current contract.**
+
+| Output | Run | Recorded `lamda` | Convention |
+| --- | --- | --- | --- |
+| `gtwr_bandwidth_selection_<cs>.csv` | 2026-06-16 | `0.05` | **raw-unit (retired)** |
+| `gtwr_bandwidth_sensitivity_<cs>.csv` | 2026-06-23 | `0.05`, baseline `st_bw` `90` | **raw-unit (retired)** |
+| `gtwr_lamda_sensitivity_<cs>.csv` | 2026-06-23 | `0.025, 0.05, 0.1, 0.2` (baseline `0.05`) | **raw-unit (retired)** |
+| `gtwr_lamda_bw_cv_search_<cs>.csv` | 2026-09-02 | `0.1` to `0.995` | dimensionless (current) |
+
+The consequence is specific to 7G. The lamda sensitivity is the project's evidence that the spatiotemporal mix does not drive the local surface, and its grid of `0.025` to `0.2` spans roughly 76:1 to 2000:1 in favour of space under the convention it was run on. The grid never varied the mix in any meaningful sense, in either convention's terms, so **there is currently no evidence that the local coefficients are insensitive to `lamda`**. Runs from 2026-09-04 stamp `lamda_convention` into `gtwr_main_frozen_spec_<cs>.csv`; an output with no stamp is on the retired convention.
+
 ## 7F) GTWR Bandwidth Sensitivity Diagnostic
 
 - Manual quarterly diagnostic
@@ -659,6 +673,22 @@ QC checks `G02` and `G03` run whenever the GTWR outputs exist, not only under th
   - `lamda_on_grid_edge` and `st_bw_on_grid_edge` record whether the minimizing value sits on a grid boundary, that is, whether the optimum was bracketed or merely pinned.
   - This is a search tool, not a reporting one. CV optimizes prediction rather than inference, the focal subsample estimates the CV surface rather than reproducing `bw.gtwr()`'s exact value, and the active bandwidth contract weighs outcome comparability and local coefficient stability alongside fit. Reported bandwidths come from [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R) and the robustness tables of 7F and 7G, never from this search.
 
+### 7H.1) Reading Requirement
+
+The only search run under the current convention does not support either contracted value, and the gap is not small.
+
+| Outcome | CV-best `lamda` | CV-best `st_bw` | On a grid edge |
+| --- | ---: | ---: | --- |
+| `vitality_index_base` | `0.900` | **`30`** | bandwidth |
+| `vitality_sub_economic` | `0.995` | **`30`** | lamda and bandwidth |
+| `vitality_sub_social` | `0.995` | **`30`** | lamda and bandwidth |
+| `vitality_sub_stability` | `0.750` | **`30`** | bandwidth |
+| `vitality_sub_temporal` | `0.750` | **`30`** | bandwidth |
+
+The contracted `lamda = 0.5` is preferred for **none** of the five outcomes, and the contracted `st_bw = 60` for none either; `st_bw = 30` wins for all five and sits at the bottom of the grid, so the optimum is pinned rather than bracketed and CV would go lower still. Every outcome prefers a strongly space-weighted mix (`0.75` or above), which is the direction the retired raw-unit default happened to sit in.
+
+What that costs is measurable in 7F, with the caveat of 7E.1 that the table itself is on the retired convention. Moving from the published `st_bw = 90` to `30` leaves the local betas correlated at `0.554` with `21.9%` of dongs flipping sign; moving merely to the contracted `60` still flips `8.0%`. A bandwidth chosen against CV for comparability is a defensible choice, but it has to be reported as a choice with that price, not as a neutral default.
+
 ## 7X) GTWR Experiment Appendix
 
 - Manual quarterly appendix sidecar
@@ -673,6 +703,9 @@ QC checks `G02` and `G03` run whenever the GTWR outputs exist, not only under th
 - Implementation Principles:
   - This is a manual appendix that organizes bandwidth/control strategy grids within a quarterly local contract.
   - The canonical pipeline does not automatically run this appendix.
+  - **It plans specifications; it does not estimate any.** Every row it writes carries `status = not_estimated` and `frozen_spec_reason = manual_appendix_not_estimated`, and the script contains no call to `GWmodel::gtwr()`. The parameter columns, `ksi` among them, record what a specification *would* use, not what any fit used.
+  - It therefore provides no sensitivity of any kind, and in particular no `ksi` sensitivity. Section 7.2 previously stated that this appendix was the one place the angle parameter varied; that was true of the registry and false of the estimates. The working `ksi` sweep is the geometric one in section 7Z.
+  - `GTWR_EXPERIMENT_LAMDA_GRID` defaulted to `0.05` until 2026-09-04, a raw-unit value the dimensionless normalization did not reach. It now defaults to `0.25,0.5,0.75`.
 
 ## 7Y) GTWR Local Collinearity Diagnostic Backfill
 
@@ -720,11 +753,18 @@ The published local mean matches the **levels** sign for 5 of 5 outcomes and the
 | `ksi` | `st_bw` | Same quarter, other dong | Same dong, other quarter | Genuinely spatiotemporal |
 | --- | ---: | ---: | ---: | ---: |
 | `0` (contracted) | `60` | 82.3% | 9.3% | **6.7%** |
-| `0` (contracted) | `90` (published) | 77.9% | 7.6% | 13.3% |
+| `pi/4` | `60` | 76.8% | 8.8% | 12.7% |
 | `pi/2` | `60` | 50.6% | 6.7% | 41.0% |
+| `3pi/4` | `60` | 8.9% | 2.6% | 86.8% |
+| `pi` | `60` | 0.0% | 0.0% | **98.3%** |
+| `0` (contracted) | `90` (published) | 77.9% | 7.6% | 13.3% |
 | `pi/2` | `90` | 44.3% | 5.2% | 49.4% |
 
+This sweep is the project's only working sensitivity on the angle parameter, because the appendix that section 7.2 credited with that role never estimates anything (section 7X). It is geometric rather than estimate-based, which is what makes it cheap enough to run without a refit.
+
 At the contracted setting the model is close to a stack of per-quarter GWRs — a median of 51 distinct dongs at the focal quarter — with a thin own-dong temporal thread of about seven points. This is a legitimate specification, but it is not what "spatiotemporal weighting" conveys on its own, and it must be stated wherever GTWR results are presented, alongside the kernel and the angle parameter that section 7.0 already requires.
+
+**The dispersion that H3 reads as heterogeneity is largely a bandwidth choice.** Across the bandwidth sensitivity grid, `sd_beta` for `vitality_index_base` falls monotonically as the bandwidth widens: `7.79` at 30, `4.97` at 60, `4.62` at 90 (published), `4.37` at 120, `3.87` at 180. The spread of the local coefficient field is therefore not a fixed property of the data, and any statement about how much the effect varies across Seoul is a statement conditional on a bandwidth that section 7H.1 shows was not chosen by cross-validation.
 
 **The reported quarter is the temporal edge.** Every reported coefficient comes from the last quarter, where the kernel has no future side:
 
