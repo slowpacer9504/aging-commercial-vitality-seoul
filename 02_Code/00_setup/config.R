@@ -863,6 +863,11 @@ cfg$paths$emerging_hotspot_local <- file.path(cfg$dir_tables, "emerging_hotspot_
 cfg$paths$robustness_summary <- file.path(cfg$dir_tables, "robustness_summary.csv")
 cfg$paths$robustness_compare <- file.path(cfg$dir_figures, "robustness_compare.png")
 cfg$paths$method_dataset_contract_check <- file.path(cfg$dir_logs, "method_dataset_contract_check.csv")
+# Multiplicity accounting from 06_qc/02_build_test_inventory.R. The main text
+# rests on ten coefficients while the published tables carry several hundred,
+# and nothing counted them.
+cfg$paths$model_test_inventory <- file.path(cfg$dir_tables, "model_test_inventory.csv")
+cfg$paths$model_test_inventory_adjusted <- file.path(cfg$dir_tables, "model_test_inventory_adjusted.csv")
 cfg$paths$descriptive_statistics <- file.path(cfg$dir_tables, "descriptive_statistics.csv")
 cfg$paths$main_variable_correlation_matrix <- file.path(cfg$dir_tables, "main_variable_correlation_matrix.csv")
 cfg$paths$main_variable_correlation_pairs <- file.path(cfg$dir_tables, "main_variable_correlation_pairs.csv")
