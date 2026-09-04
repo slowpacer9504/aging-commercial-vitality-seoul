@@ -38,11 +38,8 @@ load_project_packages()
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 06_build_analysis_panel", timestamp()))
 
-quarter_base_path <- value_or(cfg$paths$quarter_base, file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"))
-quarter_aggregation_qc_path <- value_or(
-  cfg$logs$panel_quarter_aggregation_qc,
-  file.path(cfg$dir_logs, "panel_quarter_aggregation_qc.csv")
-)
+quarter_base_path <- cfg$paths$quarter_base
+quarter_aggregation_qc_path <- cfg$logs$panel_quarter_aggregation_qc
 
 required <- c(
   quarter_base_path,
@@ -695,7 +692,7 @@ join_cov <- dplyr::bind_rows(
 ) |>
   dplyr::arrange(source, variable, yq)
 
-join_cov_path <- file.path(cfg$dir_logs, "panel_join_coverage_qc.csv")
+join_cov_path <- cfg$logs$panel_join_coverage_qc
 write_csv_safe(join_cov, join_cov_path)
 
 count_vars <- intersect(
@@ -726,7 +723,7 @@ if (length(count_vars) > 0) {
   )
 }
 
-count_flag_path <- file.path(cfg$dir_logs, "panel_structural_count_flags.csv")
+count_flag_path <- cfg$logs$panel_structural_count_flags
 write_csv_safe(count_flags, count_flag_path)
 
 if (any(count_flags$flag_negative, na.rm = TRUE)) {

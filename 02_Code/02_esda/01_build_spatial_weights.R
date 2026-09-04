@@ -92,7 +92,7 @@ qc <- dplyr::bind_rows(
   summarize_connectivity(lw_8, "knn8")
 )
 
-write_csv_safe(qc, file.path(cfg$dir_tables, "spatial_weight_connectivity.csv"))
+write_csv_safe(qc, cfg$paths$spatial_weight_connectivity)
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 01_build_spatial_weights", timestamp()))
 append_log(
   cfg$logs$data_qc,

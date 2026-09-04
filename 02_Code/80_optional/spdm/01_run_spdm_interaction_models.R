@@ -29,11 +29,11 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 01_run_spdm_interaction_models", timestamp()))
 
-path_interaction_models <- value_or(cfg$paths$spdm_interaction_models, file.path(cfg$dir_tables, "spdm_interaction_models.csv"))
-path_interaction_impacts <- value_or(cfg$paths$spdm_interaction_impacts, file.path(cfg$dir_tables, "spdm_interaction_impacts.csv"))
-path_interaction_summary <- value_or(cfg$paths$spdm_interaction_effect_summary, file.path(cfg$dir_tables, "spdm_interaction_effect_summary.csv"))
-path_interaction_controls <- value_or(cfg$paths$spdm_interaction_controls_used, file.path(cfg$dir_tables, "spdm_interaction_controls_used.csv"))
-path_interaction_diagnostics <- value_or(cfg$paths$spdm_interaction_diagnostics, file.path(cfg$dir_tables, "spdm_interaction_diagnostics.csv"))
+path_interaction_models <- cfg$paths$spdm_interaction_models
+path_interaction_impacts <- cfg$paths$spdm_interaction_impacts
+path_interaction_summary <- cfg$paths$spdm_interaction_effect_summary
+path_interaction_controls <- cfg$paths$spdm_interaction_controls_used
+path_interaction_diagnostics <- cfg$paths$spdm_interaction_diagnostics
 
 if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {
   stop("[ERROR] Missing panel or W", call. = FALSE)

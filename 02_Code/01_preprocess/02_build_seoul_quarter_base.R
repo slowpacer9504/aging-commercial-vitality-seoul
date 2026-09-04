@@ -34,11 +34,8 @@ append_log(cfg$logs$data_qc, sprintf("\n## [%s] 02_build_seoul_quarter_base", ti
 # The quarter base, raw review companion, raw integrated layer, and aggregation
 # QC file are a matched output set. Their paths are resolved through `cfg` before
 # any raw data is read so downstream scripts consume the canonical registry names.
-quarter_base_path <- value_or(cfg$paths$quarter_base, file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"))
-quarter_aggregation_qc_path <- value_or(
-  cfg$logs$panel_quarter_aggregation_qc,
-  file.path(cfg$dir_logs, "panel_quarter_aggregation_qc.csv")
-)
+quarter_base_path <- cfg$paths$quarter_base
+quarter_aggregation_qc_path <- cfg$logs$panel_quarter_aggregation_qc
 
 seoul_root <- file.path(cfg$dir_raw, "01_Seoul_Commercial_District_Administrative_Dong")
 if (!dir.exists(seoul_root)) {

@@ -28,12 +28,12 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 07_run_spdm_channel_path", timestamp()))
 
-path_channel_models <- value_or(cfg$paths$spdm_channel_models, file.path(cfg$dir_tables, "spdm_channel_models.csv"))
-path_channel_impacts <- value_or(cfg$paths$spdm_channel_impacts, file.path(cfg$dir_tables, "spdm_channel_impacts.csv"))
-path_channel_controls <- value_or(cfg$paths$spdm_channel_controls_used, file.path(cfg$dir_tables, "spdm_channel_controls_used.csv"))
-path_channel_path_effects <- value_or(cfg$paths$spdm_channel_path_effects, file.path(cfg$dir_tables, "spdm_channel_path_effects.csv"))
-path_channel_bootstrap_draws <- value_or(cfg$paths$spdm_channel_bootstrap_draws, file.path(cfg$dir_tables, "spdm_channel_bootstrap_draws.csv"))
-path_channel_diagnostics <- value_or(cfg$paths$spdm_channel_diagnostics, file.path(cfg$dir_tables, "spdm_channel_diagnostics.csv"))
+path_channel_models <- cfg$paths$spdm_channel_models
+path_channel_impacts <- cfg$paths$spdm_channel_impacts
+path_channel_controls <- cfg$paths$spdm_channel_controls_used
+path_channel_path_effects <- cfg$paths$spdm_channel_path_effects
+path_channel_bootstrap_draws <- cfg$paths$spdm_channel_bootstrap_draws
+path_channel_diagnostics <- cfg$paths$spdm_channel_diagnostics
 
 if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {
   stop("[ERROR] Missing panel or W", call. = FALSE)

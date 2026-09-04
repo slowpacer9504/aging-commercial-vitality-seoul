@@ -29,11 +29,11 @@ load_project_packages()
 
 append_log(cfg$logs$model_run, sprintf("\n## [%s] 03_run_spdm_sector_share_experiment", timestamp()))
 
-path_models <- value_or(cfg$paths$spdm_sector_share_experiment_models, file.path(cfg$dir_tables, "spdm_sector_share_experiment_models.csv"))
-path_impacts <- value_or(cfg$paths$spdm_sector_share_experiment_impacts, file.path(cfg$dir_tables, "spdm_sector_share_experiment_impacts.csv"))
-path_controls <- value_or(cfg$paths$spdm_sector_share_experiment_controls_used, file.path(cfg$dir_tables, "spdm_sector_share_experiment_controls_used.csv"))
-path_diagnostics <- value_or(cfg$paths$spdm_sector_share_experiment_diagnostics, file.path(cfg$dir_tables, "spdm_sector_share_experiment_diagnostics.csv"))
-path_relations <- value_or(cfg$paths$spdm_sector_share_experiment_exposure_relations, file.path(cfg$dir_tables, "spdm_sector_share_experiment_exposure_relations.csv"))
+path_models <- cfg$paths$spdm_sector_share_experiment_models
+path_impacts <- cfg$paths$spdm_sector_share_experiment_impacts
+path_controls <- cfg$paths$spdm_sector_share_experiment_controls_used
+path_diagnostics <- cfg$paths$spdm_sector_share_experiment_diagnostics
+path_relations <- cfg$paths$spdm_sector_share_experiment_exposure_relations
 
 {
   if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {

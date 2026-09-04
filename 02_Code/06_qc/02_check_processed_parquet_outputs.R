@@ -28,10 +28,10 @@ ensure_dirs(cfg$required_dirs)
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 02_check_processed_parquet_outputs", timestamp()))
 
-out_inventory <- file.path(cfg$dir_logs, "processed_parquet_inventory.csv")
-out_schema <- file.path(cfg$dir_logs, "processed_parquet_schema.csv")
-out_missing <- file.path(cfg$dir_logs, "processed_parquet_missing_summary.csv")
-out_checks <- file.path(cfg$dir_logs, "processed_parquet_qc_checks.csv")
+out_inventory <- cfg$logs$processed_parquet_inventory
+out_schema <- cfg$logs$processed_parquet_schema
+out_missing <- cfg$logs$processed_parquet_missing_summary
+out_checks <- cfg$logs$processed_parquet_qc_checks
 
 processed_root <- cfg$dir_processed
 parquet_paths <- list.files(processed_root, recursive = TRUE, full.names = TRUE, pattern = "[.]parquet$")

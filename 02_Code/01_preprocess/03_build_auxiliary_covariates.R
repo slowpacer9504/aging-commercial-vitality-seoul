@@ -32,7 +32,7 @@ load_project_packages(extra = c("httr", "jsonlite", "sfnetworks", "tidygraph", "
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 03_build_auxiliary_covariates", timestamp()))
 
-quarter_base_path <- value_or(cfg$paths$quarter_base, file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"))
+quarter_base_path <- cfg$paths$quarter_base
 
 if (!file.exists(quarter_base_path)) {
   stop("[ERROR] seoul_quarter_base.parquet is required before building auxiliary covariates", call. = FALSE)
@@ -100,81 +100,25 @@ adm_sf <- adm_boundary |>
 
 safe_num <- function(x) suppressWarnings(as.numeric(x))
 
-senior_geocode_cache_path <- if (!is.null(cfg$paths$senior_geocode_cache)) {
-  cfg$paths$senior_geocode_cache
-} else {
-  file.path(cfg$dir_intermediate, "senior_geocode_cache.parquet")
-}
+senior_geocode_cache_path <- cfg$paths$senior_geocode_cache
 senior_manual_fix_path <- if (!is.null(cfg$senior_manual_fix_csv)) {
   cfg$senior_manual_fix_csv
 } else {
   file.path(cfg$project_root, "02_Code", "00_setup", "senior_geocode_manual_fix.csv")
 }
-senior_geocode_qc_path <- if (!is.null(cfg$logs$senior_geocode_qc)) {
-  cfg$logs$senior_geocode_qc
-} else {
-  file.path(cfg$dir_logs, "senior_geocode_qc.csv")
-}
-senior_geocode_type_qc_path <- if (!is.null(cfg$logs$senior_geocode_type_qc)) {
-  cfg$logs$senior_geocode_type_qc
-} else {
-  file.path(cfg$dir_logs, "senior_geocode_type_qc.csv")
-}
-senior_geocode_unmatched_path <- if (!is.null(cfg$logs$senior_geocode_unmatched)) {
-  cfg$logs$senior_geocode_unmatched
-} else {
-  file.path(cfg$dir_logs, "senior_geocode_unmatched_sample.csv")
-}
-medical_geocode_cache_path <- if (!is.null(cfg$paths$medical_geocode_cache)) {
-  cfg$paths$medical_geocode_cache
-} else {
-  file.path(cfg$dir_intermediate, "medical_geocode_cache.parquet")
-}
-medical_geocode_qc_path <- if (!is.null(cfg$logs$medical_geocode_qc)) {
-  cfg$logs$medical_geocode_qc
-} else {
-  file.path(cfg$dir_logs, "medical_geocode_qc.csv")
-}
-medical_geocode_unmatched_path <- if (!is.null(cfg$logs$medical_geocode_unmatched)) {
-  cfg$logs$medical_geocode_unmatched
-} else {
-  file.path(cfg$dir_logs, "medical_geocode_unmatched_sample.csv")
-}
-mall_geocode_cache_path <- if (!is.null(cfg$paths$mall_geocode_cache)) {
-  cfg$paths$mall_geocode_cache
-} else {
-  file.path(cfg$dir_intermediate, "mall_geocode_cache.parquet")
-}
-mall_geocode_qc_path <- if (!is.null(cfg$logs$mall_geocode_qc)) {
-  cfg$logs$mall_geocode_qc
-} else {
-  file.path(cfg$dir_logs, "mall_geocode_qc.csv")
-}
-mall_geocode_unmatched_path <- if (!is.null(cfg$logs$mall_geocode_unmatched)) {
-  cfg$logs$mall_geocode_unmatched
-} else {
-  file.path(cfg$dir_logs, "mall_geocode_unmatched_sample.csv")
-}
-apartment_geocode_cache_path <- if (!is.null(cfg$paths$apartment_geocode_cache)) {
-  cfg$paths$apartment_geocode_cache
-} else {
-  file.path(cfg$dir_intermediate, "apartment_geocode_cache.parquet")
-}
-apartment_registry_qc_path <- if (!is.null(cfg$logs$apartment_registry_qc)) {
-  cfg$logs$apartment_registry_qc
-} else {
-  file.path(cfg$dir_logs, "apartment_registry_qc.csv")
-}
-apartment_registry_unmatched_path <- if (!is.null(cfg$logs$apartment_registry_unmatched)) {
-  cfg$logs$apartment_registry_unmatched
-} else {
-  file.path(cfg$dir_logs, "apartment_registry_unmatched_sample.csv")
-}
-apartment_geocode_qc_path <- if (!is.null(cfg$logs$apartment_geocode_qc)) {
-  cfg$logs$apartment_geocode_qc
-} else {
-  file.path(cfg$dir_logs, "apartment_geocode_qc.csv")
-}
+senior_geocode_qc_path <- cfg$logs$senior_geocode_qc
+senior_geocode_type_qc_path <- cfg$logs$senior_geocode_type_qc
+senior_geocode_unmatched_path <- cfg$logs$senior_geocode_unmatched
+medical_geocode_cache_path <- cfg$paths$medical_geocode_cache
+medical_geocode_qc_path <- cfg$logs$medical_geocode_qc
+medical_geocode_unmatched_path <- cfg$logs$medical_geocode_unmatched
+mall_geocode_cache_path <- cfg$paths$mall_geocode_cache
+mall_geocode_qc_path <- cfg$logs$mall_geocode_qc
+mall_geocode_unmatched_path <- cfg$logs$mall_geocode_unmatched
+apartment_geocode_cache_path <- cfg$paths$apartment_geocode_cache
+apartment_registry_qc_path <- cfg$logs$apartment_registry_qc
+apartment_registry_unmatched_path <- cfg$logs$apartment_registry_unmatched
+apartment_geocode_qc_path <- cfg$logs$apartment_geocode_qc
 #==============================================================================
 # 1. Auxiliary Source Builder Helpers
 #==============================================================================
@@ -933,7 +877,7 @@ build_land_price_lpi_factor <- function(boundary_dir) {
       sprintf("legal_rows=%d unmatched_legal=%d", nrow(legal_key), nrow(unmatched_legal))
     )
   )
-  write_csv_safe(raw_match_qc, file.path(cfg$dir_logs, "land_price_lpi_raw_match_qc.csv"))
+  write_csv_safe(raw_match_qc, cfg$logs$land_price_lpi_raw_match_qc)
   if (nrow(unmatched_lpi) > 0L || nrow(unmatched_legal) > 0L) {
     stop("[ERROR] Land price LPI legal-dong names do not fully match the legal-dong boundary", call. = FALSE)
   }
@@ -1031,7 +975,7 @@ build_land_price_lpi_factor <- function(boundary_dir) {
         "FAIL"
       )
     )
-  write_csv_safe(crosswalk_qc, file.path(cfg$dir_logs, "land_price_lpi_crosswalk_qc.csv"))
+  write_csv_safe(crosswalk_qc, cfg$logs$land_price_lpi_crosswalk_qc)
 
   factor_adm <- suppressWarnings(
     crosswalk |>
@@ -5422,7 +5366,7 @@ land_price_qc <- land_price_adm |>
     .groups = "drop"
   )
 
-land_price_qc_path <- file.path(cfg$dir_logs, "land_price_imputation_qc.csv")
+land_price_qc_path <- cfg$logs$land_price_imputation_qc
 write_csv_safe(land_price_qc, land_price_qc_path)
 obs_share_min <- suppressWarnings(min(land_price_qc$observed_share, na.rm = TRUE))
 obs_share_max <- suppressWarnings(max(land_price_qc$observed_share, na.rm = TRUE))
@@ -5481,7 +5425,7 @@ land_price_lpi_adjustment_qc <- land_price_quarter |>
     )
   )
 
-land_price_lpi_adjustment_qc_path <- file.path(cfg$dir_logs, "land_price_lpi_adjustment_qc.csv")
+land_price_lpi_adjustment_qc_path <- cfg$logs$land_price_lpi_adjustment_qc
 write_csv_safe(land_price_lpi_adjustment_qc, land_price_lpi_adjustment_qc_path)
 append_log(
   cfg$logs$data_qc,

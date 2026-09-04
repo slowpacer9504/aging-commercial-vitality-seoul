@@ -29,7 +29,7 @@ load_project_packages(extra = "data.table")
 
 append_log(cfg$logs$data_qc, sprintf("\n## [%s] 01_build_living_population_inflow", timestamp()))
 
-quarter_base_path <- value_or(cfg$paths$quarter_base, file.path(cfg$dir_analysis, "seoul_quarter_base.parquet"))
+quarter_base_path <- cfg$paths$quarter_base
 if (!file.exists(quarter_base_path)) {
   stop("[ERROR] seoul_quarter_base.parquet is required before living-population inflow build", call. = FALSE)
 }
