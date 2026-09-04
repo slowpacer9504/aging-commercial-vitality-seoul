@@ -173,10 +173,16 @@ cfg$esda_global_moran_p_value <- "permutation_two_sided_abs"
 # local indicators reported with a multiplicity correction.
 cfg$esda_lisa_nsim <- 9999L
 cfg$esda_bivariate_nsim <- 9999L
-# EHSA sits on a different budget: it is one Gi* series per dong across the
-# whole quarterly sequence, not a single cross-section, so its cost scales with
-# the number of periods as well as units.
-cfg$esda_ehsa_nsim <- 999L
+# EHSA sits on a different budget and keeps its original 199. It is one Gi*
+# series per dong across the whole quarterly sequence rather than a single
+# cross-section, so each permutation costs 25 times what a LISA permutation
+# costs on this panel. Measured on the 2026-09-04 run, raising it to 999 took
+# the EHSA stage from roughly an hour to 6h00m and the whole ESDA step to
+# 6h15m, against about 14 minutes for everything else combined. EHSA is a
+# descriptive hot-spot classification rather than a multiplicity-corrected
+# inference surface, so it does not need the resolution that pushed LISA to
+# 9,999, and a six-hour default pipeline step is not a trade worth making.
+cfg$esda_ehsa_nsim <- 199L
 
 # Local indicators are corrected for multiplicity. Benjamini-Hochberg rather
 # than Bonferroni because LISA is an exploratory screen where controlling the
