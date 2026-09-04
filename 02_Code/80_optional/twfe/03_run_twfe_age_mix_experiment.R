@@ -367,6 +367,32 @@ model_diag <- spec_registry |>
     dplyr::pick(dplyr::starts_with("finite_n__"))
   ) |>
   dplyr::arrange(outcome_order, model_family)
+
+# Collinearity on the variation the estimator uses. This family enters three log
+# age-group populations together, and they move together within a dong: the
+# within VIFs run far above the main specification's 1.17, which inflates the
+# corresponding standard errors and has to be visible next to the coefficients
+# rather than inferred from them. The three groups drive it between themselves -
+# dropping the same-domain total control barely moves the figures - so this is a
+# property of the family, not of the control contract.
+# Computed per family and per outcome, because the families differ in domain and
+# the retained control set is screened by outcome.
+age_mix_vif <- purrr::pmap_dfr(
+  list(model_diag$model_name, model_diag$model_family,
+       model_diag$requested_exposures, model_diag$retained_controls),
+  function(mn, fam, exps, ctrls) {
+    fp <- family_panels[[fam]]
+    if (is.null(fp)) {
+      return(tibble::tibble(model_name = mn, max_vif_within = NA_real_, vif_within_terms = NA_character_))
+    }
+    reg_vars <- trimws(unlist(strsplit(stats::na.omit(c(exps, ctrls)), ";", fixed = TRUE)))
+    v <- summarise_within_vif(compute_within_vif(fp, reg_vars[nzchar(reg_vars)],
+                                                 unit = "adm_cd", period = "yq"))
+    tibble::tibble(model_name = mn, max_vif_within = v$max_vif_within,
+                   vif_within_terms = v$vif_within_terms)
+  }
+)
+model_diag <- model_diag |> dplyr::left_join(age_mix_vif, by = "model_name")
 write_csv_safe(model_diag, cfg$paths$twfe_age_mix_experiment_diagnostics)
 
 family_control_summary <- family_contracts |>

@@ -799,3 +799,73 @@ summarize_model_diagnostics <- function(models) {
       )
   })
 }
+
+
+#==============================================================================
+# Within-Design Collinearity
+#==============================================================================
+
+# Variance inflation on the two-way within design, which is the variation a
+# two-way fixed-effects estimator actually uses. Raw-level VIFs are not the
+# relevant quantity here: a regressor can be almost orthogonal in levels and
+# nearly collinear after dong and quarter means are removed, or the reverse.
+#
+# It lives here rather than inline in one script because the appendix families
+# need it more than the main specification does. The main TWFE design runs at a
+# maximum within VIF of 1.17, while the age-mix family - three log age-group
+# populations entered together - runs at 9.1, 17.8 and 10.4, which inflates the
+# middle-age standard error by a factor of about 4.2 against an orthogonal
+# design. That is a fact about the appendix that has to be reported with it.
+compute_within_vif <- function(data, reg_vars, unit = "adm_cd", period = "yq") {
+  reg_vars <- unique(as.character(reg_vars))
+  reg_vars <- reg_vars[reg_vars %in% names(data)]
+  empty <- tibble::tibble(
+    term = character(), vif_within = numeric(), n_obs = integer(),
+    status = character(), message = character()
+  )
+  if (length(reg_vars) < 2L || !all(c(unit, period) %in% names(data))) return(empty)
+
+  d <- data |>
+    dplyr::select(dplyr::all_of(c(unit, period, reg_vars))) |>
+    dplyr::filter(stats::complete.cases(dplyr::pick(dplyr::all_of(reg_vars))))
+  if (nrow(d) < length(reg_vars) + 2L) {
+    return(tibble::tibble(
+      term = reg_vars, vif_within = NA_real_, n_obs = nrow(d),
+      status = "insufficient_rows", message = NA_character_
+    ))
+  }
+
+  d <- d |>
+    dplyr::group_by(.data[[unit]]) |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(reg_vars), ~ .x - mean(.x, na.rm = TRUE))) |>
+    dplyr::ungroup() |>
+    dplyr::group_by(.data[[period]]) |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(reg_vars), ~ .x - mean(.x, na.rm = TRUE))) |>
+    dplyr::ungroup()
+
+  purrr::map_dfr(reg_vars, function(v) {
+    others <- setdiff(reg_vars, v)
+    r2 <- tryCatch({
+      summary(stats::lm(stats::reformulate(others, response = v), data = d))$r.squared
+    }, error = function(e) NA_real_)
+    tibble::tibble(
+      term = v,
+      vif_within = if (is.finite(r2) && r2 < 1) 1 / (1 - r2) else Inf,
+      n_obs = nrow(d),
+      status = if (is.finite(r2)) "success" else "failed",
+      message = NA_character_
+    )
+  })
+}
+
+# Collapse a within-VIF table into the two columns model summaries carry.
+summarise_within_vif <- function(vif_tbl) {
+  if (is.null(vif_tbl) || nrow(vif_tbl) == 0L) {
+    return(list(max_vif_within = NA_real_, vif_within_terms = NA_character_))
+  }
+  finite_vals <- vif_tbl$vif_within[is.finite(vif_tbl$vif_within)]
+  list(
+    max_vif_within = if (length(finite_vals) > 0L) max(finite_vals) else NA_real_,
+    vif_within_terms = paste(sprintf("%s=%.2f", vif_tbl$term, vif_tbl$vif_within), collapse = ";")
+  )
+}

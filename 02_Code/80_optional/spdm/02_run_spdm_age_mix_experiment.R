@@ -545,6 +545,27 @@ controls_tbl <- dplyr::bind_rows(purrr::map(results, "controls")) |>
   ) |>
   dplyr::arrange(outcome_order, age_mix_family, spec_id, control_order)
 
+# Collinearity on the within design, for the same reason as the TWFE age-mix
+# family: three log age-group populations entered together move together within a
+# dong, so the standard errors on them are inflated relative to an orthogonal
+# design and that has to travel with the coefficients.
+age_mix_vif <- purrr::pmap_dfr(
+  list(diagnostics_tbl$spec_id, diagnostics_tbl$age_mix_family,
+       diagnostics_tbl$requested_exposures, diagnostics_tbl$selected_controls),
+  function(sid, fam, exps, ctrls) {
+    fp <- family_panels[[fam]]
+    if (is.null(fp)) {
+      return(tibble::tibble(spec_id = sid, max_vif_within = NA_real_, vif_within_terms = NA_character_))
+    }
+    reg_vars <- trimws(unlist(strsplit(stats::na.omit(c(exps, ctrls)), ";", fixed = TRUE)))
+    v <- summarise_within_vif(compute_within_vif(fp, reg_vars[nzchar(reg_vars)],
+                                                 unit = "adm_cd", period = "yq"))
+    tibble::tibble(spec_id = sid, max_vif_within = v$max_vif_within,
+                   vif_within_terms = v$vif_within_terms)
+  }
+)
+diagnostics_tbl <- diagnostics_tbl |> dplyr::left_join(age_mix_vif, by = "spec_id")
+
 write_csv_safe(models_tbl, cfg$paths$spdm_age_mix_experiment_models)
 write_csv_safe(impacts_tbl, cfg$paths$spdm_age_mix_experiment_impacts)
 write_csv_safe(controls_tbl, cfg$paths$spdm_age_mix_experiment_controls_used)

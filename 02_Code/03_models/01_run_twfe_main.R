@@ -197,50 +197,9 @@ model_diag <- spec_registry |>
 # among levels would overstate the collinearity the fixed-effects model faces.
 twfe_within_vif <- local({
   spec_terms <- unique(stats::na.omit(model_diag$retained_controls))
-  ctrl_vars <- unique(unlist(strsplit(spec_terms, ";", fixed = TRUE)))
-  ctrl_vars <- trimws(ctrl_vars)
-  ctrl_vars <- ctrl_vars[nzchar(ctrl_vars) & ctrl_vars %in% names(panel)]
-  reg_vars <- unique(c(exposures, ctrl_vars))
-  reg_vars <- reg_vars[reg_vars %in% names(panel)]
-  if (length(reg_vars) < 2L) {
-    return(tibble::tibble(
-      term = character(), vif_within = numeric(), n_obs = integer(),
-      status = character(), message = character()
-    ))
-  }
-
-  d <- panel |>
-    dplyr::select(dplyr::all_of(c("adm_cd", "yq", reg_vars))) |>
-    dplyr::filter(stats::complete.cases(dplyr::pick(dplyr::all_of(reg_vars))))
-  if (nrow(d) < length(reg_vars) + 2L) {
-    return(tibble::tibble(
-      term = reg_vars, vif_within = NA_real_, n_obs = nrow(d),
-      status = "insufficient_rows", message = NA_character_
-    ))
-  }
-
-  d <- d |>
-    dplyr::group_by(.data$adm_cd) |>
-    dplyr::mutate(dplyr::across(dplyr::all_of(reg_vars), ~ .x - mean(.x, na.rm = TRUE))) |>
-    dplyr::ungroup() |>
-    dplyr::group_by(.data$yq) |>
-    dplyr::mutate(dplyr::across(dplyr::all_of(reg_vars), ~ .x - mean(.x, na.rm = TRUE))) |>
-    dplyr::ungroup()
-
-  purrr::map_dfr(reg_vars, function(v) {
-    others <- setdiff(reg_vars, v)
-    r2 <- tryCatch({
-      fit <- stats::lm(stats::reformulate(others, response = v), data = d)
-      summary(fit)$r.squared
-    }, error = function(e) NA_real_)
-    tibble::tibble(
-      term = v,
-      vif_within = if (is.finite(r2) && r2 < 1) 1 / (1 - r2) else Inf,
-      n_obs = nrow(d),
-      status = if (is.finite(r2)) "success" else "failed",
-      message = NA_character_
-    )
-  })
+  ctrl_vars <- trimws(unique(unlist(strsplit(spec_terms, ";", fixed = TRUE))))
+  reg_vars <- unique(c(exposures, ctrl_vars[nzchar(ctrl_vars)]))
+  compute_within_vif(panel, reg_vars, unit = "adm_cd", period = "yq")
 })
 
 # Serial correlation. Clustering by dong is valid under arbitrary within-dong
