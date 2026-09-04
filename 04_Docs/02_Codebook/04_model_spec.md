@@ -383,6 +383,50 @@ Second, only `vitality_index_base` survives dong-specific linear trends. `vitali
 
 Third, taken together these mean the 4-quarter lag provides no identifying leverage against a shared dong-level trend. Reported associations remain valid as descriptions of a conditional relationship; a causal reading of the aging coefficient is not supported by this design, and the language of the results must reflect that.
 
+## 6C) Evidence Synthesis
+
+- Objective: Cross-tabulate every diagnostic the project runs against every reported outcome, so that what survives all of them at once is a computed result rather than a recollection of separate audits.
+- Execution condition: Part of `cfg$canonical_pipeline_scripts`, running last among the robustness steps, after [04_run_identification_diagnostics.R](../../02_Code/04_robustness/04_run_identification_diagnostics.R) and before QC.
+- Inputs: `twfe_main_models.csv`, `spdm_impacts.csv`, `influence_robustness_summary.csv`, `identification_placebo_lead.csv`, `identification_trend_spec.csv`, `exposure_linearity_tests.csv`
+- Outputs:
+  - `evidence_synthesis_gates.csv`
+  - `evidence_synthesis.csv`
+  - `evidence_synthesis_matrix.png`
+- Implementation Principles:
+  - The step exists because each diagnostic, read alone, reports a survivable result: two or three of the five outcomes come through every time. The outcomes that come through are not the same ones each time, so the per-audit pass counts overstate what is jointly defensible. A paper defends one result against every diagnostic simultaneously, which makes the intersection the relevant quantity.
+  - It estimates nothing. Every cell traces to a named column of a named upstream table, recorded per gate in `evidence_synthesis_gates.csv`, so a disputed verdict is checked against its source rather than against this script.
+  - The modification time of every source table is carried into `evidence_synthesis.csv`, because a synthesis computed over stale diagnostics is worse than none.
+  - Nine gates span the five audits. Each carries a `role` tag — `prerequisite`, `stability`, `identification`, `supporting` — which is the judgement this script makes and is written to the output so a reader who weighs the evidence differently can re-tier the same matrix without re-deriving it.
+  - A gate that no outcome passes is reported as a `design_level_failure` rather than an outcome-level one, because such a limitation cannot be answered by choosing a different outcome.
+  - The influence tolerance (`SYNTHESIS_INFLUENCE_PCT_TOL`, default 50) is a stated convention, not an inferential rule. It exists because a coefficient that moves by more than half of itself when a small set of dongs is dropped is not reportable as a magnitude even when it never crosses a significance threshold. The underlying `pct_change` values travel with the output so the choice can be inspected instead of trusted.
+  - Diagnostic only. No specification, contract, or observation is changed by this step.
+
+### 6C.1) Reading Requirement
+
+The first run confirmed that the intersection is empty. No outcome passes all nine gates; the best passes six.
+
+| Outcome | base | ctrl | fam | infl | plac | race | trnd | lin | se2w | Passed | Tier |
+| --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: | --- |
+| `vitality_index_base` | O | O | O | **X** | O | **X** | O | **X** | O | 6/9 | `descriptive_only` |
+| `vitality_sub_social` | O | O | O | O | **X** | **X** | **X** | **X** | O | 5/9 | `conditional_association` |
+| `vitality_sub_economic` | X | X | X | X | X | X | X | O | X | 1/9 | `not_supported` |
+| `vitality_sub_temporal` | X | X | X | X | O | X | X | X | X | 1/9 | `not_supported` |
+| `vitality_sub_stability` | X | X | X | X | O | X | X | X | X | 1/9 | `not_supported` |
+
+Columns, in the order of `GATE_META`: `base` = `baseline_significant`, `ctrl` = `control_set_consistency`, `fam` = `model_family_agreement`, `infl` = `influence_stable`, `plac` = `placebo_lead_null`, `race` = `lag_beats_lead`, `trnd` = `dong_trend_survival`, `lin` = `linearity_not_rejected`, `se2w` = `se_twoway_significant`.
+
+Four readings follow, and they govern the language of the results.
+
+First, `lag_beats_lead` fails for every outcome, which makes it a property of the design rather than of any outcome. Entered alongside the 4-quarter lead, the 4-quarter lag is not significant for a single outcome (p = .639, .206, .083, .250, .061). This is not a collinearity artefact: after two-way demeaning the two correlate at `0.674`, a variance inflation factor of `1.8`. The lag is separable from the lead and still does not win. No choice of outcome answers this, and no outcome may carry a causal directional claim.
+
+Second, the tier names a *kind* of claim, not a quality ranking, because the failures are not commensurable. `vitality_index_base` passes more gates but fails `influence_stable`: dropping the nine union-tail dongs, `2.1%` of the sample, takes it from `-1.363` (p = .004) to `-0.847` (p = .083). Its magnitude is therefore not reportable, and it is the only outcome that survives dong-specific trends. `vitality_sub_social` has a stable magnitude but fails all three identification gates. These license different sentences, and neither is the stronger result in a single ordering.
+
+Third, `n_gates_passed` is not comparable across outcomes, because some gates are conditional on the baseline. `vitality_sub_temporal` and `vitality_sub_stability` each pass `placebo_lead_null`, but a placebo test has nothing to falsify when the baseline effect is itself null; those are vacuous passes, and the 1/9 rows should be read as "no reportable effect" rather than as a graded score.
+
+Fourth, `model_family_agreement` fails for three outcomes, and the disagreement runs one way: SPDM reports all five direct effects as significant, TWFE two. For `vitality_sub_stability` the sign also differs, `-0.257` (p = .655) against `+0.570` (p = .024). The cause is the standard error, not the point estimate — `0.137` for SPDM against `0.515` for TWFE clustered on dong, for `vitality_sub_economic`. As recorded in section 5, `splm` models no dependence in the time dimension, and the residual AR(1) coefficient runs `0.61` to `0.81` across outcomes. The two tables' p-values must not be read side by side.
+
+Because these gates were applied as forty-five outcome-by-gate tests, the reporting should say so. The failures at issue are not marginal — a lack-of-fit p of `1.1e-7`, sign reversals under a 2% sample change — so multiplicity does not explain them, but the count belongs in the text.
+
 ## 7) GTWR Main Optional Sidecar
 
 ### 7.0) Authoritative Parameter Contract

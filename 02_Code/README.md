@@ -59,6 +59,7 @@ The active default order is:
 - `02_Code/04_robustness/02_run_robustness.R`
 - `02_Code/04_robustness/03_run_influence_robustness.R`
 - `02_Code/04_robustness/04_run_identification_diagnostics.R`
+- `02_Code/04_robustness/05_run_evidence_synthesis.R`
 - `02_Code/06_qc/01_validate_method_dataset_alignment.R`
 - `02_Code/05_reporting/01_make_tables_figures.R`
 
@@ -144,6 +145,7 @@ This is the complete list of environment variables read by the pipeline. The def
 | `EDA_EXPOSURE_BINS` | `20` | Read by `02_esda/03_run_exploratory_diagnostics.R`. Number of equal-count exposure bins used for the binned response table and the lack-of-fit test. More bins resolve finer departures from linearity at the cost of noisier bin means |
 | `INFLUENCE_TAIL_Z` | `5` | Read by `04_robustness/03_run_influence_robustness.R`. Pooled-z threshold used to name outcome-tail dongs. Not a rejection rule; only a way to identify dongs far enough out to move a pooled standard deviation |
 | `INFLUENCE_TOP_K` | `10` | Read by `04_robustness/03_run_influence_robustness.R`. Number of highest-`\|dfbeta\|` dongs dropped in the `top_k` exclusion variant |
+| `SYNTHESIS_INFLUENCE_PCT_TOL` | `50` | Read by `04_robustness/05_run_evidence_synthesis.R`. Percentage by which the exposure coefficient may move across influence-exclusion variants and still pass the `influence_stable` gate. A stated convention, not an inferential rule; the underlying `pct_change` values travel with the output |
 
 ### Preprocessing
 

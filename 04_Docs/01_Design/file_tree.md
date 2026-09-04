@@ -80,7 +80,8 @@ For detailed information regarding code execution or variables, please refer to 
 │   │   ├── 01_run_spdm_w_robustness.R             # SPDM spatial weights robustness
 │   │   ├── 02_run_robustness.R                    # Alternative robustness checks
 │   │   ├── 03_run_influence_robustness.R          # Leave-one-dong-out influence on the exposure coefficient
-│   │   └── 04_run_identification_diagnostics.R      # Placebo lead, dong-trend spec, exposure persistence
+│   │   ├── 04_run_identification_diagnostics.R      # Placebo lead, dong-trend spec, exposure persistence
+│   │   └── 05_run_evidence_synthesis.R            # Every diagnostic x every outcome; claim tier per outcome
 │   │
 │   ├── 05_reporting/                              # Outputs, tables, and visualization
 │   │   ├── 01_make_tables_figures.R

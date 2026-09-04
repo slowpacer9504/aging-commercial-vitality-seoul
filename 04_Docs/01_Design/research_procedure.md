@@ -481,6 +481,18 @@ This step measures how much of each reported effect rests on individual administ
 
 **Why it is canonical.** The 2026-09-04 decision is to keep the full sample as the main specification rather than excluding shocked districts, because redevelopment and the COVID collapse of the central business district are real events rather than data errors, and excluding them would introduce a sample definition chosen after seeing the results. That decision is only defensible if the reader can see which effects depend on a handful of districts, so the diagnostic is not an optional check that may or may not be current; it must be produced by the same run that produces the impacts it qualifies. `influence_robustness_summary.csv` belongs in the main text with the effects, and the per-dong `influence_dfbeta.csv` in the appendix. The specific reading requirement, including which dimensions the current evidence does and does not support, is in [04_model_spec.md section 6A.1](../02_Codebook/04_model_spec.md).
 
+### 2.20 [05_run_evidence_synthesis.R](../../02_Code/04_robustness/05_run_evidence_synthesis.R): Evidence Synthesis
+
+Sections 2.11A, 2.12A, 2.19 and the standard-error and specification checks of 2.12 and 2.13 each report a survivable result on their own: two or three of the five outcomes come through every time. The outcomes that come through are not the same ones each time. This step computes the intersection, which is what a main-text claim actually has to clear.
+
+- It estimates nothing. It reads the published diagnostic tables and cross-tabulates nine gates over five audits against the five reported outcomes, recording per gate the source table and the statistic behind the verdict.
+- The modification time of every source is carried into `evidence_synthesis.csv`, so a synthesis computed over stale diagnostics is visible rather than silent.
+- Each gate carries a `role` tag and each outcome a `claim_tier`. The tier names a kind of claim, not a quality ranking; `n_gates_passed` travels beside it so a reader who weighs the gates differently need not accept the rule.
+- A gate that no outcome passes is reported as a design-level failure, because that limitation cannot be answered by choosing a different outcome.
+- Outputs: `evidence_synthesis_gates.csv`, `evidence_synthesis.csv`, `evidence_synthesis_matrix.png`.
+
+**What the first run establishes.** No outcome passes all nine gates; the best passes six. `lag_beats_lead` fails for all five, which makes it a property of the design: entered against the 4-quarter lead, the lag is not significant for any outcome, and the two are separable (within correlation `0.674`, VIF `1.8`). `vitality_index_base` is `descriptive_only` — it alone survives dong-specific trends, but loses 5% significance when nine union-tail dongs are dropped. `vitality_sub_social` is `conditional_association` — a stable magnitude that fails all three identification gates. The remaining three are `not_supported`, their baseline not being significant under the control contract. The full reading requirement is in [04_model_spec.md section 6C.1](../02_Codebook/04_model_spec.md).
+
 ## 3. Active QC Rules
 
 ### 3.1 Data Contract QC
