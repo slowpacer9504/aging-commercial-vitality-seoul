@@ -90,6 +90,7 @@ spdm_empty_coef_tbl <- function() {
     outcome = character(),
     exposure = character(),
     term = character(),
+    spatial_param_role = character(),
     estimate = numeric(),
     std.error = numeric(),
     statistic = numeric(),
@@ -600,6 +601,45 @@ build_spdm_wx_terms <- function(pdat, vars, lw_sub) {
   list(data = out, wx_terms = wx_terms, wx_map = wx_map)
 }
 
+# splm maps panel rows to the weights matrix by position within each period. It
+# does not check that mapping, so a row order inconsistent with the listw is
+# accepted silently and returns plausible but wrong estimates: reordering this
+# panel alphabetically instead of by region.id, which differs for 393 of its 425
+# dongs, moves rho by 21% and theta by a factor of 2.3 with no error and no
+# warning. build_spdm_wx_terms() already guards its own construction; this guards
+# the handoff to the estimator, which is the other place the alignment can break.
+assert_spdm_panel_alignment <- function(pdat, lw_sub, context = "spml") {
+  region_ids <- attr(lw_sub$neighbours, "region.id")
+  if (is.null(region_ids)) region_ids <- attr(lw_sub, "region.id")
+  region_ids <- as.character(region_ids)
+  if (length(region_ids) == 0L) {
+    stop(sprintf("[ERROR] %s: listw carries no region.id, cannot verify panel alignment", context), call. = FALSE)
+  }
+  if (!all(c("adm_cd", "time_id") %in% names(pdat))) {
+    stop(sprintf("[ERROR] %s: panel is missing adm_cd or time_id", context), call. = FALSE)
+  }
+
+  units <- as.character(pdat$adm_cd)
+  periods <- sort(unique(pdat$time_id))
+  for (tt in periods) {
+    got <- units[pdat$time_id == tt]
+    if (length(got) != length(region_ids) || !identical(got, region_ids)) {
+      stop(
+        sprintf(
+          paste0(
+            "[ERROR] %s: panel row order does not match the listw region.id order in period %s. ",
+            "splm would map rows to weights by position and silently produce wrong estimates. ",
+            "Sort the panel by factor(adm_cd, levels = region.id) before fitting."
+          ),
+          context, as.character(tt)
+        ),
+        call. = FALSE
+      )
+    }
+  }
+  invisible(TRUE)
+}
+
 fit_spdm_model <- function(pdat, outcome, exposure, controls, lw_sub, model_family = "sdm") {
   rhs <- unique(c(exposure, controls))
   family <- normalize_spatial_family(model_family)
@@ -656,6 +696,8 @@ fit_spdm_model <- function(pdat, outcome, exposure, controls, lw_sub, model_fami
     gns = list(lag = TRUE, spatial.error = "b", listw2 = lw_sub),
     stop(sprintf("unsupported spatial family: %s", family), call. = FALSE)
   )
+
+  assert_spdm_panel_alignment(pdat_model, lw_sub, context = sprintf("spml(%s)", family))
 
   fit <- tryCatch(
     do.call(
@@ -1364,6 +1406,12 @@ spdm_get_coef_vector <- function(mod) {
   coef_vec
 }
 
+# splm returns the coefficient covariance without dimnames: vcov(fit) on this
+# model is an 11 x 11 matrix whose rows and columns are unlabelled. Any code that
+# indexes it by name therefore fails, or worse picks the wrong element if it falls
+# back to positional recycling. The names are restored here from the coefficient
+# vector, whose order splm guarantees to match, so every caller downstream can
+# index by name safely.
 spdm_get_vcov_matrix <- function(mod, coef_names) {
   vc <- tryCatch(stats::vcov(mod), error = function(e) NULL)
   if (is.null(vc) || length(vc) == 0L) {
@@ -1604,6 +1652,12 @@ compute_true_sdm_impacts_row <- function(spec_id,
     return(fail_row("true SDM impacts unavailable: named coefficient vector missing"))
   }
 
+  # splm names the spatial autoregressive parameter of a lag model "lambda", which
+  # collides with the spatial-econometrics convention where lambda is the spatial
+  # *error* parameter and rho is the lag parameter. The name is splm's, not the
+  # project's, and is kept so the exported term matches what coef() on the fitted
+  # object returns; the published tables carry spatial_param_role to say which
+  # parameter it actually is.
   rho_name <- "lambda"
   beta_name <- as.character(focal_var)
   theta_name <- spdm_wx_name(focal_var)
@@ -1861,6 +1915,20 @@ extract_spdm_coef_table <- function(mod,
 
   tibble::as_tibble(coef_tbl[, c("term", "estimate", "std.error", "statistic", "p.value")]) |>
     dplyr::mutate(
+      # splm exports the spatial autoregressive parameter of a lag model under the
+      # name "lambda", which is the opposite of the spatial-econometrics convention
+      # where lambda is the error parameter and rho is the lag parameter. The term
+      # keeps splm's name so the table matches what coef() on the fitted object
+      # returns; this column states which parameter the row actually holds, so a
+      # reader cannot mistake it for a SEM error parameter.
+      spatial_param_role = dplyr::case_when(
+        tolower(.data$term) == "lambda" & model_family %in% c("sar", "sdm", "gns", "sarar_sac") ~
+          "rho_spatial_lag",
+        tolower(.data$term) == "lambda" ~ "lambda_spatial_error",
+        tolower(.data$term) == "rho" ~ "rho_spatial_error",
+        grepl("^w_", .data$term) ~ "theta_spatially_lagged_covariate",
+        TRUE ~ "beta_covariate"
+      ),
       spec_id = spec_id,
       outcome = outcome,
       exposure = exposure,
