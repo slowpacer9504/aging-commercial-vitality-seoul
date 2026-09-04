@@ -34,12 +34,6 @@ source(here::here("02_Code", "99_utils", "utils_spatial.R"))
 load_project_packages(extra = "Kendall")
 ensure_dirs(cfg$required_dirs)
 
-# Variable families are configured in config.R, but this helper keeps the
-# script executable against older configs while preserving the active defaults.
-value_or <- function(x, default) {
-  if (is.null(x)) default else x
-}
-
 # ESDA depends on the shared panel and main Queen W already being published by
 # the canonical preprocessing and spatial-weights stages.
 if (!file.exists(cfg$paths$panel_main) || !file.exists(cfg$paths$w_queen)) {
@@ -240,41 +234,6 @@ clear_map_family <- function(pattern) {
   invisible(stale_maps)
 }
 
-deterministic_seed_from_label <- function(label, base_seed = cfg$esda_seed) {
-  ints <- utf8ToInt(enc2utf8(paste(label, collapse = "|")))
-  mod <- 2147483647
-  seed <- as.double(base_seed %% mod)
-
-  if (length(ints) > 0L) {
-    for (value in ints) {
-      seed <- (seed * 131 + as.double(value)) %% mod
-    }
-  }
-
-  seed <- floor(seed)
-  if (!is.finite(seed) || seed <= 0) seed <- 1
-  as.integer(seed)
-}
-
-with_deterministic_seed <- function(label, expr, base_seed = cfg$esda_seed) {
-  had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-  old_seed <- if (had_seed) get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-
-  on.exit(
-    {
-      if (had_seed) {
-        assign(".Random.seed", old_seed, envir = .GlobalEnv)
-      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
-        rm(".Random.seed", envir = .GlobalEnv)
-      }
-    },
-    add = TRUE
-  )
-
-  set.seed(deterministic_seed_from_label(label, base_seed = base_seed))
-  eval.parent(substitute(expr))
-}
-
 standardize_or_zero <- function(x) {
   if (length(x) == 0L) return(numeric())
   x <- as.numeric(x)
@@ -432,7 +391,9 @@ empty_univariate_summary <- function(yq_value, variable, message, status = "fail
 }
 
 # Univariate LISA uses the standard z(x) versus W z(x) quadrant convention.
-compute_univariate_lisa_var <- function(cs, lw, variable, yq_value, nsim = 499L, alpha = 0.05) {
+compute_univariate_lisa_var <- function(cs, lw, variable, yq_value,
+                                        nsim = cfg$esda_lisa_nsim,
+                                        alpha = cfg$esda_lisa_alpha) {
   d <- cs |>
     dplyr::transmute(
       adm_cd = as.character(adm_cd),
@@ -494,13 +455,25 @@ compute_univariate_lisa_var <- function(cs, lw, variable, yq_value, nsim = 499L,
   pvals <- as.numeric(local_raw$p_ii_sim)
   significant <- is.finite(pvals) & pvals <= alpha
 
-  cluster <- dplyr::case_when(
-    significant & x_z >= 0 & lag_x_z >= 0 ~ "High-High",
-    significant & x_z >= 0 & lag_x_z < 0 ~ "High-Low",
-    significant & x_z < 0 & lag_x_z >= 0 ~ "Low-High",
-    significant & x_z < 0 & lag_x_z < 0 ~ "Low-Low",
-    TRUE ~ "Not Significant"
-  )
+  # One local test per dong means several hundred simultaneous tests per
+  # variable, where roughly alpha * n rejections are expected under the null by
+  # construction. The uncorrected flag is kept because it is what the LISA map
+  # convention shows, and the corrected flag is added beside it so the map can
+  # be read against the number of clusters that survive multiplicity.
+  p_adjusted <- stats::p.adjust(pvals, method = cfg$esda_lisa_fdr_method)
+  significant_fdr <- is.finite(p_adjusted) & p_adjusted <= alpha
+
+  classify <- function(sig) {
+    dplyr::case_when(
+      sig & x_z >= 0 & lag_x_z >= 0 ~ "High-High",
+      sig & x_z >= 0 & lag_x_z < 0 ~ "High-Low",
+      sig & x_z < 0 & lag_x_z >= 0 ~ "Low-High",
+      sig & x_z < 0 & lag_x_z < 0 ~ "Low-Low",
+      TRUE ~ "Not Significant"
+    )
+  }
+  cluster <- classify(significant)
+  cluster_fdr <- classify(significant_fdr)
 
   local <- tibble::tibble(
     yq = as.character(yq_value),
@@ -514,8 +487,13 @@ compute_univariate_lisa_var <- function(cs, lw, variable, yq_value, nsim = 499L,
     local_i = as.numeric(local_raw$ii),
     local_z = as.numeric(local_raw$z_ii),
     p_value = pvals,
+    p_value_fdr = p_adjusted,
+    fdr_method = cfg$esda_lisa_fdr_method,
+    nsim = as.integer(nsim),
     cluster = cluster,
-    significant = significant
+    cluster_fdr = cluster_fdr,
+    significant = significant,
+    significant_fdr = significant_fdr
   )
 
   summary <- tibble::tibble(
@@ -523,8 +501,13 @@ compute_univariate_lisa_var <- function(cs, lw, variable, yq_value, nsim = 499L,
     w_type = "queen",
     variable = variable,
     n_units = nrow(local),
+    nsim = as.integer(nsim),
+    fdr_method = cfg$esda_lisa_fdr_method,
     n_significant = sum(local$significant, na.rm = TRUE),
     share_significant = mean(local$significant, na.rm = TRUE),
+    n_significant_fdr = sum(local$significant_fdr, na.rm = TRUE),
+    share_significant_fdr = mean(local$significant_fdr, na.rm = TRUE),
+    n_expected_by_chance = alpha * nrow(local),
     n_high_high = sum(local$cluster == "High-High", na.rm = TRUE),
     n_high_low = sum(local$cluster == "High-Low", na.rm = TRUE),
     n_low_high = sum(local$cluster == "Low-High", na.rm = TRUE),
@@ -539,7 +522,9 @@ compute_univariate_lisa_var <- function(cs, lw, variable, yq_value, nsim = 499L,
 
 # Bivariate LISA uses z(x) versus W z(y), where x is an aging variable and y is
 # a commercial-vitality outcome.
-compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 499L, alpha = 0.05) {
+compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, yq_value,
+                                        nsim = cfg$esda_bivariate_nsim,
+                                        alpha = cfg$esda_lisa_alpha) {
   d <- cs |>
     dplyr::transmute(
       adm_cd = as.character(adm_cd),
@@ -603,13 +588,24 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 4
   pvals <- as.numeric(local_raw$p_sim)
   significant <- is.finite(pvals) & pvals <= alpha
 
-  cluster <- dplyr::case_when(
-    significant & x_z >= 0 & lag_y_z >= 0 ~ "High-High",
-    significant & x_z >= 0 & lag_y_z < 0 ~ "High-Low",
-    significant & x_z < 0 & lag_y_z >= 0 ~ "Low-High",
-    significant & x_z < 0 & lag_y_z < 0 ~ "Low-Low",
-    TRUE ~ "Not Significant"
-  )
+  # Same multiplicity problem as the univariate case, and a bivariate LISA has
+  # the additional caveat that it does not condition on the univariate spatial
+  # autocorrelation of either variable, so it mixes in-situ association with
+  # spatial association. The correction addresses only the first of those.
+  p_adjusted <- stats::p.adjust(pvals, method = cfg$esda_lisa_fdr_method)
+  significant_fdr <- is.finite(p_adjusted) & p_adjusted <= alpha
+
+  classify_bv <- function(sig) {
+    dplyr::case_when(
+      sig & x_z >= 0 & lag_y_z >= 0 ~ "High-High",
+      sig & x_z >= 0 & lag_y_z < 0 ~ "High-Low",
+      sig & x_z < 0 & lag_y_z >= 0 ~ "Low-High",
+      sig & x_z < 0 & lag_y_z < 0 ~ "Low-Low",
+      TRUE ~ "Not Significant"
+    )
+  }
+  cluster <- classify_bv(significant)
+  cluster_fdr <- classify_bv(significant_fdr)
 
   local <- tibble::tibble(
     yq = as.character(yq_value),
@@ -624,8 +620,13 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 4
     lag_y_z = lag_y_z,
     local_bv = as.numeric(local_raw$Ib),
     p_value = pvals,
+    p_value_fdr = p_adjusted,
+    fdr_method = cfg$esda_lisa_fdr_method,
+    nsim = as.integer(nsim),
     cluster = cluster,
-    significant = significant
+    cluster_fdr = cluster_fdr,
+    significant = significant,
+    significant_fdr = significant_fdr
   )
 
   summary <- tibble::tibble(
@@ -634,8 +635,13 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 4
     var_x = var_x,
     var_y = var_y,
     n_units = nrow(local),
+    nsim = as.integer(nsim),
+    fdr_method = cfg$esda_lisa_fdr_method,
     n_significant = sum(local$significant, na.rm = TRUE),
     share_significant = mean(local$significant, na.rm = TRUE),
+    n_significant_fdr = sum(local$significant_fdr, na.rm = TRUE),
+    share_significant_fdr = mean(local$significant_fdr, na.rm = TRUE),
+    n_expected_by_chance = alpha * nrow(local),
     n_high_high = sum(local$cluster == "High-High", na.rm = TRUE),
     n_high_low = sum(local$cluster == "High-Low", na.rm = TRUE),
     n_low_high = sum(local$cluster == "Low-High", na.rm = TRUE),
@@ -649,7 +655,8 @@ compute_bivariate_lisa_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 4
 }
 
 ## 1-4. Global bivariate Moran helpers -----------------------------------------
-compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, yq_value, nsim = 499L) {
+compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, yq_value,
+                                                nsim = cfg$esda_bivariate_nsim) {
   d <- cs |>
     dplyr::transmute(
       adm_cd = as.character(adm_cd),
@@ -898,7 +905,7 @@ compute_ehsa_for_var <- function(
   boundary,
   lw_queen,
   var,
-  nsim = 199L,
+  nsim = cfg$esda_ehsa_nsim,
   threshold = 0.01,
   k = 1L,
   min_locations = 30L,
@@ -1157,6 +1164,129 @@ write_csv_safe(
 )
 
 lw_queen <- readRDS(cfg$paths$w_queen)
+
+
+#==============================================================================
+# 3A. Global Moran Across the Quarterly Sequence, Levels and Within
+#==============================================================================
+
+# Two questions the latest-quarter cross-section cannot answer.
+#
+# First, whether spatial dependence is stable over the panel. Reporting a single
+# quarter assumes stability rather than testing it, and 2025Q4 in particular is a
+# post-COVID recovery quarter whose spatial structure need not resemble the 2020
+# trough.
+#
+# Second, and more consequential for the design, whether the dependence survives
+# the transformation the models actually apply. TWFE and SPDM identify from
+# within-dong, within-quarter deviations; autocorrelation that lives entirely in
+# the cross-sectional levels is removed by the fixed effects before estimation
+# and therefore cannot justify a spatial specification on its own. The within
+# series below is the two-way demeaned variable, which is the variation the
+# estimators see.
+
+esda_seq_yq <- intersect(get_analysis_yq_sequence(), unique(as.character(panel$yq)))
+
+moran_one <- function(values, ids_order, label) {
+  ok <- is.finite(values)
+  if (sum(ok) < 50L) {
+    return(list(moran_i = NA_real_, expectation = NA_real_, p_value = NA_real_,
+                n_units = sum(ok), status = "insufficient_units"))
+  }
+  lw_sub <- tryCatch(subset(lw_queen, ok, zero.policy = TRUE), error = function(e) NULL)
+  if (is.null(lw_sub)) {
+    return(list(moran_i = NA_real_, expectation = NA_real_, p_value = NA_real_,
+                n_units = sum(ok), status = "listw_subset_failed"))
+  }
+  res <- with_deterministic_seed(
+    label,
+    tryCatch(
+      spdep::moran.mc(values[ok], lw_sub, nsim = as.integer(cfg$esda_global_moran_nsim), zero.policy = TRUE),
+      error = function(e) e
+    ),
+    base_seed = cfg$esda_seed
+  )
+  if (inherits(res, "error")) {
+    return(list(moran_i = NA_real_, expectation = NA_real_, p_value = NA_real_,
+                n_units = sum(ok), status = "moran_failed"))
+  }
+  list(moran_i = unname(res$statistic), expectation = unname(res$res[length(res$res)]),
+       p_value = res$p.value, n_units = sum(ok), status = "success")
+}
+
+w_ids <- attr(lw_queen, "region.id")
+if (is.null(w_ids)) w_ids <- as.character(sort(unique(panel$adm_cd)))
+
+# Two-way within transform over the active window only, so the demeaning uses
+# exactly the sample the models estimate on.
+panel_active <- panel |> dplyr::filter(as.character(.data$yq) %in% esda_seq_yq)
+
+within_panel <- panel_active |>
+  dplyr::mutate(adm_cd = as.character(.data$adm_cd)) |>
+  dplyr::group_by(.data$adm_cd) |>
+  dplyr::mutate(dplyr::across(dplyr::all_of(esda_global_vars),
+                              ~ .x - mean(.x, na.rm = TRUE))) |>
+  dplyr::ungroup() |>
+  dplyr::group_by(.data$yq) |>
+  dplyr::mutate(dplyr::across(dplyr::all_of(esda_global_vars),
+                              ~ .x - mean(.x, na.rm = TRUE))) |>
+  dplyr::ungroup()
+
+build_moran_sequence <- function(dat, scale_label) {
+  purrr::map_dfr(esda_seq_yq, function(q) {
+    cs_q <- dat |>
+      dplyr::filter(as.character(.data$yq) == q) |>
+      dplyr::mutate(adm_cd = as.character(.data$adm_cd))
+    cs_q <- cs_q[match(w_ids, cs_q$adm_cd), , drop = FALSE]
+    purrr::map_dfr(esda_global_vars, function(v) {
+      r <- moran_one(cs_q[[v]], w_ids, sprintf("global_moran_%s|%s|%s|queen", scale_label, q, v))
+      tibble::tibble(
+        yq = q, w_type = "queen", scale = scale_label, variable = v,
+        n_units = r$n_units, moran_i = r$moran_i, expectation = r$expectation,
+        p_value = r$p_value, nsim = as.integer(cfg$esda_global_moran_nsim),
+        inference = cfg$esda_global_moran_p_value, status = r$status
+      )
+    })
+  })
+}
+
+if (isTRUE(cfg$esda_global_moran_all_quarters)) {
+  moran_levels_seq <- build_moran_sequence(panel_active, "level")
+  moran_within_seq <- build_moran_sequence(within_panel, "within")
+
+  write_csv_safe(moran_levels_seq, cfg$paths$global_morans_i_by_yq)
+
+  # Side-by-side so the gap between the two scales is the object being read,
+  # not something the reader has to assemble from two files.
+  moran_within_cmp <- moran_levels_seq |>
+    dplyr::select(dplyr::all_of(c("yq", "w_type", "variable", "n_units",
+                                  "moran_i", "p_value"))) |>
+    dplyr::rename(moran_i_level = "moran_i", p_value_level = "p_value") |>
+    dplyr::left_join(
+      moran_within_seq |>
+        dplyr::select(dplyr::all_of(c("yq", "variable", "moran_i", "p_value"))) |>
+        dplyr::rename(moran_i_within = "moran_i", p_value_within = "p_value"),
+      by = c("yq", "variable")
+    ) |>
+    dplyr::mutate(
+      retained_share = dplyr::if_else(
+        is.finite(.data$moran_i_level) & abs(.data$moran_i_level) > 1e-12,
+        .data$moran_i_within / .data$moran_i_level, NA_real_
+      ),
+      significant_level = is.finite(.data$p_value_level) & .data$p_value_level <= cfg$esda_lisa_alpha,
+      significant_within = is.finite(.data$p_value_within) & .data$p_value_within <= cfg$esda_lisa_alpha,
+      nsim = as.integer(cfg$esda_global_moran_nsim)
+    )
+
+  write_csv_safe(moran_within_cmp, cfg$paths$global_morans_i_within)
+
+  append_log(cfg$logs$data_qc, sprintf(
+    "- ESDA global Moran sequence: %d quarters x %d variables; within-scale significant in %d of %d variable-quarters (level: %d)",
+    length(esda_seq_yq), length(esda_global_vars),
+    sum(moran_within_cmp$significant_within, na.rm = TRUE), nrow(moran_within_cmp),
+    sum(moran_within_cmp$significant_level, na.rm = TRUE)))
+}
+
 
 
 #==============================================================================
