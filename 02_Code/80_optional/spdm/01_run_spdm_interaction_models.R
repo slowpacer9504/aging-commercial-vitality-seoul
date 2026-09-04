@@ -618,6 +618,10 @@ run_one_spec <- function(spec_id,
       next
     }
     pdat_model <- wx_obj$data
+    # splm maps panel rows to weights by position and raises nothing when the
+    # two disagree; the ordering is correct by construction here, but so was the
+    # main path before the assertion was added.
+    assert_spdm_panel_alignment(pdat_model, lw_try, "spdm interaction models spml")
     fm <- stats::as.formula(sprintf("%s ~ %s", outcome, paste(c(rhs, wx_obj$wx_terms), collapse = " + ")))
     mod_try <- tryCatch(
       splm::spml(
