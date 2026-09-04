@@ -452,14 +452,16 @@ This table is the single source of truth for GTWR specification parameters. Ever
 | `st_bw` | `60` | **`90`** (explicit run-time override; see [decision_log.md](../03_Log/decision_log.md), 2026-09-04 entry) |
 | Time distance | symmetric `abs(t_i - t_j)` | legacy `GWmodel::ti.distv()` string comparison |
 | Collinearity schema | `local_vif_max`, `local_cn_centered`, `local_cn_gtwr` | `local_cn_gtwr` only |
+| Local inference | `estimate_se`, `estimate_t`, `estimate_p`, BH-FDR flag | **absent** (see below) |
 | Run date | pending | `gtwr_*_lean` 2026-06-23, `gtwr_*_extended` 2026-06-27 |
 
 Two consequences for anyone reading the published tables:
 
 - `gtwr_main_models_<control_set>.csv` reports `collinearity_warn_share` near `1.0`. That column was written under the retired flag, which keyed off the **uncentered** condition number. It is not evidence of pervasive collinearity under the current criterion. Measured on the same specs by [09_backfill_gtwr_collin_diag.R](../../02_Code/80_optional/gtwr/09_backfill_gtwr_collin_diag.R), the current criterion (`local_vif_max >= 10`) flags 1.4% of rows, with a median `local_vif_max` of 1.86.
 - `gtwr_local_coefficients_<control_set>.csv` does not yet carry `local_vif_max` or `local_cn_centered` columns. Until the rerun, `gtwr_collin_diag_backfill_<control_set>.csv` (7Y) is the source for all three diagnostics.
+- **No published GTWR table carries a local standard error.** `GWmodel::gtwr()` returns `<var>_SE` and `<var>_TV` for every estimation point, and the extraction read only the coefficient. The code now reads all three (section 7.2), but the published tables predate that, so `sd_beta` and `share_positive` in `gtwr_main_models_<control_set>.csv` remain the only descriptions of the local surface and **neither separates a varying relationship from the sampling noise of many small local fits**. Until the rerun, no statement of the form "the effect is positive in region X" is supported by these tables. Section 7Z reports what can be established without the rerun.
 
-QC check `G03` reports the diagnostic schema as pending-rerun rather than failed until the rerun lands.
+QC checks `G02` and `G03` run whenever the GTWR outputs exist, not only under the opt-in flag: GTWR is optional to produce, but not optional to be correct once published. `G03` reports the diagnostic schema as pending-rerun rather than failed until the rerun lands.
 
 ### 7.2) Specification
 
@@ -472,11 +474,8 @@ QC check `G03` reports the diagnostic schema as pending-rerun rather than failed
   - `gtwr_local_coefficients_<control_set>.csv`
   - `gtwr_controls_used_<control_set>.csv`
   - `gtwr_main_frozen_spec_<control_set>.csv`
-  - `gtwr_latest_summary_table_<control_set>.csv`
-  - `gtwr_latest_rankings_table_<control_set>.csv`
-  - `gtwr_delta_summary_table_<control_set>.csv`
-  - `gtwr_delta_rankings_table_<control_set>.csv`
   - `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/*.rds`
+- Downstream tables, **not written by this script**: `gtwr_latest_summary_table_<control_set>.csv`, `gtwr_latest_rankings_table_<control_set>.csv`, `gtwr_delta_summary_table_<control_set>.csv`, and `gtwr_delta_rankings_table_<control_set>.csv` are derived by [01_make_tables_figures.R](../../02_Code/05_reporting/01_make_tables_figures.R) from the outputs above, behind the optional-appendix gate of section 8.1. They are absent from `03_Output/01_Tables/` whenever that gate is off, which is the default; their absence is not a GTWR failure.
 - Implementation Principles:
   - Executed based on a quarterly sample.
   - `GTWR_CONTROL_SET=lean` is used as the default control specification.
@@ -495,6 +494,9 @@ QC check `G03` reports the diagnostic schema as pending-rerun rather than failed
   - [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R) does not run `bw.gtwr()` even if `GTWR_BANDWIDTH_STRATEGY` is not fixed.
   - `bw.gtwr()` full-panel/anchor-quarter search, fixed bandwidth grid sensitivity, and lambda grid sensitivity are only executed in [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R), and [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R), respectively.
   - The default fixed bandwidth grid for [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R) is `30, 60, 90, 120, 180`, with a baseline of `GTWR_ST_BW=60`.
+  - Local inference is extracted alongside the coefficient. `GWmodel::gtwr()` returns `<var>_SE` and `<var>_TV` per estimation point; `extract_gtwr_local_inference()` reads both and derives a two-sided p-value on GWmodel's own effective residual degrees of freedom, `n - 2*tr(S) + tr(S'S)`. The beta panel carries `estimate_se`, `estimate_t`, `estimate_p`, and `estimate_inference_source`; the local coefficient table carries the latest-quarter values plus `latest_estimate_p_fdr` and `latest_significant_fdr`.
+  - These local standard errors are conditional on the bandwidth, treat it as known, and come from overlapping windows, so neighbouring t-values are strongly dependent and do not carry exact nominal coverage (Wheeler and Tiefelsdorf 2005; Paez, Farber and Wheeler 2011). They are the weakest defensible screen, not exact inference. Benjamini-Hochberg is therefore applied across dongs within a specification, matching the ESDA convention for local indicators, and the summary counts the adjusted flag rather than the raw p-value.
+  - `share_positive` is reported beside `share_positive_among_significant`, because the local estimates that are not separable from zero split near 50/50 by construction and would otherwise read as sign heterogeneity.
   - The main summary and local coefficient tables save the latest-quarter local beta with `estimate_type=latest`.
   - Latest-quarter coefficient coverage is recorded via `latest_missing_n` and `latest_coverage_share`.
   - Earliest-to-latest changes are derived solely as `gtwr_delta_*` auxiliary reporting tables.
@@ -638,6 +640,56 @@ QC check `G03` reports the diagnostic schema as pending-rerun rather than failed
   - Each metric is reported twice, once under the legacy `GWmodel::ti.distv()` string-comparison time distance and once under the symmetric `|t_i - t_j|` distance, so the reach of the corrected time comparison can be measured before a full rerun is scheduled.
   - Gates on reproducing the stored `local_cn_gtwr_latest` to prove the estimation sample was reconstructed exactly as the original run saw it; the lean run reproduced it across all 2,125 dong-outcome rows to a maximum relative difference of 2.457e-12.
   - Reports the earliest and latest focal quarter separately, because the legacy time comparison distorted the two endpoints to different degrees.
+
+## 7Z) GTWR Estimand and Kernel Geometry Diagnostic
+
+- Objective: Establish what the GTWR local surface is an estimate *of*, and what its spatiotemporal kernel actually averages over, without refitting the model.
+- Execution condition: Run [11_diagnose_gtwr_estimand.R](../../02_Code/80_optional/gtwr/11_diagnose_gtwr_estimand.R) directly. It reads distances and the already-published beta panel, so it costs minutes rather than the twelve hours a rerun costs.
+- Inputs: `panel_main.parquet`, 2020 Seoul administrative boundary, `gtwr_main_models_<control_set>.csv`, `gtwr_local_beta_panel_<control_set>.csv`
+- Outputs:
+  - `gtwr_estimand_comparison_<control_set>.csv`
+  - `gtwr_kernel_geometry_<control_set>.csv`
+  - `gtwr_temporal_edge_<control_set>.csv`
+- Implementation Principles:
+  - Diagnostic only. It fits no GTWR, changes no contract, and rewrites no published estimate.
+  - The estimand comparison runs the same specification under a levels OLS and the two-way within estimator on the same complete-case sample, and places the published local mean beside both. Whichever the local mean tracks is the estimand its variation decomposes.
+  - The kernel geometry classifies each point of the bandwidth-nearest window as same-quarter, same-dong, or genuinely both-different, at the contracted angle and at the right angle where the interaction term drops out. The contrast is the point: recording `ksi = 0` states the parameter, not its consequence.
+  - The temporal-edge table reports the kernel's own-dong support at every focal quarter and, separately, whether the reported quarter's published local mean is typical of the other quarters. The two are independent readings of the same concern.
+
+### 7Z.1) Reading Requirement
+
+**The local surface is a levels estimate, and the global models are not.** GTWR is fitted with no fixed effects; TWFE and SPDM are within estimators. On the same sample and specification:
+
+| Outcome | Levels OLS | Within (TWFE) | Published GTWR mean |
+| --- | ---: | ---: | ---: |
+| `vitality_sub_economic` | `+1.487` | `-0.960` | `+0.511` |
+| `vitality_sub_social` | `-0.514` | `-1.885` | `-0.870` |
+| `vitality_sub_temporal` | `+0.798` | `-1.295` | `+0.813` |
+| `vitality_sub_stability` | `+1.435` | `-0.163` | `+1.135` |
+| `vitality_index_base` | `+1.156` | `-1.355` | `+0.704` |
+
+The published local mean matches the **levels** sign for 5 of 5 outcomes and the **within** sign for 1. The sign disagreement between GTWR and the global models is therefore not a local phenomenon; it is the levels-versus-within gap, which the ESDA layer already documents for this panel (section 1A). GTWR results must not be narrated as the global effect varying by place, because it is not that effect. Either the interpretation states the levels estimand explicitly, or the panel is two-way demeaned before fitting so the local coefficients become local versions of the within estimate. The first is the current choice; the second is recorded as the alternative and would require a rerun.
+
+**At the contracted angle the kernel is a cross, not an ellipse.** With `ksi = 0` the Huang et al. (2010) distance collapses to `(sqrt(lamda*d_S) + sqrt((1-lamda)*d_T))^2`, which penalises a neighbour distant in both dimensions far more than one distant in either alone. Measured over the bandwidth-nearest window:
+
+| `ksi` | `st_bw` | Same quarter, other dong | Same dong, other quarter | Genuinely spatiotemporal |
+| --- | ---: | ---: | ---: | ---: |
+| `0` (contracted) | `60` | 82.3% | 9.3% | **6.7%** |
+| `0` (contracted) | `90` (published) | 77.9% | 7.6% | 13.3% |
+| `pi/2` | `60` | 50.6% | 6.7% | 41.0% |
+| `pi/2` | `90` | 44.3% | 5.2% | 49.4% |
+
+At the contracted setting the model is close to a stack of per-quarter GWRs — a median of 51 distinct dongs at the focal quarter — with a thin own-dong temporal thread of about seven points. This is a legitimate specification, but it is not what "spatiotemporal weighting" conveys on its own, and it must be stated wherever GTWR results are presented, alongside the kernel and the angle parameter that section 7.0 already requires.
+
+**The reported quarter is the temporal edge.** Every reported coefficient comes from the last quarter, where the kernel has no future side:
+
+| Focal quarter | Own-dong points in window | Past | Future |
+| --- | ---: | ---: | ---: |
+| `2019Q4` (first) | 3.5 | 0.0 | 2.5 |
+| `2022Q4` (middle) | 5.9 | 2.5 | 2.5 |
+| `2025Q4` (**reported**) | 3.5 | 2.5 | 0.0 |
+
+The support falls by about 40% and becomes entirely backward-looking. The consequence is visible in the published betas: the reported quarter's mean local coefficient lies **outside the range spanned by the other 24 quarters** for `vitality_index_base` (`0.704` against `0.742`-`2.512`), `vitality_sub_economic` (`0.511` against `0.567`-`2.813`), and `vitality_sub_social` (`-0.870` against `-0.869`-`0.722`). The dispersion is unchanged (latest/other `sd` ratio `0.85`-`1.03`), so it is the level that shifts, not the spread. A latest-quarter reading is defensible only if the edge is stated; a claim that the latest quarter shows a change over the panel is not supported, because the earliest quarter sits at the mirror-image edge.
 
 ## 8) Reporting and Presentation
 

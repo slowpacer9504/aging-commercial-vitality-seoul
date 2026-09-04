@@ -104,7 +104,8 @@ For detailed information regarding code execution or variables, please refer to 
 │   │   │   ├── 07_run_gtwr_bandwidth_sensitivity.R
 │   │   │   ├── 08_run_gtwr_lamda_sensitivity.R
 │   │   │   ├── 09_backfill_gtwr_collin_diag.R     # Recompute local collinearity diagnostics without refitting
-│   │   │   └── 10_search_gtwr_lamda_bw_cv.R       # Leave-one-out CV search over lamda / bandwidth, no GTWR fit
+│   │   │   ├── 10_search_gtwr_lamda_bw_cv.R       # Leave-one-out CV search over lamda / bandwidth, no GTWR fit
+│   │   │   └── 11_diagnose_gtwr_estimand.R       # Levels vs within estimand, kernel window shape, temporal edge
 │   │   ├── preprocess/
 │   │   │   └── 01_build_living_population_inflow.R
 │   │   ├── spdm/

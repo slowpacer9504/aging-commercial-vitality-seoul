@@ -146,6 +146,8 @@ This is the complete list of environment variables read by the pipeline. The def
 | `INFLUENCE_TAIL_Z` | `5` | Read by `04_robustness/03_run_influence_robustness.R`. Pooled-z threshold used to name outcome-tail dongs. Not a rejection rule; only a way to identify dongs far enough out to move a pooled standard deviation |
 | `INFLUENCE_TOP_K` | `10` | Read by `04_robustness/03_run_influence_robustness.R`. Number of highest-`\|dfbeta\|` dongs dropped in the `top_k` exclusion variant |
 | `SYNTHESIS_INFLUENCE_PCT_TOL` | `50` | Read by `04_robustness/05_run_evidence_synthesis.R`. Percentage by which the exposure coefficient may move across influence-exclusion variants and still pass the `influence_stable` gate. A stated convention, not an inferential rule; the underlying `pct_change` values travel with the output |
+| `GTWR_DIAG_GEOM_POINTS` | `300` | Read by `80_optional/gtwr/11_diagnose_gtwr_estimand.R`. Focal points sampled when classifying the bandwidth-nearest window; the window composition is a distributional property, so a few hundred draws pin it to more precision than the question needs |
+| `GTWR_DIAG_EDGE_POINTS` | `60` | Read by `80_optional/gtwr/11_diagnose_gtwr_estimand.R`. Focal points sampled per quarter when measuring the kernel's own-dong temporal support |
 
 ### Preprocessing
 
