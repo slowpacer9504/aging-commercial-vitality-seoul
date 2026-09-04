@@ -35,8 +35,24 @@ project_attached_packages <- function() {
 
 project_runtime_namespace_packages <- function() {
   # Namespace-only dependencies are validated before long preprocessing or
-  # modeling scripts can fail late in the run.
-  c("rlang", "stringi", "tidyselect")
+  # modeling scripts can fail late in the run. Only packages reachable from the
+  # canonical pipeline belong here, because load_project_packages() validates
+  # this list on every startup and a missing entry aborts the run.
+  #
+  # The list must include every `pkg::` dependency of cfg$canonical_pipeline_scripts
+  # and of 99_utils, or the guard fails at exactly the case it exists to prevent:
+  # MASS::mvrnorm backs the SPDM impact simulation and GWmodel backs a twelve-hour
+  # GTWR fit, so discovering either is absent hours into a run is the worst outcome.
+  # Sidecar-only dependencies (cowplot, data.table, scales) are deliberately
+  # excluded so a partial install cannot block a canonical run; they are still
+  # covered by validate_project_packages(scope = "full_strict"), which discovers
+  # `pkg::` usage across the whole project.
+  c(
+    "rlang", "stringi", "tidyselect",
+    "MASS", "GWmodel", "sp",
+    "terra", "sf", "exactextractr", "sfnetworks", "tidygraph", "igraph",
+    "httr", "jsonlite"
+  )
 }
 
 project_base_packages <- function() {

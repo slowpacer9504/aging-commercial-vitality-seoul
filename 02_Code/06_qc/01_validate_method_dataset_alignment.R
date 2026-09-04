@@ -736,3 +736,53 @@ append_log(
     sum(qc_tbl$status == "FAIL", na.rm = TRUE)
   )
 )
+
+
+#==============================================================================
+# 11. Contract Gate
+#==============================================================================
+
+# The QC table and the log line are written above, before this gate, so a failing
+# run still leaves the full diagnostic behind for inspection. Only then does the
+# step fail, which stops run_all.R before 05_reporting builds tables on a panel
+# that does not satisfy the method-dataset contract.
+failed_checks <- qc_tbl[!is.na(qc_tbl$status) & qc_tbl$status == "FAIL", , drop = FALSE]
+
+if (nrow(failed_checks) > 0L) {
+  detail_text <- if (is.null(failed_checks$detail)) {
+    rep("no detail", nrow(failed_checks))
+  } else {
+    vapply(as.character(failed_checks$detail), function(m) {
+      if (is.na(m) || !nzchar(m)) "no detail" else m
+    }, character(1), USE.NAMES = FALSE)
+  }
+
+  failure_detail <- paste(
+    sprintf("%s (%s)", failed_checks$check_id, detail_text),
+    collapse = "; "
+  )
+
+  if (isTRUE(cfg$qc_contract_gate)) {
+    stop(
+      sprintf(
+        "[ERROR] method-dataset contract QC failed: %d of %d checks. See %s. Failing checks: %s",
+        nrow(failed_checks),
+        nrow(qc_tbl),
+        cfg$paths$method_dataset_contract_check,
+        failure_detail
+      ),
+      call. = FALSE
+    )
+  }
+
+  # Gate explicitly disabled: keep the run alive but make the bypass loud and
+  # auditable rather than letting a FAIL pass as a clean completion.
+  bypass_msg <- sprintf(
+    "- QC CONTRACT GATE BYPASSED (QC_CONTRACT_GATE=false): %d of %d checks failed: %s",
+    nrow(failed_checks), nrow(qc_tbl), failure_detail
+  )
+  append_log(cfg$logs$data_qc, bypass_msg)
+  warning(sprintf("[QC]%s", sub("^- ", " ", bypass_msg)), call. = FALSE, immediate. = TRUE)
+} else {
+  message(sprintf("[OK] method-dataset contract QC passed: %d checks", nrow(qc_tbl)))
+}
