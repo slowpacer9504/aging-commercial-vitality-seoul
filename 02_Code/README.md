@@ -149,6 +149,7 @@ This is the complete list of environment variables read by the pipeline. The def
 | `SYNTHESIS_INFLUENCE_PCT_TOL` | `50` | Read by `04_robustness/05_run_evidence_synthesis.R`. Percentage by which the exposure coefficient may move across influence-exclusion variants and still pass the `influence_stable` gate. A stated convention, not an inferential rule; the underlying `pct_change` values travel with the output |
 | `GTWR_DIAG_GEOM_POINTS` | `300` | Read by `80_optional/gtwr/11_diagnose_gtwr_estimand.R`. Focal points sampled when classifying the bandwidth-nearest window; the window composition is a distributional property, so a few hundred draws pin it to more precision than the question needs |
 | `GTWR_DIAG_EDGE_POINTS` | `60` | Read by `80_optional/gtwr/11_diagnose_gtwr_estimand.R`. Focal points sampled per quarter when measuring the kernel's own-dong temporal support |
+| `GTWR_DIAG_KSI_GRID` | `0,0.7854,1.5708,2.3562,3.1416` | Read by `80_optional/gtwr/11_diagnose_gtwr_estimand.R`. Angle-parameter grid for the kernel-geometry sweep. This is the project's only working `ksi` sensitivity: the experiment appendix that was believed to provide one never estimates. The contracted `GTWR_KSI` is always added to the grid |
 
 ### Preprocessing
 

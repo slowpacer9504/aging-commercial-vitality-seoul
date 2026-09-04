@@ -148,10 +148,19 @@ scales <- gtwr_st_scales(loc, tv)
 set.seed(cfg$analysis_seed)
 focal_idx <- sort(sample(seq_len(nrow(d_geom)), min(N_GEOM, nrow(d_geom))))
 
-# The contracted angle, and the right angle at which the interaction term drops
-# out entirely. The contrast is what makes the contracted value's consequence
-# legible: reporting ksi = 0 states the parameter, not its effect.
-ksi_grid <- unique(c(cfg$gtwr_ksi, pi / 2))
+# A grid across the angle parameter, not just the contracted value and one
+# contrast. This is the project's only working sensitivity on `ksi`: the appendix
+# that section 7X was believed to provide it through never estimates - every row
+# it writes is `not_estimated` - so nothing varied the angle until this table.
+# The sweep is geometric rather than estimate-based, which is what makes it cheap
+# enough to run without a refit: it reports what the kernel averages over at each
+# angle, and the consequence for the coefficients follows from that.
+ksi_grid <- suppressWarnings(as.numeric(trimws(strsplit(
+  Sys.getenv("GTWR_DIAG_KSI_GRID", unset = "0,0.7854,1.5708,2.3562,3.1416"), ","
+)[[1]])))
+ksi_grid <- ksi_grid[is.finite(ksi_grid)]
+if (length(ksi_grid) == 0L) ksi_grid <- c(0, pi / 2)
+ksi_grid <- sort(unique(c(as.numeric(cfg$gtwr_ksi), ksi_grid)))
 bw_grid <- unique(c(as.numeric(cfg$gtwr_st_bw), 90))
 bw_grid <- bw_grid[is.finite(bw_grid) & bw_grid >= 10]
 
@@ -178,6 +187,7 @@ geometry <- purrr::map_dfr(ksi_grid, function(ksi) {
     tibble::tibble(
       control_set = control_set,
       lamda = cfg$gtwr_lamda,
+      lamda_convention = as.character(cfg$gtwr_lamda_convention),
       ksi = ksi,
       is_contracted_ksi = isTRUE(all.equal(ksi, as.numeric(cfg$gtwr_ksi))),
       st_bw = bw,
