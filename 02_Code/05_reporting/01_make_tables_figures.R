@@ -120,8 +120,67 @@ summarise_descriptive_variable <- function(data, variable, label, role, order) {
     sample_min_yq = if (length(yq_obs) > 0L) min(yq_obs) else NA_character_,
     sample_max_yq = if (length(yq_obs) > 0L) max(yq_obs) else NA_character_,
     n_yq = dplyr::n_distinct(yq_obs),
-    n_adm = dplyr::n_distinct(adm_obs)
+    n_adm = dplyr::n_distinct(adm_obs),
+    # Shape and tail. Mean, sd, and quartiles hide exactly the features that
+    # matter here: the vitality sub-indices are strongly left-skewed with a few
+    # districts far out in the lower tail, and a table that stops at min and max
+    # gives no sense of how many observations sit there or how heavy the tail is.
+    skewness = moment_skewness(x_obs),
+    kurtosis_excess = moment_excess_kurtosis(x_obs),
+    n_abs_z_gt3 = count_beyond_z(x_obs, 3),
+    n_abs_z_gt5 = count_beyond_z(x_obs, 5),
+    # Variance decomposition. Two-way fixed effects absorb the between-dong and
+    # common-time variation, so within_share is the fraction of the variance the
+    # models can actually identify from; for some outcomes it is only a few
+    # percent, which a raw sd does not reveal.
+    sd_within_adm = within_sd(x_obs, adm_obs),
+    sd_between_adm = between_sd(x_obs, adm_obs),
+    within_share = within_variance_share(x_obs, adm_obs)
   )
+}
+
+moment_skewness <- function(x) {
+  n <- length(x)
+  if (n < 3L) return(NA_real_)
+  s <- stats::sd(x)
+  if (!is.finite(s) || s <= 0) return(NA_real_)
+  mean(((x - mean(x)) / s)^3)
+}
+
+moment_excess_kurtosis <- function(x) {
+  n <- length(x)
+  if (n < 4L) return(NA_real_)
+  s <- stats::sd(x)
+  if (!is.finite(s) || s <= 0) return(NA_real_)
+  mean(((x - mean(x)) / s)^4) - 3
+}
+
+count_beyond_z <- function(x, k) {
+  if (length(x) < 2L) return(NA_integer_)
+  s <- stats::sd(x)
+  if (!is.finite(s) || s <= 0) return(NA_integer_)
+  sum(abs((x - mean(x)) / s) > k)
+}
+
+within_sd <- function(x, groups) {
+  if (length(x) < 2L || length(groups) != length(x)) return(NA_real_)
+  gm <- stats::ave(x, groups, FUN = mean)
+  stats::sd(x - gm)
+}
+
+between_sd <- function(x, groups) {
+  if (length(x) < 2L || length(groups) != length(x)) return(NA_real_)
+  gm <- stats::ave(x, groups, FUN = mean)
+  g_first <- !duplicated(groups)
+  if (sum(g_first) < 2L) return(NA_real_)
+  stats::sd(gm[g_first])
+}
+
+within_variance_share <- function(x, groups) {
+  sw <- within_sd(x, groups)
+  so <- if (length(x) > 1L) stats::sd(x) else NA_real_
+  if (!is.finite(sw) || !is.finite(so) || so <= 0) return(NA_real_)
+  (sw^2) / (so^2)
 }
 
 safe_cor_test_p <- function(x, y, method = "pearson") {
