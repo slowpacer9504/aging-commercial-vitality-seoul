@@ -496,6 +496,25 @@ Sections 2.11A, 2.12A, 2.19 and the standard-error and specification checks of 2
 
 **What the first run establishes.** No outcome passes all nine gates; the best passes six. `lag_beats_lead` fails for all five, which makes it a property of the design: entered against the 4-quarter lead, the lag is not significant for any outcome, and the two are separable (within correlation `0.674`, VIF `1.8`). `vitality_index_base` is `descriptive_only` — it alone survives dong-specific trends, but loses 5% significance when nine union-tail dongs are dropped. `vitality_sub_social` is `conditional_association` — a stable magnitude that fails all three identification gates. The remaining three are `not_supported`, their baseline not being significant under the control contract. The full reading requirement is in [04_model_spec.md section 6C.1](../02_Codebook/04_model_spec.md).
 
+### 2.21 [04_build_test_inventory.R](../../02_Code/06_qc/04_build_test_inventory.R): Published Test Inventory
+
+The main text rests on 15 exposure-side tests; the published tables carry 405. Nothing in the project counted them and no table carried an adjusted p-value, so a reader had no way to see how large the search was behind any one appendix result.
+
+- Reads published tables only; estimates nothing and re-fits nothing.
+- Excludes control terms and spatial nuisance parameters, which nobody claims anything about.
+- Applies Benjamini-Hochberg within each table and across the whole published surface. The families share a panel, an exposure and a control contract, so this is a conservative summary of search size, not an exact error rate.
+- Outputs: `model_test_inventory.csv`, `model_test_inventory_adjusted.csv`.
+
+The first run gives 277 unadjusted rejections against 267 under BH, with the main-text count unchanged at 11. The appendix is not a field of marginal p-values; the substantive concerns about those families are timing and collinearity (section 2.22) and the channel-path resample ([04_model_spec.md section 5A.1](../02_Codebook/04_model_spec.md)), not the count. Full reading requirement in [04_model_spec.md section 6D.1](../02_Codebook/04_model_spec.md).
+
+### 2.22 Optional Sidecar Contracts Worth Stating
+
+Three properties of the appendix families are not visible from their variable names and are required reading with their results.
+
+- **Age-mix timing.** The TWFE and SPDM age-mix families enter contemporaneous exposures (`ln_young_resident_pop`, `ln_middle_resident_pop`, `ln_old_resident_pop`) alongside 4-quarter-lagged controls. The main design lags the exposure to avoid simultaneous response; this family does not. The sector-share family is also contemporaneous, and that is stated in its own contract.
+- **Age-mix collinearity.** The three log age-group populations move together within a dong: within VIFs of `9.08`, `17.75` and `10.37` against `1.17` for the main TWFE design. `max_vif_within` and `vif_within_terms` are now recorded in both age-mix diagnostics tables. Dropping the same-domain total control does not fix it, so it is a property of the family rather than of the control contract.
+- **Weights alignment.** `01_run_spdm_interaction_models.R`, `03_run_spdm_sector_share_experiment.R` and `07_run_spdm_channel_path.R` call `splm::spml()` directly. Their unit ordering is correct because `keep_ids` comes from `intersect()` against `region.id`, but `splm` maps rows to weights by position and raises nothing when the two disagree, so all three now assert alignment before every fit as the main path does.
+
 ## 3. Active QC Rules
 
 ### 3.1 Data Contract QC

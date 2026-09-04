@@ -135,6 +135,8 @@ Two readings follow. First, the quadratic test alone would have caught only one 
   - Using the quarterly average registered resident population by age group from the Ministry of the Interior and Safety, we group them into youth (20s-30s), middle-aged (40s-50s), and elderly (60+). They are log1p-transformed into `ln_young_resident_pop`, `ln_middle_resident_pop`, and `ln_old_resident_pop` and all set as exposures.
   - Because this is not a compositional model, the elderly group is not omitted as a reference category.
   - Controls inherit the current main TWFE control contract from `twfe_main_controls_used.csv`, and the lagged resident scale control, `lag4_ln_resident_pop`, is maintained.
+  - **Timing departs from the main contract.** The three exposures are contemporaneous while every control is a 4-quarter lag. The main design lags the exposure to avoid simultaneous response, and this family does not, so its coefficients are not comparable in timing to the main TWFE result and carry no protection against reverse response. This is a property of the family as specified; it is stated here rather than inferred from the variable names.
+  - `max_vif_within` and `vif_within_terms` are recorded in the diagnostics. They matter more here than anywhere else in the project: the three log age-group populations move together within a dong, giving within VIFs of `9.08`, `17.75` and `10.37` against `1.17` for the main TWFE design, which inflates the middle-age standard error by roughly `4.2` times relative to an orthogonal design. The same-domain total control is not the cause — dropping `lag4_ln_resident_pop` moves the largest VIF only from `17.75` to `17.55`.
 
 ## 3D) TWFE Vitality Component Models
 
@@ -199,7 +201,21 @@ Two readings follow. First, the quadratic test alone would have caught only one 
   - Channel outcomes are `vitality_sub_economic`, `vitality_sub_temporal`, `vitality_sub_stability`, and `vitality_index_base`.
   - `vitality_sub_social` directly overlaps with the floating population source, so it is excluded as a standalone channel path outcome. However, to maintain the meaning of the composite vitality index encompassing the four sub-dimensions, `vitality_index_base` (which includes social vitality) is used, and a mediator source overlap caveat is recorded.
   - Records direct, indirect, and total effects for `c`, `a`, `b`, and `c_prime`, along with the `a*b` product indirect effect and the `c - c_prime` direct attenuation diagnostic.
-  - Default `a*b` inference utilizes a dong-level wild residual bootstrap. If the bootstrap is disabled or yields insufficient valid draws, `delta_independent_approx` is used as a fallback, but the result is interpreted as a mediation-oriented channel inference rather than an automatic full mediation judgment.
+  - Default `a*b` inference uses a dong-level wild bootstrap **through the reduced form**: `y* = (I - rho W)^-1 (Z gamma + e*)`, with the systematic part rebuilt from the coefficients rather than read from the fitted object. A resample that adds a perturbed residual to a fitted vector holds `W y` at its original value and discards the spatial multiplier the model exists to estimate, so it is not available here.
+  - The draw is sequential, matching the mediation structure: the mediator is drawn first, then the outcome is drawn from the equation containing it with the **resampled** mediator substituted into the design. Both the total-effect equation and the outcome equation are then fitted to the same drawn outcome, because `c` and `c_prime` are two readings of one system rather than two data-generating processes.
+  - Two guards run before any draw. The round trip checks that unit weights return the observed outcome, which catches period-slice, weights-dimension and unit-ordering errors; it cannot catch a wrong coefficient, because the structural residual absorbs whatever `gamma` leaves behind. Orthogonality of that residual to the design does catch it: on this panel a converged fit gives a maximum absolute correlation of `0.0000`, while inflating one coefficient by half raises it to `0.030`, so the threshold is set at `0.01`.
+  - If the bootstrap is disabled or yields insufficient valid draws, `delta_independent_approx` is used as a fallback, but the result is interpreted as a mediation-oriented channel inference rather than an automatic full mediation judgment.
+  - `mediated_share_vs_cprime` is accompanied by `mediation_pattern`, because a share outside `[0, 1]` is not a proportion mediated. A negative value means the channel offsets the direct path rather than transmitting it, and both patterns are routinely read as "x% of the effect runs through the mediator".
+
+### 5A.1) Status of the Published Channel Path Table
+
+> **The bootstrap columns of the published `spdm_channel_path_effects.csv` are not usable.** They were produced by a resample of the form `fitted + residual * weight` on `splm` objects. `splm` defines no `fitted` method, so `stats::fitted()` returned a slot that is not a fitted value of the outcome in any scale: on this panel it correlates `0.010` with the raw outcome, `-0.007` with its two-way within transform, and `-0.005` with `rho*W*y`, and `fitted + residuals` reproduces neither the outcome (`max |diff| = 5.16`) nor its within transform (`5.08`). The substitution raised no error.
+
+The published consequence is visible without re-running anything. Bootstrap standard errors run 5 to 56 times smaller than the delta-method approximation in the same table, and 9 of 12 rows report `bootstrap_p = 0.000`; for one `vitality_sub_temporal` row the delta method gives `p = 0.786` against a bootstrap `p = 0.000`.
+
+A 40-draw pilot of the corrected reduced-form scheme on the full balanced panel, against the same specification, gives an `a*b` standard deviation of `0.553` where the shipped scheme gives `0.043` — **13.0 times larger** — with the draw mean (`0.104`) centred on the point estimate (`0.107`) rather than displaced from it (`0.139`).
+
+Until [07_run_spdm_channel_path.R](../../02_Code/80_optional/spdm/07_run_spdm_channel_path.R) is re-run, `bootstrap_se`, `bootstrap_p`, `bootstrap_ci_low`, `bootstrap_ci_high` and `indirect_p` in the published table must not be quoted, and no mediation claim may rest on them. The point estimates `a`, `b`, `c_total`, `c_prime` and `a*b` are unaffected: they come from the fits, not from the resample. A full re-run is roughly 2 to 3 hours at `SPDM_CHANNEL_BOOTSTRAP_R=1000` on 4 cores, measured at 2.8 seconds per `spml` fit.
   - Runtime defaults are `RUN_SPDM_CHANNEL_BOOTSTRAP=TRUE`, `SPDM_CHANNEL_BOOTSTRAP_R=1000`, `SPDM_CHANNEL_BOOTSTRAP_CORES=4`, `SPDM_CHANNEL_IMPACT_SIM_R=1000`, and `SPDM_CHANNEL_IMPACT_CORES=4`. It uses parallel execution on macOS/Linux/GCP and sequential fallback on Windows.
 
 ## 5B) SPDM Interaction Models
@@ -224,6 +240,8 @@ Two readings follow. First, the quadratic test alone would have caught only one 
   - Because this is not a compositional model, the elderly group is not omitted as a reference category.
   - Controls inherit the current SPDM main control candidates, and the lagged resident scale control, `lag4_ln_resident_pop`, is maintained.
   - The age-mix appendix also uses a quarterly impact schema with `sample_min_yq` and `sample_max_yq`.
+  - **Timing departs from the main contract** in the same way as section 3C: the three exposures are contemporaneous while the controls are 4-quarter lags.
+  - `max_vif_within` and `vif_within_terms` are recorded in the diagnostics, for the reason given in section 3C.
 
 ## 5D) SPDM Sector-Share Experiment
 
@@ -426,6 +444,33 @@ Third, `n_gates_passed` is not comparable across outcomes, because some gates ar
 Fourth, `model_family_agreement` fails for three outcomes, and the disagreement runs one way: SPDM reports all five direct effects as significant, TWFE two. For `vitality_sub_stability` the sign also differs, `-0.257` (p = .655) against `+0.570` (p = .024). The cause is the standard error, not the point estimate — `0.137` for SPDM against `0.515` for TWFE clustered on dong, for `vitality_sub_economic`. As recorded in section 5, `splm` models no dependence in the time dimension, and the residual AR(1) coefficient runs `0.61` to `0.81` across outcomes. The two tables' p-values must not be read side by side.
 
 Because these gates were applied as forty-five outcome-by-gate tests, the reporting should say so. The failures at issue are not marginal — a lack-of-fit p of `1.1e-7`, sign reversals under a 2% sample change — so multiplicity does not explain them, but the count belongs in the text.
+
+## 6D) Published Test Inventory
+
+- Objective: Count every exposure-side hypothesis test the project publishes and report how many survive a multiplicity adjustment, so the size of the search is a number in the record rather than an impression.
+- Execution condition: Run [04_build_test_inventory.R](../../02_Code/06_qc/04_build_test_inventory.R) directly. It reads published tables only and estimates nothing.
+- Inputs: every `03_Output/01_Tables/(twfe|spdm)_*_{models,impacts,path_effects}.csv`
+- Outputs:
+  - `model_test_inventory.csv`
+  - `model_test_inventory_adjusted.csv`
+- Implementation Principles:
+  - Control terms and spatial nuisance parameters are excluded; counting them would inflate the search with quantities nobody claims anything about.
+  - Benjamini-Hochberg is applied both within each table and across the whole published surface. The families share a panel, an exposure and a control contract, so this is a conservative summary of search size rather than an exact error rate, and it does not replace the unadjusted p-values the tables carry.
+  - The inventory separates the main-text surface from the appendix, because the two carry very different weight.
+
+### 6D.1) Reading Requirement
+
+| Scope | Tables | Tests | Significant, unadjusted | Significant under BH | Expected false positives at 0.05 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| All published | 21 | 405 | 277 | 267 | 20.3 |
+| Main text | 2 | 15 | 11 | 11 | 0.8 |
+| Appendix | 19 | 390 | 266 | 256 | 19.5 |
+
+Two readings, and the second is the more useful one.
+
+The search is large: the main text rests on 15 tests while the published tables carry 405, spread across appendix families that are searches by construction — age-mix, sector-share, vitality components, COVID interactions, spatial model families, W variants. Any appendix result quoted in support of a claim is selected from that surface, and the reporting should say so.
+
+The adjustment nevertheless changes very little: 277 unadjusted rejections become 267 under BH across all 405 tests, and the main-text count is unchanged at 11. The appendix results are not a field of marginal p-values that multiplicity would sweep away. That is worth stating explicitly, because the honest concern about these families is the one in sections 3C and 5A.1 — timing, collinearity, and an invalid resample — rather than the count.
 
 ## 7) GTWR Main Optional Sidecar
 

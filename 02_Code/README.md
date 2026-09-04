@@ -126,6 +126,7 @@ Rscript 02_Code/03_models/03_run_gtwr_main.R
 ### Manual QC & Reporting Sidecars
 
 - **QC Processed Outputs**: `02_Code/06_qc/02_check_processed_parquet_outputs.R`
+- **Published Test Inventory**: `02_Code/06_qc/04_build_test_inventory.R` — counts every exposure-side test in the published model tables and reports Benjamini-Hochberg within each table and across the whole surface
 - **Review Outputs in RStudio**: `02_Code/06_qc/03_open_outputs_for_rstudio_review.R`
 - **Build Presentation Artifacts**: `02_Code/05_reporting/02_build_presentation_artifacts.R`
 - **Build GTWR Level Artifacts**: `02_Code/05_reporting/03_build_gtwr_level_artifacts.R`

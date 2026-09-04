@@ -91,7 +91,8 @@ For detailed information regarding code execution or variables, please refer to 
 │   ├── 06_qc/                                     # Quality Control (QC)
 │   │   ├── 01_validate_method_dataset_alignment.R
 │   │   ├── 02_check_processed_parquet_outputs.R
-│   │   └── 03_open_outputs_for_rstudio_review.R
+│   │   ├── 03_open_outputs_for_rstudio_review.R
+│   │   └── 04_build_test_inventory.R              # Counts every published exposure-side test; BH across the surface
 │   │
 │   ├── 80_optional/                               # Supplementary, sensitivity, and path analyses
 │   │   ├── gtwr/
