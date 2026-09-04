@@ -135,6 +135,38 @@ modelsummary::modelsummary(mods, output = cfg$paths$twfe_main_models_html, stars
 twfe_tidy <- tidy_models(mods) |>
   annotate_outcomes(include_robustness = FALSE) |>
   dplyr::arrange(outcome_order, exposure, model_name, term)
+
+# Clustering on `adm_cd` alone absorbs arbitrary serial correlation within a dong
+# but nothing about contemporaneous correlation across dongs in the same quarter.
+# For a project whose entire premise is spatial dependence that omission is hard
+# to defend, so the two-way clustered standard error is reported beside the
+# primary one. It is added rather than substituted because on this panel it
+# changes no conclusion at the 5% level while inflating standard errors by 6% to
+# 32%; the reader should be able to see both.
+twfe_twoway <- purrr::imap_dfr(mods, function(m, nm) {
+  vc <- tryCatch(summary(m, cluster = ~ adm_cd + yq), error = function(e) NULL)
+  if (is.null(vc)) return(tibble::tibble())
+  tibble::tibble(
+    model_name = nm,
+    term = names(stats::coef(vc)),
+    std.error_twoway = unname(fixest::se(vc)),
+    p.value_twoway = unname(fixest::pvalue(vc))
+  )
+})
+
+if (nrow(twfe_twoway) > 0L) {
+  twfe_tidy <- twfe_tidy |>
+    dplyr::left_join(twfe_twoway, by = c("model_name", "term")) |>
+    dplyr::mutate(
+      se_ratio_twoway_over_dong = dplyr::if_else(
+        is.finite(.data$std.error) & .data$std.error > 0,
+        .data$std.error_twoway / .data$std.error, NA_real_
+      ),
+      cluster_primary = "adm_cd",
+      cluster_secondary = "adm_cd + yq"
+    )
+}
+
 write_csv_safe(twfe_tidy, cfg$paths$twfe_main_models)
 
 model_diag_success <- summarize_model_diagnostics(mods)
@@ -156,6 +188,117 @@ model_diag <- spec_registry |>
     dropped_collinear_terms,
     interaction_var = dplyr::coalesce(interaction_var, interaction_var_expected)
   )
+
+# Multicollinearity among the global regressors was previously reported only for
+# GTWR, as a local diagnostic. A reader has no way to judge the stability of a
+# TWFE or SPDM coefficient without the same reading on the global design, so the
+# demeaned VIF is attached here. It is computed on the two-way within transform
+# because that is the design the estimator actually inverts: raw correlations
+# among levels would overstate the collinearity the fixed-effects model faces.
+twfe_within_vif <- local({
+  spec_terms <- unique(stats::na.omit(model_diag$retained_controls))
+  ctrl_vars <- unique(unlist(strsplit(spec_terms, ";", fixed = TRUE)))
+  ctrl_vars <- trimws(ctrl_vars)
+  ctrl_vars <- ctrl_vars[nzchar(ctrl_vars) & ctrl_vars %in% names(panel)]
+  reg_vars <- unique(c(exposures, ctrl_vars))
+  reg_vars <- reg_vars[reg_vars %in% names(panel)]
+  if (length(reg_vars) < 2L) {
+    return(tibble::tibble(
+      term = character(), vif_within = numeric(), n_obs = integer(),
+      status = character(), message = character()
+    ))
+  }
+
+  d <- panel |>
+    dplyr::select(dplyr::all_of(c("adm_cd", "yq", reg_vars))) |>
+    dplyr::filter(stats::complete.cases(dplyr::pick(dplyr::all_of(reg_vars))))
+  if (nrow(d) < length(reg_vars) + 2L) {
+    return(tibble::tibble(
+      term = reg_vars, vif_within = NA_real_, n_obs = nrow(d),
+      status = "insufficient_rows", message = NA_character_
+    ))
+  }
+
+  d <- d |>
+    dplyr::group_by(.data$adm_cd) |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(reg_vars), ~ .x - mean(.x, na.rm = TRUE))) |>
+    dplyr::ungroup() |>
+    dplyr::group_by(.data$yq) |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(reg_vars), ~ .x - mean(.x, na.rm = TRUE))) |>
+    dplyr::ungroup()
+
+  purrr::map_dfr(reg_vars, function(v) {
+    others <- setdiff(reg_vars, v)
+    r2 <- tryCatch({
+      fit <- stats::lm(stats::reformulate(others, response = v), data = d)
+      summary(fit)$r.squared
+    }, error = function(e) NA_real_)
+    tibble::tibble(
+      term = v,
+      vif_within = if (is.finite(r2) && r2 < 1) 1 / (1 - r2) else Inf,
+      n_obs = nrow(d),
+      status = if (is.finite(r2)) "success" else "failed",
+      message = NA_character_
+    )
+  })
+})
+
+# Serial correlation. Clustering by dong is valid under arbitrary within-dong
+# dependence, so this does not change inference; it reports how much dependence
+# the clustering is being asked to absorb, which the diagnostics did not state.
+# The statistic is the AR(1) coefficient of the within-transformed residuals
+# against their own one-quarter lag inside each dong, tested with dong-clustered
+# errors. A large positive value means residuals are strongly persistent and any
+# specification relying on independent errors would be badly wrong.
+twfe_serial <- purrr::imap_dfr(mods, function(m, nm) {
+  # `run_twfe()` fits with data.save = TRUE, so the estimation frame travels with
+  # the model. stats::model.frame() drops the fixed-effect ids for a fixest fit,
+  # which is why the saved data is used instead.
+  d <- tryCatch(m$data, error = function(e) NULL)
+  r <- tryCatch(stats::resid(m), error = function(e) NULL)
+  if (is.null(r) || is.null(d) || !all(c("adm_cd", "yq") %in% names(d))) return(tibble::tibble())
+
+  # feols drops rows with missing values and singleton fixed-effect groups, so the
+  # saved frame is a superset of the estimation sample. `obs_selection$obsRemoved`
+  # holds the dropped row indices as negative integers; without applying it the
+  # residuals would be silently misaligned with the keys.
+  removed <- tryCatch(m$obs_selection$obsRemoved, error = function(e) NULL)
+  if (!is.null(removed) && length(removed) > 0L) d <- d[removed, , drop = FALSE]
+  if (nrow(d) != length(r)) return(tibble::tibble())
+  dd <- tibble::tibble(adm_cd = as.character(d$adm_cd), yq = as.character(d$yq), r = as.numeric(r)) |>
+    dplyr::arrange(.data$adm_cd, .data$yq) |>
+    dplyr::group_by(.data$adm_cd) |>
+    dplyr::mutate(r_lag = dplyr::lag(.data$r)) |>
+    dplyr::ungroup() |>
+    dplyr::filter(is.finite(.data$r), is.finite(.data$r_lag))
+  if (nrow(dd) < 100L) return(tibble::tibble())
+  fit <- tryCatch(fixest::feols(r ~ r_lag, data = dd, cluster = ~adm_cd, notes = FALSE),
+                  error = function(e) NULL)
+  if (is.null(fit) || !"r_lag" %in% names(stats::coef(fit))) return(tibble::tibble())
+  tibble::tibble(
+    model_name = nm,
+    resid_ar1 = unname(stats::coef(fit)[["r_lag"]]),
+    resid_ar1_se = unname(fixest::se(fit)[["r_lag"]]),
+    resid_ar1_p = unname(fixest::pvalue(fit)[["r_lag"]])
+  )
+})
+
+if (nrow(twfe_serial) == 0L) {
+  twfe_serial <- tibble::tibble(
+    model_name = model_diag$model_name,
+    resid_ar1 = NA_real_, resid_ar1_se = NA_real_, resid_ar1_p = NA_real_
+  )
+}
+
+model_diag <- model_diag |>
+  dplyr::left_join(twfe_serial, by = "model_name") |>
+  dplyr::mutate(
+    resid_ar1_significant = is.finite(.data$resid_ar1_p) & .data$resid_ar1_p < 0.05,
+    max_vif_within = suppressWarnings(max(twfe_within_vif$vif_within[is.finite(twfe_within_vif$vif_within)], na.rm = TRUE)),
+    max_vif_within = dplyr::if_else(is.finite(.data$max_vif_within), .data$max_vif_within, NA_real_),
+    vif_within_terms = paste(sprintf("%s=%.2f", twfe_within_vif$term, twfe_within_vif$vif_within), collapse = ";")
+  )
+
 write_csv_safe(model_diag, cfg$paths$twfe_main_diagnostics)
 
 
@@ -219,40 +362,6 @@ residual_moran_p_value_method <- "permutation_two_sided_abs"
 # Residual Moran uses permutation inference for a more robust post-estimation
 # spatial diagnostic. Seeds are derived from the spec/yq label so reruns are
 # reproducible while each outcome-quarter test receives an independent stream.
-deterministic_seed_from_label <- function(label, base_seed = residual_moran_seed) {
-  ints <- utf8ToInt(enc2utf8(paste(label, collapse = "|")))
-  mod <- 2147483647
-  seed <- as.double(base_seed %% mod)
-
-  if (length(ints) > 0L) {
-    for (value in ints) {
-      seed <- (seed * 131 + as.double(value)) %% mod
-    }
-  }
-
-  seed <- floor(seed)
-  if (!is.finite(seed) || seed <= 0) seed <- 1
-  as.integer(seed)
-}
-
-with_deterministic_seed <- function(label, expr, base_seed = residual_moran_seed) {
-  had_seed <- exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-  old_seed <- if (had_seed) get(".Random.seed", envir = .GlobalEnv, inherits = FALSE)
-
-  on.exit(
-    {
-      if (had_seed) {
-        assign(".Random.seed", old_seed, envir = .GlobalEnv)
-      } else if (exists(".Random.seed", envir = .GlobalEnv, inherits = FALSE)) {
-        rm(".Random.seed", envir = .GlobalEnv)
-      }
-    },
-    add = TRUE
-  )
-
-  set.seed(deterministic_seed_from_label(label, base_seed = base_seed))
-  eval.parent(substitute(expr))
-}
 
 build_failed_moran_row <- function(model_name, outcome, exposure, yq = NA_character_, message) {
   tibble::tibble(
@@ -324,10 +433,11 @@ run_residual_moran_by_yq <- function(model_name, model_obj, lw) {
           "twfe_residual_moran|%s|%s|%s|%s|nsim=%d",
           model_name, outcome, exposure, yq_val, residual_moran_nsim
         )
-        seed_value <- deterministic_seed_from_label(seed_label)
+        seed_value <- deterministic_seed_from_label(seed_label, base_seed = residual_moran_seed)
         mt_analytic <- spdep::moran.test(aligned$values, aligned$lw, alternative = "two.sided", zero.policy = TRUE)
         mt_perm <- with_deterministic_seed(
           seed_label,
+          base_seed = residual_moran_seed,
           spdep::moran.mc(aligned$values, aligned$lw, nsim = residual_moran_nsim, zero.policy = TRUE)
         )
 
