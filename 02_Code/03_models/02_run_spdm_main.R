@@ -281,7 +281,9 @@ run_main_spec <- function(spec_id,
     sim_R = impact_sim_R,
     sim_method = impact_sim_method,
     empirical = impact_empirical,
-    seed = cfg$esda_seed,
+    # Project-wide base seed. Same value as the former cfg$esda_seed alias, so
+    # impact draws are unchanged; only the name now matches the use.
+    seed = cfg$analysis_seed,
     message = prep$message
   )
 
