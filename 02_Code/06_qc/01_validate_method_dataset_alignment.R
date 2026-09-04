@@ -486,6 +486,90 @@ rows[[length(rows) + 1L]] <- add_row("R02", "robustness", pass, detail)
 
 
 #==============================================================================
+# 7A. Canonical Diagnostic Contract
+#==============================================================================
+
+# The influence, identification, and synthesis diagnostics are canonical because
+# the main-text effects may not be read without them. Presence alone is not the
+# check that matters: a synthesis computed over diagnostics that were themselves
+# regenerated afterwards is stale, and stale is the failure mode this project has
+# already hit once. So the freshness ordering is verified too.
+diag_paths <- cfg$active_output_contract$influence
+rows[[length(rows) + 1L]] <- add_row(
+  "D01",
+  "influence",
+  all(file.exists(diag_paths)),
+  describe_presence(diag_paths)
+)
+
+ident_paths <- cfg$active_output_contract$identification
+rows[[length(rows) + 1L]] <- add_row(
+  "D02",
+  "identification",
+  all(file.exists(ident_paths)),
+  describe_presence(ident_paths)
+)
+
+synth_paths <- cfg$active_output_contract$evidence_synthesis
+rows[[length(rows) + 1L]] <- add_row(
+  "D03",
+  "evidence_synthesis",
+  all(file.exists(synth_paths)),
+  describe_presence(synth_paths)
+)
+
+# The synthesis reads published tables rather than re-estimating, so it is only
+# valid if it postdates every source it summarizes.
+synth_inputs <- c(
+  cfg$paths$twfe_main_models,
+  cfg$paths$spdm_impacts,
+  cfg$paths$influence_robustness_summary,
+  cfg$paths$identification_placebo,
+  cfg$paths$identification_trend_spec,
+  cfg$paths$exposure_linearity_tests
+)
+if (file.exists(cfg$paths$evidence_synthesis) && all(file.exists(synth_inputs))) {
+  synth_mtime <- file.info(cfg$paths$evidence_synthesis)$mtime
+  input_mtime <- file.info(synth_inputs)$mtime
+  stale <- synth_inputs[input_mtime > synth_mtime]
+  pass <- length(stale) == 0L
+  detail <- if (pass) {
+    sprintf("synthesis postdates all %d sources", length(synth_inputs))
+  } else {
+    sprintf("synthesis is older than: %s", paste(basename(stale), collapse = ", "))
+  }
+} else {
+  pass <- FALSE
+  detail <- "synthesis or one of its sources is absent"
+}
+rows[[length(rows) + 1L]] <- add_row("D04", "evidence_synthesis", pass, detail)
+
+# The claim tier is what the main text has to be written against, so it must be
+# resolvable for every reported outcome; an "incomplete" tier means a gate could
+# not be evaluated and the synthesis must not be quoted.
+synth_tbl <- safe_read_csv(cfg$paths$evidence_synthesis)
+if (inherits(synth_tbl, "data.frame")) {
+  missing_cols <- setdiff(c("outcome", "n_gates_passed", "claim_tier"), names(synth_tbl))
+  incomplete <- if ("claim_tier" %in% names(synth_tbl)) {
+    synth_tbl$outcome[synth_tbl$claim_tier == "incomplete"]
+  } else {
+    character(0)
+  }
+  pass <- length(missing_cols) == 0L && length(incomplete) == 0L && nrow(synth_tbl) > 0L
+  detail <- sprintf(
+    "outcomes=%d; missing cols=%s; incomplete tiers=%s",
+    nrow(synth_tbl),
+    if (length(missing_cols) == 0L) "none" else paste(missing_cols, collapse = ", "),
+    if (length(incomplete) == 0L) "none" else paste(incomplete, collapse = ", ")
+  )
+} else {
+  pass <- FALSE
+  detail <- if (inherits(synth_tbl, "error")) synth_tbl$message else "unavailable"
+}
+rows[[length(rows) + 1L]] <- add_row("D05", "evidence_synthesis", pass, detail)
+
+
+#==============================================================================
 # 8. Optional GTWR Sidecar Contract
 #==============================================================================
 
