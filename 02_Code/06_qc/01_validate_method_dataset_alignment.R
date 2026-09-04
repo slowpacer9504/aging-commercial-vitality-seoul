@@ -585,6 +585,8 @@ gtwr_raw_paths <- c(
   cfg$get_gtwr_controls_used_path(gtwr_control_set)
 )
 
+gtwr_outputs_present <- all(file.exists(gtwr_raw_paths))
+
 if (!isTRUE(optional_required_test_enabled)) {
   rows[[length(rows) + 1L]] <- add_row(
     "G01",
@@ -596,9 +598,17 @@ if (!isTRUE(optional_required_test_enabled)) {
   rows[[length(rows) + 1L]] <- add_row(
     "G01",
     "gtwr_optional",
-    all(file.exists(gtwr_raw_paths)),
+    gtwr_outputs_present,
     sprintf("control_set=%s; %s", gtwr_control_set, describe_presence(gtwr_raw_paths))
   )
+}
+
+# GTWR is optional to produce, which is why G01 does not fail on absence. It is
+# not optional to be correct once produced: these tables are published, cited in
+# the codebook, and read by reporting. G02 and G03 therefore run whenever the
+# outputs exist, rather than only under the opt-in flag, which left a published
+# but malformed bundle unchecked in every default run.
+if (isTRUE(optional_required_test_enabled) || gtwr_outputs_present) {
 
   gtwr_main_tbl <- safe_read_csv(cfg$get_gtwr_main_models_path(gtwr_control_set))
   if (inherits(gtwr_main_tbl, "data.frame")) {
