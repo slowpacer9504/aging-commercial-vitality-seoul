@@ -45,6 +45,37 @@ cfg$tag_path <- function(path) {
   file.path(dirname(path), tagged_name)
 }
 
+# Normalizing an invalid runtime value back to a default is the right behaviour,
+# but doing it silently is not: the kernel, bandwidth, lamda, and angle parameter
+# are required reporting items for a GTWR specification, so a typo like
+# GTWR_KERNEL=gausian would otherwise produce a bisquare fit that the author
+# believes is something else. cfg_coerced() records every override, warns
+# immediately, and log_run_environment() replays the list into the run log so an
+# output can always be traced to the settings that actually produced it.
+cfg$config_coercions <- character(0)
+
+cfg_coerced <- function(env_var, given, used, reason) {
+  msg <- sprintf(
+    "%s=%s is invalid (%s); using %s instead",
+    env_var,
+    if (is.null(given) || !nzchar(as.character(given)[[1]])) "<empty>" else as.character(given)[[1]],
+    reason,
+    as.character(used)[[1]]
+  )
+  cfg$config_coercions <- c(cfg$config_coercions, msg)
+  warning(sprintf("[CONFIG] %s", msg), call. = FALSE, immediate. = TRUE)
+  used
+}
+
+# 01_validate_method_dataset_alignment.R runs inside the canonical pipeline, one
+# step before reporting. With the gate off it records FAIL rows and lets the run
+# finish, so run_all.R would print "[ALL DONE] Pipeline completed" over a broken
+# method-dataset contract and the failure would exist only inside a CSV nobody
+# opened. The gate makes a contract FAIL stop the pipeline before reporting
+# publishes tables built on it. Set QC_CONTRACT_GATE=false only to inspect
+# downstream artifacts while knowingly working against a failing contract.
+cfg$qc_contract_gate <- !tolower(trimws(Sys.getenv("QC_CONTRACT_GATE", unset = "true"))) %in% c("0", "false", "no")
+
 
 #==============================================================================
 # 1. Project Paths
@@ -116,9 +147,49 @@ cfg$target_crs <- 5179L
 cfg$boundary_year <- 2020L
 cfg$default_w <- "queen"
 cfg$alt_w <- c("rook", "knn6", "knn8")
-cfg$esda_seed <- 20260317L
+# One project-wide base seed. It is named for the analysis rather than for ESDA
+# because it also seeds the SPDM impact simulation and, through
+# cfg$spdm_channel_bootstrap_seed, the channel-path bootstrap. cfg$esda_seed is
+# retained as an alias with the identical value so existing call sites and every
+# published result stay bit-identical; new call sites should use
+# cfg$analysis_seed.
+#
+# Note that the SPDM impact simulation currently passes this base seed directly,
+# so its draws are common across the five outcomes. That is harmless here because
+# each outcome draws from its own vcov, but a per-spec stream from
+# deterministic_seed_from_label() (already used by ESDA and TWFE) would be
+# cleaner. Switching would change the published impact SEs and CIs, so it is
+# deferred to the next full SPDM rerun rather than done silently.
+cfg$analysis_seed <- 20260317L
+cfg$esda_seed <- cfg$analysis_seed
 cfg$esda_global_moran_nsim <- 999L
 cfg$esda_global_moran_p_value <- "permutation_two_sided_abs"
+
+# LISA runs 425 simultaneous local tests per variable, so the permutation count
+# sets a hard floor on the smallest attainable p-value: nsim = 499 gave a
+# two-sided floor of 0.004, which makes a Bonferroni threshold of 0.05/425 =
+# 1.2e-4 unreachable by construction and leaves Benjamini-Hochberg almost no
+# resolution. 9,999 lowers the floor to 2e-4 and is the conventional count for
+# local indicators reported with a multiplicity correction.
+cfg$esda_lisa_nsim <- 9999L
+cfg$esda_bivariate_nsim <- 9999L
+# EHSA sits on a different budget: it is one Gi* series per dong across the
+# whole quarterly sequence, not a single cross-section, so its cost scales with
+# the number of periods as well as units.
+cfg$esda_ehsa_nsim <- 999L
+
+# Local indicators are corrected for multiplicity. Benjamini-Hochberg rather
+# than Bonferroni because LISA is an exploratory screen where controlling the
+# false discovery rate is the appropriate error criterion; the uncorrected
+# column is retained alongside so the effect of the correction is visible.
+cfg$esda_lisa_fdr_method <- "BH"
+cfg$esda_lisa_alpha <- 0.05
+
+# ESDA cross-sections are computed for every quarter of the active window, not
+# only the latest. Whether spatial dependence is stable over the panel is an
+# empirical question the panel can answer, and answering it from one snapshot
+# assumes what it should test. Maps stay on the latest quarter.
+cfg$esda_global_moran_all_quarters <- TRUE
 cfg$short_start <- 2019L
 cfg$short_end <- 2025L
 # Active panel is quarterly. The terminal quarter lets source coverage and
@@ -338,7 +409,9 @@ cfg$gtwr_extended_control_cols <- c(
   cfg$lagged_main_control_cols
 )
 cfg$gtwr_control_set <- tolower(trimws(Sys.getenv("GTWR_CONTROL_SET", unset = "lean")))
-if (!cfg$gtwr_control_set %in% c("lean", "extended")) cfg$gtwr_control_set <- "lean"
+if (!cfg$gtwr_control_set %in% c("lean", "extended")) cfg$gtwr_control_set <- cfg_coerced(
+  "GTWR_CONTROL_SET", cfg$gtwr_control_set, "lean", "not one of lean, extended"
+)
 cfg$gwr_delta_control_cols <- cfg$gtwr_lean_control_cols
 cfg$gtwr_available_control_cols <- unique(c(cfg$gtwr_lean_control_cols, cfg$gtwr_extended_control_cols))
 cfg$gtwr_main_control_cols <- switch(
@@ -535,17 +608,25 @@ cfg$gtwr_reuse_st_dmat <- tolower(trimws(Sys.getenv("GTWR_REUSE_ST_DMAT", unset 
 cfg$gtwr_use_frozen_spec <- tolower(trimws(Sys.getenv("GTWR_USE_FROZEN_SPEC", unset = "true"))) %in% c("1", "true", "yes")
 cfg$gtwr_refresh_frozen_spec <- tolower(trimws(Sys.getenv("GTWR_REFRESH_FROZEN_SPEC", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_kernel <- trimws(Sys.getenv("GTWR_KERNEL", unset = "bisquare"))
-if (!cfg$gtwr_kernel %in% c("bisquare", "gaussian", "exponential", "tricube", "boxcar")) cfg$gtwr_kernel <- "bisquare"
+if (!cfg$gtwr_kernel %in% c("bisquare", "gaussian", "exponential", "tricube", "boxcar")) cfg$gtwr_kernel <- cfg_coerced(
+  "GTWR_KERNEL", cfg$gtwr_kernel, "bisquare", "not a supported kernel"
+)
 cfg$gtwr_adaptive <- tolower(trimws(Sys.getenv("GTWR_ADAPTIVE", unset = "true"))) %in% c("1", "true", "yes")
 cfg$gtwr_bandwidth_strategy <- tolower(trimws(Sys.getenv("GTWR_BANDWIDTH_STRATEGY", unset = "fixed")))
-if (!cfg$gtwr_bandwidth_strategy %in% c("full_panel_bw_gtwr", "anchor_quarter_bw_gtwr", "fixed")) cfg$gtwr_bandwidth_strategy <- "fixed"
+if (!cfg$gtwr_bandwidth_strategy %in% c("full_panel_bw_gtwr", "anchor_quarter_bw_gtwr", "fixed")) cfg$gtwr_bandwidth_strategy <- cfg_coerced(
+  "GTWR_BANDWIDTH_STRATEGY", cfg$gtwr_bandwidth_strategy, "fixed", "not a supported strategy"
+)
 cfg$gtwr_bw_anchor_yq <- trimws(Sys.getenv("GTWR_BW_ANCHOR_YQ", unset = as.character(cfg$analysis_quarter_sequence$yq[[1L]])))
 if (!cfg$gtwr_bw_anchor_yq %in% cfg$analysis_quarter_sequence$yq) cfg$gtwr_bw_anchor_yq <- as.character(cfg$analysis_quarter_sequence$yq[[1L]])
 cfg$gtwr_bw_approach <- trimws(Sys.getenv("GTWR_BW_APPROACH", unset = "CV"))
-if (!cfg$gtwr_bw_approach %in% c("CV", "cv", "AIC", "aic", "AICc")) cfg$gtwr_bw_approach <- "CV"
+if (!cfg$gtwr_bw_approach %in% c("CV", "cv", "AIC", "aic", "AICc")) cfg$gtwr_bw_approach <- cfg_coerced(
+  "GTWR_BW_APPROACH", cfg$gtwr_bw_approach, "CV", "not a supported bandwidth criterion"
+)
 cfg$gtwr_refresh_bw_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_BW_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_st_bw <- suppressWarnings(as.integer(Sys.getenv("GTWR_ST_BW", unset = "60")))
-if (!is.finite(cfg$gtwr_st_bw) || cfg$gtwr_st_bw < 30L) cfg$gtwr_st_bw <- 60L
+if (!is.finite(cfg$gtwr_st_bw) || cfg$gtwr_st_bw < 30L) cfg$gtwr_st_bw <- cfg_coerced(
+  "GTWR_ST_BW", Sys.getenv("GTWR_ST_BW", unset = "60"), 60L, "not an integer of at least 30"
+)
 # lamda is dimensionless: build_gtwr_st_dmat() divides the spatial and temporal
 # distances by their own observed spans before combining them, so lamda is the
 # share of weight on the full spatial extent and 0.5 means space and time are
@@ -555,9 +636,13 @@ if (!is.finite(cfg$gtwr_st_bw) || cfg$gtwr_st_bw < 30L) cfg$gtwr_st_bw <- 60L
 # favour of space. Runs before 2026-09-02 used the raw-unit convention and their
 # lamda values are not comparable with these.
 cfg$gtwr_lamda <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LAMDA", unset = "0.5")))
-if (!is.finite(cfg$gtwr_lamda) || cfg$gtwr_lamda < 0 || cfg$gtwr_lamda > 1) cfg$gtwr_lamda <- 0.5
+if (!is.finite(cfg$gtwr_lamda) || cfg$gtwr_lamda < 0 || cfg$gtwr_lamda > 1) cfg$gtwr_lamda <- cfg_coerced(
+  "GTWR_LAMDA", Sys.getenv("GTWR_LAMDA", unset = "0.5"), 0.5, "not a number in [0, 1]"
+)
 cfg$gtwr_ksi <- suppressWarnings(as.numeric(Sys.getenv("GTWR_KSI", unset = "0")))
-if (!is.finite(cfg$gtwr_ksi) || cfg$gtwr_ksi < 0) cfg$gtwr_ksi <- 0
+if (!is.finite(cfg$gtwr_ksi) || cfg$gtwr_ksi < 0) cfg$gtwr_ksi <- cfg_coerced(
+  "GTWR_KSI", Sys.getenv("GTWR_KSI", unset = "0"), 0, "not a non-negative number"
+)
 # Local collinearity threshold. Only the weighted VIF carries an established rule
 # of thumb, so it alone drives the warning flag. The centered condition number is
 # reported without a threshold: Belsley's 30 is defined for the uncentered,
@@ -650,6 +735,23 @@ cfg$paths <- list(
   w_rook = file.path(cfg$dir_panel, "W_rook.rds"),
   w_knn6 = file.path(cfg$dir_panel, "W_knn6.rds"),
   w_knn8 = file.path(cfg$dir_panel, "W_knn8.rds"),
+  # Connectivity summary for the four W matrices: neighbour counts, isolates, and
+  # component structure. Written alongside the .rds files by 01_build_spatial_weights.R.
+  spatial_weight_connectivity = file.path(cfg$dir_tables, "spatial_weight_connectivity.csv"),
+  # Influence diagnostics from 04_robustness/03_run_influence_robustness.R. The
+  # outcome tails of the vitality sub-indices are dominated by a handful of dongs
+  # under redevelopment or a COVID tourism collapse, so how much of each reported
+  # effect rests on them is a required reading rather than an optional one.
+  # Identification diagnostics from 04_robustness/04_run_identification_diagnostics.R.
+  # The main exposure is close to a dong-specific linear time trend, so a lag does
+  # not by itself establish temporal ordering; these report whether the estimates
+  # are separable from those trends.
+  identification_placebo = file.path(cfg$dir_tables, "identification_placebo_lead.csv"),
+  identification_trend_spec = file.path(cfg$dir_tables, "identification_trend_spec.csv"),
+  identification_exposure_persistence = file.path(cfg$dir_tables, "identification_exposure_persistence.csv"),
+  influence_dfbeta = file.path(cfg$dir_tables, "influence_dfbeta.csv"),
+  influence_outlier_dongs = file.path(cfg$dir_tables, "influence_outlier_dongs.csv"),
+  influence_robustness_summary = file.path(cfg$dir_tables, "influence_robustness_summary.csv"),
   twfe_main_models = file.path(cfg$dir_tables, "twfe_main_models.csv"),
   twfe_main_models_html = file.path(cfg$dir_tables, "twfe_main_models.html"),
   twfe_main_controls_used = file.path(cfg$dir_tables, "twfe_main_controls_used.csv"),
@@ -724,6 +826,21 @@ cfg$paths$spdm_w_robustness_controls_used <- cfg$paths$spdm_w_robustness_control
 cfg$paths$global_morans_i <- file.path(cfg$dir_tables, "global_morans_i.csv")
 cfg$paths$global_morans_i_by_w <- file.path(cfg$dir_tables, "global_morans_i_by_w.csv")
 cfg$paths$global_bivariate_morans_i <- file.path(cfg$dir_tables, "global_bivariate_morans_i.csv")
+# Global Moran across every quarter of the active window, and the same measure
+# on the two-way within transform. The second exists because the models
+# identify from within-dong, within-quarter deviations, so the spatial
+# dependence that motivates a spatial specification has to be present in that
+# variation and not only in the cross-sectional levels.
+# Exploratory diagnostics from 02_esda/03_run_exploratory_diagnostics.R: the
+# shape of the exposure-outcome relationship, which every model assumes to be
+# linear without checking, and the quarterly trend of each outcome across a
+# window that contains COVID.
+cfg$paths$exposure_response_bins <- file.path(cfg$dir_tables, "exposure_response_bins.csv")
+cfg$paths$exposure_linearity_tests <- file.path(cfg$dir_tables, "exposure_linearity_tests.csv")
+cfg$paths$outcome_quarterly_trend <- file.path(cfg$dir_tables, "outcome_quarterly_trend.csv")
+cfg$paths$outcome_quarterly_trend_plot <- file.path(cfg$dir_figures, "outcome_quarterly_trend.png")
+cfg$paths$global_morans_i_by_yq <- file.path(cfg$dir_tables, "global_morans_i_by_yq.csv")
+cfg$paths$global_morans_i_within <- file.path(cfg$dir_tables, "global_morans_i_within.csv")
 cfg$paths$univariate_lisa_summary <- file.path(cfg$dir_tables, "univariate_lisa_summary.csv")
 cfg$paths$univariate_lisa_local <- file.path(cfg$dir_tables, "univariate_lisa_local.csv")
 cfg$paths$bivariate_lisa_summary <- file.path(cfg$dir_tables, "bivariate_lisa_summary.csv")
@@ -764,6 +881,9 @@ cfg$get_gtwr_latest_summary_table_path <- function(control_set = cfg$gtwr_contro
 }
 cfg$get_gtwr_latest_rankings_table_path <- function(control_set = cfg$gtwr_control_set) {
   file.path(cfg$dir_tables, sprintf("gtwr_latest_rankings_table_%s.csv", cfg$gtwr_main_output_tag(control_set)))
+}
+cfg$get_gtwr_lamda_bw_cv_search_path <- function(control_set = cfg$gtwr_control_set) {
+  file.path(cfg$dir_tables, sprintf("gtwr_lamda_bw_cv_search_%s.csv", cfg$gtwr_main_output_tag(control_set)))
 }
 cfg$get_gtwr_local_beta_panel_path <- function(control_set = cfg$gtwr_control_set) {
   file.path(cfg$dir_tables, sprintf("gtwr_local_beta_panel_%s.csv", cfg$gtwr_main_output_tag(control_set)))
@@ -1007,10 +1127,19 @@ cfg$canonical_pipeline_scripts <- c(
   "02_Code/01_preprocess/07_build_vitality_index.R",
   "02_Code/02_esda/01_build_spatial_weights.R",
   "02_Code/02_esda/02_run_esda.R",
+  "02_Code/02_esda/03_run_exploratory_diagnostics.R",
   "02_Code/03_models/01_run_twfe_main.R",
   "02_Code/03_models/02_run_spdm_main.R",
   "02_Code/04_robustness/01_run_spdm_w_robustness.R",
   "02_Code/04_robustness/02_run_robustness.R",
+  # Under the 2026-09-04 decision to report the full sample as the main
+  # specification, the influence diagnostic is a required companion to every
+  # main-text effect rather than an optional check, so it runs by default.
+  "02_Code/04_robustness/03_run_influence_robustness.R",
+  # The lagged exposure is close to a dong-specific linear trend, so whether the
+  # estimates are separable from those trends is a standing question about every
+  # reported effect, not an occasional check.
+  "02_Code/04_robustness/04_run_identification_diagnostics.R",
   "02_Code/06_qc/01_validate_method_dataset_alignment.R",
   "02_Code/05_reporting/01_make_tables_figures.R"
 )
@@ -1145,6 +1274,22 @@ cfg$logs <- list(
   panel_quarter_aggregation_qc = file.path(cfg$dir_logs, "panel_quarter_aggregation_qc.csv"),
   transit_aux_qc = file.path(cfg$dir_logs, "transit_aux_qc.csv"),
   vitality_component_qc = file.path(cfg$dir_logs, "vitality_component_qc.csv"),
+  # Panel-build QC from 06_build_analysis_panel.R.
+  panel_join_coverage_qc = file.path(cfg$dir_logs, "panel_join_coverage_qc.csv"),
+  panel_structural_count_flags = file.path(cfg$dir_logs, "panel_structural_count_flags.csv"),
+  # Land-price QC from 03_build_auxiliary_covariates.R. The LPI layer writes four
+  # separate tables because the adjusted land price is assembled in four stages:
+  # raw index match, statutory-to-administrative dong crosswalk, quarterly
+  # adjustment factor, and imputation of the remaining gaps.
+  land_price_imputation_qc = file.path(cfg$dir_logs, "land_price_imputation_qc.csv"),
+  land_price_lpi_raw_match_qc = file.path(cfg$dir_logs, "land_price_lpi_raw_match_qc.csv"),
+  land_price_lpi_crosswalk_qc = file.path(cfg$dir_logs, "land_price_lpi_crosswalk_qc.csv"),
+  land_price_lpi_adjustment_qc = file.path(cfg$dir_logs, "land_price_lpi_adjustment_qc.csv"),
+  # Manual processed-output audit from 06_qc/02_check_processed_parquet_outputs.R.
+  processed_parquet_inventory = file.path(cfg$dir_logs, "processed_parquet_inventory.csv"),
+  processed_parquet_schema = file.path(cfg$dir_logs, "processed_parquet_schema.csv"),
+  processed_parquet_missing_summary = file.path(cfg$dir_logs, "processed_parquet_missing_summary.csv"),
+  processed_parquet_qc_checks = file.path(cfg$dir_logs, "processed_parquet_qc_checks.csv"),
   decision = file.path(cfg$dir_doc_logs, "decision_log.md"),
   inventory = file.path(cfg$dir_logs, "data_file_inventory.csv"),
   cleanup = file.path(cfg$dir_logs, "refactor_cleanup_log.md")

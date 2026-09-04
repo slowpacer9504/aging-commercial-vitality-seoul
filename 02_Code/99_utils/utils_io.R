@@ -36,6 +36,116 @@ append_log <- function(path, text) {
   cat(text, file = path, append = TRUE, sep = "\n")
 }
 
+collect_run_environment <- function(extra_packages = c("GWmodel", "sp", "MASS")) {
+  # Results from GTWR, SPDM, and the permutation diagnostics depend on the
+  # versions of GWmodel, splm, and spdep, so a run is only auditable if the
+  # environment that produced it is recorded next to the timings. renv.lock
+  # states which environment *should* be used; this records the one that
+  # actually was.
+  pkgs <- character()
+  if (exists("project_attached_packages", inherits = TRUE)) {
+    pkgs <- c(pkgs, project_attached_packages())
+  }
+  if (exists("project_runtime_namespace_packages", inherits = TRUE)) {
+    pkgs <- c(pkgs, project_runtime_namespace_packages())
+  }
+  pkgs <- sort(unique(c(pkgs, as.character(extra_packages))))
+
+  versions <- vapply(
+    pkgs,
+    function(p) {
+      v <- tryCatch(as.character(utils::packageVersion(p)), error = function(e) NA_character_)
+      if (is.na(v)) NA_character_ else v
+    },
+    FUN.VALUE = character(1)
+  )
+  versions <- versions[!is.na(versions)]
+
+  lock_path <- file.path(value_or(cfg$project_root, "."), "renv.lock")
+  lock_hash <- NA_character_
+  lock_r_version <- NA_character_
+  if (file.exists(lock_path)) {
+    # The hash pins which lockfile state a run was made against; a changed hash
+    # means the environment contract moved between runs. tools::md5sum() and a
+    # line scan keep this free of any package dependency, so environment
+    # capture cannot itself fail on a partially restored library.
+    lock_hash <- tryCatch(
+      substr(unname(tools::md5sum(lock_path)), 1L, 12L),
+      error = function(e) NA_character_
+    )
+    lock_r_version <- tryCatch(
+      {
+        head_lines <- readLines(lock_path, n = 5L, warn = FALSE)
+        hit <- grep('"Version"', head_lines, value = TRUE)
+        if (length(hit) == 0L) NA_character_ else sub('.*"Version"\\s*:\\s*"([^"]+)".*', "\\1", hit[[1L]])
+      },
+      error = function(e) NA_character_
+    )
+  }
+
+  list(
+    r_version = R.version.string,
+    platform = R.version$platform,
+    running = utils::sessionInfo()$running,
+    renv_active = isTRUE(nzchar(Sys.getenv("RENV_PROJECT"))),
+    lib_path = .libPaths()[[1L]],
+    lock_hash = lock_hash,
+    lock_r_version = lock_r_version,
+    output_tag = value_or(cfg$output_tag, ""),
+    packages = versions
+  )
+}
+
+format_run_environment_block <- function(env_info = collect_run_environment()) {
+  na_or <- function(x) if (length(x) == 0L || is.na(x) || !nzchar(as.character(x))) "(unavailable)" else as.character(x)
+
+  header <- c(
+    "",
+    "### Run environment",
+    sprintf("- R: %s (%s)", na_or(env_info$r_version), na_or(env_info$platform)),
+    sprintf("- OS: %s", na_or(env_info$running)),
+    sprintf("- renv active: %s | library: %s", env_info$renv_active, na_or(env_info$lib_path)),
+    sprintf("- renv.lock: md5:%s | lock R: %s", na_or(env_info$lock_hash), na_or(env_info$lock_r_version)),
+    sprintf("- output tag: %s", if (nzchar(env_info$output_tag)) env_info$output_tag else "(none)"),
+    sprintf(
+      "- packages: %s",
+      if (length(env_info$packages) == 0L) {
+        "(unavailable)"
+      } else {
+        paste(sprintf("%s %s", names(env_info$packages), unname(env_info$packages)), collapse = ", ")
+      }
+    )
+  )
+
+  # An output is only auditable if the log states the settings that actually
+  # produced it, which is not the same as the settings that were requested.
+  # config.R normalizes invalid runtime values back to defaults; cfg_coerced()
+  # records each override so a run whose kernel or bandwidth silently fell back
+  # to a default cannot be mistaken for one that used the requested value.
+  coercions <- tryCatch(get("cfg", inherits = TRUE)$config_coercions, error = function(e) NULL)
+  if (length(coercions) > 0L) {
+    header <- c(
+      header,
+      sprintf("- config overrides (%d):", length(coercions)),
+      sprintf("  - %s", coercions)
+    )
+  }
+
+  paste(header, collapse = "\n")
+}
+
+log_run_environment <- function(path) {
+  # Never let environment capture take down a pipeline run: an unreadable
+  # lockfile or a missing optional package is a logging problem, not an
+  # analysis one.
+  block <- tryCatch(
+    format_run_environment_block(),
+    error = function(e) sprintf("\n### Run environment\n- (capture failed: %s)", conditionMessage(e))
+  )
+  append_log(path, block)
+  invisible(block)
+}
+
 #==============================================================================
 # 2. Safe Writers
 #==============================================================================
