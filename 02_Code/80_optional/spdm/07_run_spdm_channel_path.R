@@ -153,6 +153,7 @@ channel_empty_path_effects_tbl <- function() {
     bootstrap_R = integer(),
     bootstrap_method = character(),
     mediated_share_vs_cprime = numeric(),
+    mediation_pattern = character(),
     status = character(),
     n_units = integer(),
     n_periods = integer(),
@@ -311,6 +312,11 @@ fit_sdm_rhs <- function(pdat, outcome, rhs_vars, lw_sub) {
   rhs <- unique(as.character(rhs_vars))
   wx_obj <- build_spdm_wx_terms(pdat, rhs, lw_sub)
   pdat_model <- wx_obj$data
+  # splm maps panel rows to weights by position and raises nothing when the two
+  # disagree. The ordering here is correct by construction, because keep_ids comes
+  # from intersect() against region.id, but "correct by construction" is what the
+  # main path also had before the assertion was added.
+  assert_spdm_panel_alignment(pdat_model, lw_sub, "channel path spml")
   fm <- stats::as.formula(sprintf("%s ~ %s", outcome, paste(c(rhs, wx_obj$wx_terms), collapse = " + ")))
 
   fit <- tryCatch(
@@ -505,16 +511,27 @@ compute_channel_point_impacts <- function(mod, lw_sub, focal_var) {
   out[c("direct", "indirect", "total")]
 }
 
-extract_bootstrap_base <- function(mod, n_obs) {
-  fitted_values <- tryCatch(as.numeric(stats::fitted(mod)), error = function(e) numeric())
-  residual_values <- tryCatch(as.numeric(stats::residuals(mod)), error = function(e) numeric())
-  if (length(fitted_values) != n_obs || length(residual_values) != n_obs) {
-    return(list(status = "failed", message = "fitted/residual length mismatch"))
+# The bootstrap resamples through the reduced form rather than around a fitted
+# vector. `stats::fitted()` on an splm object returns a slot that is not a fitted
+# value of the outcome in any scale - on this panel it correlates 0.010 with the
+# raw outcome, -0.007 with its two-way within transform and -0.005 with rho*W*y,
+# and `fitted + residuals` reproduces neither - and splm defines no method, so the
+# substitution was silent. build_spdm_reduced_form_resampler() reconstructs the
+# systematic part from the coefficients, verifies at unit weights that it returns
+# the observed outcome, and refuses to proceed when it does not.
+build_bootstrap_base <- function(mod, pdat, response, rhs_vars, lw_sub, label) {
+  rs <- tryCatch({
+    rhs <- unique(as.character(rhs_vars))
+    wx_obj <- build_spdm_wx_terms(pdat, rhs, lw_sub)
+    build_spdm_reduced_form_resampler(
+      mod, wx_obj$data, response, c(rhs, wx_obj$wx_terms), lw_sub,
+      context = sprintf("channel bootstrap (%s)", label)
+    )
+  }, error = function(e) e)
+  if (inherits(rs, "error")) {
+    return(list(status = "failed", message = paste(label, "resampler:", rs$message)))
   }
-  if (any(!is.finite(fitted_values)) || any(!is.finite(residual_values))) {
-    return(list(status = "failed", message = "non-finite fitted/residual values"))
-  }
-  list(status = "success", fitted = fitted_values, residual = residual_values, message = "ok")
+  list(status = "success", resampler = rs, message = "ok")
 }
 
 summarise_bootstrap_indirect <- function(draws, point) {
@@ -544,13 +561,15 @@ run_channel_bootstrap <- function(spec_id,
                                   prep,
                                   selected_controls,
                                   mediator_mod,
-                                  outcome_mod) {
+                                  outcome_mod,
+                                  mediator_rhs,
+                                  outcome_rhs) {
   if (!isTRUE(run_channel_bootstrap_enabled) || !is.finite(channel_bootstrap_R) || channel_bootstrap_R < 1L) {
     return(channel_empty_bootstrap_draws_tbl())
   }
 
-  med_base <- extract_bootstrap_base(mediator_mod, prep$n_obs)
-  out_base <- extract_bootstrap_base(outcome_mod, prep$n_obs)
+  med_base <- build_bootstrap_base(mediator_mod, prep$pdat, mediator, mediator_rhs, prep$lw_sub, "mediator")
+  out_base <- build_bootstrap_base(outcome_mod, prep$pdat, outcome, outcome_rhs, prep$lw_sub, "outcome")
   if (!identical(med_base$status, "success") || !identical(out_base$status, "success")) {
     return(channel_empty_bootstrap_draws_tbl() |>
       dplyr::add_row(
@@ -605,9 +624,28 @@ run_channel_bootstrap <- function(spec_id,
       names(weight_vec) <- unit_ids
       row_weight <- unname(weight_vec[as.character(prep$pdat$adm_cd)])
 
+      # Sequential mediation DGP. The mediator is drawn first, then the outcome
+      # is drawn from the equation that contains it with the *resampled* mediator
+      # substituted. Regenerating the two independently, as the previous scheme
+      # did, assembles the a*b product from two unrelated draws and breaks the
+      # very dependence the mediation inference is about.
       pdat_b <- prep$pdat
-      pdat_b[[mediator]] <- med_base$fitted + med_base$residual * row_weight
-      pdat_b[[outcome]] <- out_base$fitted + out_base$residual * row_weight
+      m_star <- med_base$resampler$resample(row_weight)
+      wm_name <- spdm_wx_name(mediator)
+      y_override <- list()
+      y_override[[mediator]] <- m_star
+      if (wm_name %in% out_base$resampler$rhs_vars) {
+        y_override[[wm_name]] <- spdm_apply_w_by_period(
+          m_star, out_base$resampler$period, out_base$resampler$W
+        )
+      }
+      y_star <- out_base$resampler$resample(row_weight, override = y_override)
+
+      # Both the total-effect equation and the outcome equation are fitted to the
+      # same drawn outcome, because c and c_prime are two readings of one system
+      # rather than two data-generating processes.
+      pdat_b[[mediator]] <- m_star
+      pdat_b[[outcome]] <- y_star
 
       mediator_b <- tryCatch(
         fit_sdm_rhs(pdat_b, mediator, c(exposure, selected_controls), prep$lw_sub),
@@ -752,6 +790,20 @@ build_path_effect_rows <- function(spec_id, outcome, exposure, mediator, a_row, 
         bootstrap_R = if (isTRUE(run_channel_bootstrap_enabled)) as.integer(channel_bootstrap_R) else 0L,
         bootstrap_method = if (isTRUE(run_channel_bootstrap_enabled)) channel_bootstrap_method else NA_character_,
         mediated_share_vs_cprime = if (is.finite(denom) && abs(denom) > 1e-12) ab / denom else NA_real_,
+        # A share outside [0, 1] is not a proportion mediated. A negative value
+        # means a*b and c_prime carry opposite signs, so the channel offsets the
+        # direct path instead of transmitting it (inconsistent mediation, or
+        # suppression); a value above 1 means the channel overshoots the total.
+        # Both are legitimate patterns and both are routinely misread as "x% of
+        # the effect runs through the mediator", so the label travels with the
+        # number rather than being left to the reader.
+        mediation_pattern = local({
+          sh <- if (is.finite(denom) && abs(denom) > 1e-12) ab / denom else NA_real_
+          if (!is.finite(sh)) "undefined_denominator_near_zero"
+          else if (sh < 0) "inconsistent_mediation_opposite_sign"
+          else if (sh > 1) "overshoot_channel_exceeds_direct_path"
+          else "consistent_partial_mediation"
+        }),
         status = if (all(is.finite(c(a_est, b_est, ab, primary_se)))) "success" else "failed",
         n_units = suppressWarnings(as.integer(a_row$n_units[[1]])),
         n_periods = suppressWarnings(as.integer(a_row$n_periods[[1]])),
@@ -1013,7 +1065,9 @@ run_path_spec <- function(spec_id, outcome, exposure, mediator, panel, lw, w_ids
       prep = prep,
       selected_controls = ctrl_try,
       mediator_mod = mediator_mod,
-      outcome_mod = outcome_mod
+      outcome_mod = outcome_mod,
+      mediator_rhs = mediator_rhs,
+      outcome_rhs = outcome_rhs
     )
 
     path_effects_out <- build_path_effect_rows(

@@ -2263,3 +2263,181 @@ build_spdm_family_comparison_row <- function(spec_id,
       message = as.character(message)
     )
 }
+
+
+#==============================================================================
+# Reduced-Form Resampling for Spatial Lag Panels
+#==============================================================================
+
+# A residual bootstrap for a spatial lag model cannot be built by adding a
+# perturbed residual to a fitted vector. Two things go wrong, and the channel
+# path sidecar hit both.
+#
+# First, splm objects carry a `fitted.values` slot that is not a fitted value of
+# the outcome in any scale: on this panel it correlates 0.010 with the raw
+# outcome, -0.007 with its two-way within transform, and -0.005 with rho*W*y, and
+# `fitted + residuals` reproduces neither the outcome nor its within transform.
+# `stats::fitted()` finds that slot because splm defines no method of its own, so
+# the failure is silent. Every function here therefore reconstructs the systematic
+# part from the coefficients and verifies the reconstruction before use.
+#
+# Second, even a correct fitted vector would pin W y at its original value, which
+# discards the spatial multiplier the model exists to estimate. The resample has
+# to run through the reduced form
+#
+#   y* = (I - rho W)^-1 (Z gamma + e*)
+#
+# so that a perturbation propagates through the same feedback the point estimate
+# reports.
+#
+# Everything is done on the two-way within scale. W is time-invariant here, so it
+# commutes with the within transform and W (within y) equals within (W y); the
+# estimator demeans again on refit, which is idempotent.
+
+# Two-way within transform: unit means, then period means, then the grand mean
+# added back once.
+spdm_within_transform <- function(v, unit, period) {
+  v <- as.numeric(v)
+  v <- v - stats::ave(v, unit, FUN = function(x) mean(x, na.rm = TRUE))
+  v <- v - stats::ave(v, period, FUN = function(x) mean(x, na.rm = TRUE))
+  v - mean(v, na.rm = TRUE)
+}
+
+# W is block-diagonal across periods with the same block each period, so it is
+# applied one period at a time on unit-ordered slices.
+spdm_apply_w_by_period <- function(v, period, W) {
+  out <- numeric(length(v))
+  for (tt in unique(period)) {
+    idx <- which(period == tt)
+    if (length(idx) != nrow(W)) {
+      stop("[ERROR] period slice length does not match the weights matrix", call. = FALSE)
+    }
+    out[idx] <- as.numeric(W %*% v[idx])
+  }
+  out
+}
+
+spdm_solve_multiplier_by_period <- function(v, period, W, rho) {
+  n <- nrow(W)
+  A <- diag(n) - rho * W
+  lu <- tryCatch(solve(A), error = function(e) e)
+  if (inherits(lu, "error")) {
+    stop(sprintf("[ERROR] (I - rho W) is singular at rho = %.6f", rho), call. = FALSE)
+  }
+  out <- numeric(length(v))
+  for (tt in unique(period)) {
+    idx <- which(period == tt)
+    out[idx] <- as.numeric(lu %*% v[idx])
+  }
+  out
+}
+
+# Build a reduced-form resampler for one fitted spatial lag panel model.
+#
+# `override` optionally replaces named columns of the within-scale design before
+# the systematic part is formed. The mediation bootstrap needs this: the outcome
+# equation's regressors include the mediator, so a draw has to substitute the
+# resampled mediator rather than reuse the observed one, or the product a*b is
+# assembled from two unrelated draws.
+build_spdm_reduced_form_resampler <- function(mod, pdat, outcome, rhs_vars, lw_sub,
+                                             context = "spdm reduced-form bootstrap") {
+  coef_vec <- stats::coef(mod)
+  if (!"lambda" %in% names(coef_vec)) {
+    stop(sprintf("[ERROR] %s: fitted model carries no spatial lag parameter", context), call. = FALSE)
+  }
+  rho <- unname(as.numeric(coef_vec[["lambda"]]))
+  missing_terms <- setdiff(rhs_vars, names(coef_vec))
+  if (length(missing_terms) > 0L) {
+    stop(sprintf("[ERROR] %s: coefficients missing for %s", context,
+                 paste(missing_terms, collapse = ", ")), call. = FALSE)
+  }
+  gamma <- as.numeric(coef_vec[rhs_vars])
+
+  W <- tryCatch(spdep::listw2mat(lw_sub), error = function(e) e)
+  if (inherits(W, "error")) {
+    stop(sprintf("[ERROR] %s: could not materialize W (%s)", context, W$message), call. = FALSE)
+  }
+
+  unit <- as.character(pdat$adm_cd)
+  period <- pdat$time_id
+  y_dd <- spdm_within_transform(pdat[[outcome]], unit, period)
+  Z_dd <- vapply(rhs_vars, function(v) spdm_within_transform(pdat[[v]], unit, period),
+                 numeric(nrow(pdat)))
+  Z_dd <- matrix(Z_dd, nrow = nrow(pdat), dimnames = list(NULL, rhs_vars))
+
+  # e = (I - rho W) y - Z gamma, on the within scale.
+  e_hat <- (y_dd - rho * spdm_apply_w_by_period(y_dd, period, W)) - as.numeric(Z_dd %*% gamma)
+
+  resample <- function(row_weight, override = NULL) {
+    Z <- Z_dd
+    if (!is.null(override)) {
+      for (nm in names(override)) {
+        if (!nm %in% colnames(Z)) {
+          stop(sprintf("[ERROR] %s: cannot override absent design column %s", context, nm), call. = FALSE)
+        }
+        Z[, nm] <- as.numeric(override[[nm]])
+      }
+    }
+    rhs <- as.numeric(Z %*% gamma) + e_hat * row_weight
+    spdm_solve_multiplier_by_period(rhs, period, W, rho)
+  }
+
+  # Two guards, covering different mistakes.
+  #
+  # The round trip is a self-consistency check, not a validation of the fit. It
+  # cannot fail on a wrong coefficient, because e_hat is defined as the residual
+  # and absorbs whatever gamma leaves behind. What it does catch is the class of
+  # error that actually costs silent estimates here: a period slice that does not
+  # line up with W, a weights matrix of the wrong dimension, a unit ordering that
+  # disagrees with region.id, or an inverse applied on the wrong axis.
+  roundtrip <- resample(rep(1, nrow(pdat)))
+  max_dev <- max(abs(roundtrip - y_dd))
+  scale_y <- max(stats::sd(y_dd), .Machine$double.eps)
+  if (!is.finite(max_dev) || max_dev > 1e-6 * scale_y) {
+    stop(
+      sprintf(
+        paste0("[ERROR] %s: reduced-form reconstruction does not reproduce the outcome ",
+               "(max deviation %.3e against outcome sd %.3e). Refusing to bootstrap."),
+        context, max_dev, scale_y
+      ),
+      call. = FALSE
+    )
+  }
+
+  # Orthogonality does have teeth against the wrong model object. At the maximum
+  # of the likelihood the score conditions leave the structural residual
+  # orthogonal to the design: measured on this panel a correct fit gives a maximum
+  # absolute correlation of 0.0000, while inflating one coefficient by half
+  # raises it to 0.030. A resampler handed the mediator equation's fit for the
+  # outcome equation's data would fail here rather than quietly produce draws.
+  z_cor <- suppressWarnings(apply(Z_dd, 2, function(z) {
+    if (stats::sd(z) <= .Machine$double.eps) return(0)
+    stats::cor(e_hat, z)
+  }))
+  max_cor <- max(abs(z_cor[is.finite(z_cor)]), 0)
+  if (max_cor > 0.01) {
+    stop(
+      sprintf(
+        paste0("[ERROR] %s: structural residual is not orthogonal to the design ",
+               "(max |cor| = %.4f on %s). The coefficients do not belong to this ",
+               "outcome and design. Refusing to bootstrap."),
+        context, max_cor, names(which.max(abs(z_cor)))
+      ),
+      call. = FALSE
+    )
+  }
+
+  list(
+    rho = rho,
+    gamma = gamma,
+    rhs_vars = rhs_vars,
+    e_hat = e_hat,
+    y_within = y_dd,
+    design_within = Z_dd,
+    W = W,
+    period = period,
+    resample = resample,
+    roundtrip_max_deviation = max_dev,
+    max_design_residual_cor = max_cor
+  )
+}
