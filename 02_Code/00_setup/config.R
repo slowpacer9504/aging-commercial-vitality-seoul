@@ -266,8 +266,14 @@ cfg$covid_quarter_sequence <- cfg$quarter_sequence[
 ]
 cfg$covid_yq <- as.character(cfg$covid_quarter_sequence$yq)
 cfg$covid_period_label <- sprintf("%s~%s", cfg$covid_start_yq, cfg$covid_end_yq)
+# Coerced loudly rather than silently: this is the floor on the length of the
+# balanced SPDM panel, so it decides which specifications are accepted at all and
+# is documented as a sample rule in 04_model_spec.md section 5. A typo here would
+# otherwise change the estimation sample with nothing in the run log to show it.
 cfg$spdm_min_periods <- suppressWarnings(as.integer(Sys.getenv("SPDM_MIN_PERIODS", unset = "20")))
-if (!is.finite(cfg$spdm_min_periods) || cfg$spdm_min_periods < 4L) cfg$spdm_min_periods <- 20L
+if (!is.finite(cfg$spdm_min_periods) || cfg$spdm_min_periods < 4L) cfg$spdm_min_periods <- cfg_coerced(
+  "SPDM_MIN_PERIODS", Sys.getenv("SPDM_MIN_PERIODS", unset = "20"), 20L, "not an integer of at least 4"
+)
 cfg$living_pop_hours <- trimws(Sys.getenv("LIVING_POP_HOURS", unset = "0-23"))
 cfg$living_pop_sample_months <- trimws(Sys.getenv("LIVING_POP_SAMPLE_MONTHS", unset = ""))
 cfg$living_pop_force_rebuild <- tolower(trimws(Sys.getenv("LIVING_POP_FORCE_REBUILD", unset = "false"))) %in% c("1", "true", "yes")
@@ -434,7 +440,9 @@ cfg$gwr_delta_parallel_method <- "omp"
 cfg$gwr_delta_parallel_arg <- NA_integer_
 cfg$spdm_impact_sim_R <- 1000L
 cfg$spdm_channel_impact_sim_R <- suppressWarnings(as.integer(Sys.getenv("SPDM_CHANNEL_IMPACT_SIM_R", unset = "1000")))
-if (!is.finite(cfg$spdm_channel_impact_sim_R) || cfg$spdm_channel_impact_sim_R < 1L) cfg$spdm_channel_impact_sim_R <- 1000L
+if (!is.finite(cfg$spdm_channel_impact_sim_R) || cfg$spdm_channel_impact_sim_R < 1L) cfg$spdm_channel_impact_sim_R <- cfg_coerced(
+  "SPDM_CHANNEL_IMPACT_SIM_R", Sys.getenv("SPDM_CHANNEL_IMPACT_SIM_R", unset = "1000"), 1000L, "not a positive integer"
+)
 cfg$spdm_channel_impact_cores <- suppressWarnings(as.integer(Sys.getenv("SPDM_CHANNEL_IMPACT_CORES", unset = "4")))
 if (!is.finite(cfg$spdm_channel_impact_cores) || cfg$spdm_channel_impact_cores < 1L) cfg$spdm_channel_impact_cores <- 1L
 cfg$spdm_optional_spec_cores <- suppressWarnings(as.integer(Sys.getenv("SPDM_OPTIONAL_SPEC_CORES", unset = "1")))
@@ -447,11 +455,15 @@ cfg$spdm_spatial_param_se_method <- "model_based_asymptotic_ml_vcov"
 cfg$spdm_impact_se_method <- "simulation_from_model_based_ml_vcov"
 cfg$run_spdm_channel_bootstrap <- tolower(trimws(Sys.getenv("RUN_SPDM_CHANNEL_BOOTSTRAP", unset = "true"))) %in% c("1", "true", "yes")
 cfg$spdm_channel_bootstrap_R <- suppressWarnings(as.integer(Sys.getenv("SPDM_CHANNEL_BOOTSTRAP_R", unset = "1000")))
-if (!is.finite(cfg$spdm_channel_bootstrap_R) || cfg$spdm_channel_bootstrap_R < 1L) cfg$spdm_channel_bootstrap_R <- 1000L
+if (!is.finite(cfg$spdm_channel_bootstrap_R) || cfg$spdm_channel_bootstrap_R < 1L) cfg$spdm_channel_bootstrap_R <- cfg_coerced(
+  "SPDM_CHANNEL_BOOTSTRAP_R", Sys.getenv("SPDM_CHANNEL_BOOTSTRAP_R", unset = "1000"), 1000L, "not a positive integer"
+)
 cfg$spdm_channel_bootstrap_cores <- suppressWarnings(as.integer(Sys.getenv("SPDM_CHANNEL_BOOTSTRAP_CORES", unset = "4")))
 if (!is.finite(cfg$spdm_channel_bootstrap_cores) || cfg$spdm_channel_bootstrap_cores < 1L) cfg$spdm_channel_bootstrap_cores <- 1L
-cfg$spdm_channel_bootstrap_seed <- suppressWarnings(as.integer(Sys.getenv("SPDM_CHANNEL_BOOTSTRAP_SEED", unset = as.character(cfg$esda_seed))))
-if (!is.finite(cfg$spdm_channel_bootstrap_seed)) cfg$spdm_channel_bootstrap_seed <- cfg$esda_seed
+cfg$spdm_channel_bootstrap_seed <- suppressWarnings(as.integer(Sys.getenv("SPDM_CHANNEL_BOOTSTRAP_SEED", unset = as.character(cfg$analysis_seed))))
+if (!is.finite(cfg$spdm_channel_bootstrap_seed)) cfg$spdm_channel_bootstrap_seed <- cfg_coerced(
+  "SPDM_CHANNEL_BOOTSTRAP_SEED", Sys.getenv("SPDM_CHANNEL_BOOTSTRAP_SEED", unset = ""), cfg$analysis_seed, "not an integer"
+)
 cfg$spdm_channel_bootstrap_method <- Sys.getenv("SPDM_CHANNEL_BOOTSTRAP_METHOD", unset = "adm_cd_wild_residual")
 # Main true-SDM/SPDM impacts are computed with the explicit matrix formula
 # S = (I - rho W)^(-1)(beta I + theta W). Keep this label aligned with the
@@ -659,13 +671,20 @@ if (!is.finite(cfg$gtwr_ksi) || cfg$gtwr_ksi < 0) cfg$gtwr_ksi <- cfg_coerced(
 # column-scaled construction and does not transfer to a centered one.
 cfg$gtwr_local_vif_warn_threshold <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LOCAL_VIF_WARN_THRESHOLD", unset = "10")))
 if (!is.finite(cfg$gtwr_local_vif_warn_threshold) || cfg$gtwr_local_vif_warn_threshold <= 0) {
-  cfg$gtwr_local_vif_warn_threshold <- 10
+  # This threshold is what the published collinearity_warn flag keys off, so a
+  # silent fallback would put a flag in an output table under a criterion the
+  # author did not choose.
+  cfg$gtwr_local_vif_warn_threshold <- cfg_coerced(
+    "GTWR_LOCAL_VIF_WARN_THRESHOLD", Sys.getenv("GTWR_LOCAL_VIF_WARN_THRESHOLD", unset = "10"), 10, "not a positive number"
+  )
 }
 # Belsley's convention for the uncentered metric, retained for reference
 # reporting only; it does not drive any warning flag.
 cfg$gtwr_local_cn_warn_threshold <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LOCAL_CN_WARN_THRESHOLD", unset = "100")))
 if (!is.finite(cfg$gtwr_local_cn_warn_threshold) || cfg$gtwr_local_cn_warn_threshold <= 0) {
-  cfg$gtwr_local_cn_warn_threshold <- 100
+  cfg$gtwr_local_cn_warn_threshold <- cfg_coerced(
+    "GTWR_LOCAL_CN_WARN_THRESHOLD", Sys.getenv("GTWR_LOCAL_CN_WARN_THRESHOLD", unset = "100"), 100, "not a positive number"
+  )
 }
 # Spans the dimensionless range with interior points so the AICc optimum can be
 # bracketed rather than pinned at a boundary. 0.987 is the continuity point
