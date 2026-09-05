@@ -20,94 +20,62 @@
 # and controls, TWFE fixed effects `adm_cd + yq`, and the resident-only SPDM main
 # specification.
 
-## 0-1. Load packages ----------------------------------------------------------
-required_packages <- c(
-  "arrow", "broom", "cli", "dplyr", "fixest", "fs", "ggplot2", "here",
-  "modelsummary", "purrr", "readr", "rlang", "spdep", "splm",
-  "stringr", "tibble", "tidyr"
-)
+## 0-1. Load config, packages, and shared utilities ----------------------------
+# Every canonical modeling script opens exactly this way. Sourcing the shared
+# utilities rather than redefining their helpers locally is a contract, not a
+# convenience: because each script loads its sources into one environment, a
+# local copy of a shared helper silently shadows the real one for that whole
+# script and the two definitions then drift apart unnoticed
+# (r_code_style_guide.md section 10).
+source(here::here("02_Code", "00_setup", "config.R"))
+source(here::here("02_Code", "00_setup", "packages.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_qc.R"))
+source(here::here("02_Code", "99_utils", "utils_model.R"))
+source(here::here("02_Code", "99_utils", "utils_spatial.R"))
 
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
-]
-
-if (length(missing_packages) > 0L) {
-  stop(
-    sprintf(
-      "[ERROR] Required packages are not installed: %s",
-      paste(missing_packages, collapse = ", ")
-    ),
-    call. = FALSE
-  )
-}
-
-invisible(lapply(required_packages, library, character.only = TRUE))
-options(scipen = 999)
+load_project_packages()
 options(modelsummary_format_numeric_latex = "plain")
 
-## 0-2. Define paths -----------------------------------------------------------
-dir_panel <- here::here("01_Data", "03_Processed_Data", "03_Panel")
-dir_tables <- here::here("03_Output", "01_Tables")
-dir_figures <- here::here("03_Output", "02_Figures")
-dir_logs <- here::here("03_Output", "04_Logs")
-fs::dir_create(c(dir_tables, dir_figures, dir_logs))
+ensure_dirs(cfg$required_dirs)
 
-path_panel_main <- fs::path(dir_panel, "panel_main.parquet")
-path_w_queen <- fs::path(dir_panel, "W_queen.rds")
-path_twfe_csv <- fs::path(dir_tables, "twfe_main_models.csv")
-path_twfe_html <- fs::path(dir_tables, "twfe_main_models.html")
-path_twfe_plot <- fs::path(dir_figures, "twfe_main_coefplot.png")
-path_twfe_residual_moran_by_yq <- fs::path(dir_tables, "twfe_main_residual_moran_by_yq.csv")
-path_spdm_csv <- fs::path(dir_tables, "spdm_main_models.csv")
-path_spdm_impacts <- fs::path(dir_tables, "spdm_impacts.csv")
-path_robustness_csv <- fs::path(dir_tables, "robustness_summary.csv")
-path_model_log <- fs::path(dir_logs, "model_run_log.md")
+## 0-2. Resolve paths from the registry ----------------------------------------
+# Output paths are read from the canonical registry in config.R, never assembled
+# here. A path in the registry can be validated by QC, reused by reporting, and
+# changed in one place; a literal built at the call site can do none of those and
+# silently diverges when the registry key moves (r_code_style_guide.md section 5).
+path_panel_main <- cfg$paths$panel_main
+path_w_queen <- cfg$paths$w_queen
+path_twfe_csv <- cfg$paths$twfe_main_models
+path_twfe_html <- cfg$paths$twfe_main_models_html
+path_twfe_plot <- cfg$paths$twfe_main_coefplot
+path_twfe_residual_moran_by_yq <- cfg$paths$twfe_main_residual_moran_by_yq
+path_spdm_csv <- cfg$paths$spdm_main_models
+path_spdm_impacts <- cfg$paths$spdm_impacts
+path_robustness_csv <- cfg$paths$robustness_summary
+path_model_log <- cfg$logs$model_run
 
 #==============================================================================
 # 1. Helper Functions
 #==============================================================================
 
-append_log_line <- function(text, path) {
-  fs::dir_create(fs::path_dir(path))
-  cat(text, file = path, append = TRUE, sep = "\n")
-}
+# IO and validation helpers are not defined here. `write_csv_safe()`,
+# `save_rds_safe()`, and `append_log()` come from utils_io.R and
+# `assert_required_cols()` from utils_qc.R, all sourced in section 0-1.
+#
+# This section used to carry local copies. The local `write_csv_safe()` wrote
+# straight to the destination, so an interrupted run left a partial CSV that the
+# next step would read as valid; the shared writer stages to a temporary file in
+# the same directory and promotes it only after the write succeeds. Use
+# `append_log(path, text)` for the run log rather than a local appender.
 
-write_csv_safe <- function(df, path, ...) {
-  fs::dir_create(fs::path_dir(path))
-  readr::write_csv(df, file = path, ...)
-  cli::cli_alert_success("Saved CSV: {path}")
-}
-
-assert_required_cols <- function(df, required_cols) {
-  missing_cols <- setdiff(required_cols, names(df))
-  if (length(missing_cols) > 0L) {
-    stop(
-      sprintf("[ERROR] Required columns are missing: %s", paste(missing_cols, collapse = ", ")),
-      call. = FALSE
-    )
-  }
-  invisible(TRUE)
-}
-
-build_twfe_formula <- function(outcome, exposure, controls = NULL, interaction_var = NULL) {
-  rhs_terms <- exposure
-
-  if (!is.null(controls) && length(controls) > 0L) {
-    rhs_terms <- c(rhs_terms, controls)
-  }
-
-  if (!is.null(interaction_var) && nzchar(interaction_var)) {
-    rhs_terms <- c(rhs_terms, sprintf("%s:%s", exposure, interaction_var))
-  }
-
-  stats::as.formula(
-    sprintf("%s ~ %s | adm_cd + yq", outcome, paste(rhs_terms, collapse = " + "))
-  )
-}
+# `build_twfe_formula()` also comes from utils_model.R. It fixes the effect
+# structure to `| adm_cd + yq`, which is the contract in r_code_style_guide.md
+# section 9, so a script must not assemble that formula itself.
 
 run_twfe_model <- function(data, outcome, exposure, controls = NULL, interaction_var = NULL) {
   fixest::feols(
-    fml = build_twfe_formula(outcome, exposure, controls, interaction_var),
+    fml = build_twfe_formula(outcome, exposure, controls, interaction = interaction_var),
     data = data,
     cluster = ~ adm_cd
   )
@@ -217,9 +185,9 @@ existing_outcomes <- intersect(outcomes_main, names(panel_main))
 existing_exposures <- intersect(exposures_main, names(panel_main))
 existing_controls <- intersect(controls_structural, names(panel_main))
 
-append_log_line(sprintf("- Existing outcomes: %s", paste(existing_outcomes, collapse = ", ")), path_model_log)
-append_log_line(sprintf("- Existing exposures: %s", paste(existing_exposures, collapse = ", ")), path_model_log)
-append_log_line(sprintf("- Existing controls: %s", paste(existing_controls, collapse = ", ")), path_model_log)
+append_log(path_model_log, sprintf("- Existing outcomes: %s", paste(existing_outcomes, collapse = ", ")))
+append_log(path_model_log, sprintf("- Existing exposures: %s", paste(existing_exposures, collapse = ", ")))
+append_log(path_model_log, sprintf("- Existing controls: %s", paste(existing_controls, collapse = ", ")))
 
 #==============================================================================
 # 3. TWFE Example

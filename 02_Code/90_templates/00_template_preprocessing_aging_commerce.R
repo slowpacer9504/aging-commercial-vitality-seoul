@@ -19,36 +19,20 @@
 # scripts. The core contract is `adm_cd x yq`, contemporaneous quarterly timing,
 # and quarterly raw publication as the active panel's base time unit.
 
-## 0-1. Load packages ----------------------------------------------------------
-required_packages <- c(
-  "arrow", "cli", "dplyr", "fs", "here", "janitor",
-  "purrr", "readr", "readxl", "rlang", "sf",
-  "stringr", "tibble", "tidyr"
-)
+## 0-1. Load config, packages, and shared utilities ----------------------------
+# Every canonical preprocessing script opens exactly this way. Sourcing the
+# shared utilities rather than redefining their helpers locally is a contract,
+# not a convenience: because each script loads its sources into one environment,
+# a local copy of a shared helper silently shadows the real one for that whole
+# script and the two definitions then drift apart unnoticed
+# (r_code_style_guide.md section 10).
+source(here::here("02_Code", "00_setup", "config.R"))
+source(here::here("02_Code", "00_setup", "packages.R"))
+source(here::here("02_Code", "99_utils", "utils_io.R"))
+source(here::here("02_Code", "99_utils", "utils_qc.R"))
+source(here::here("02_Code", "99_utils", "utils_transform.R"))
 
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
-]
-
-if (length(missing_packages) > 0L) {
-  stop(
-    sprintf(
-      "[ERROR] Required packages are not installed: %s",
-      paste(missing_packages, collapse = ", ")
-    ),
-    call. = FALSE
-  )
-}
-
-invisible(lapply(required_packages, library, character.only = TRUE))
-options(scipen = 999)
-options(dplyr.summarise.inform = FALSE)
-
-## 0-2. Load shared config (optional) ------------------------------------------
-config_path <- here::here("02_Code", "00_setup", "config.R")
-if (file.exists(config_path)) {
-  source(config_path)
-}
+load_project_packages()
 
 ## 0-3. Project constants ------------------------------------------------------
 target_crs <- if (exists("target_crs", inherits = FALSE)) target_crs else 5179
@@ -75,45 +59,29 @@ fs::dir_create(c(dir_intermediate, dir_analysis_ready, dir_panel, dir_logs))
 # 1. IO Helpers
 #==============================================================================
 
-read_csv_kr <- function(path, encoding = "UTF-8", show_col_types = FALSE, ...) {
-  readr::read_csv(
-    file = path,
-    locale = readr::locale(encoding = encoding),
-    show_col_types = show_col_types,
-    ...
-  )
-}
-
-write_csv_safe <- function(df, path, ...) {
-  fs::dir_create(fs::path_dir(path))
-  readr::write_csv(df, file = path, ...)
-  cli::cli_alert_success("Saved CSV: {path}")
-}
-
-write_parquet_safe <- function(df, path, ...) {
-  fs::dir_create(fs::path_dir(path))
-  arrow::write_parquet(df, sink = path, ...)
-  cli::cli_alert_success("Saved Parquet: {path}")
-}
+# IO helpers are not defined here. `read_csv_kr()`, `write_csv_safe()`,
+# `write_parquet_safe()`, and `save_rds_safe()` all come from utils_io.R, which
+# section 0-1 sources.
+#
+# This section used to carry local copies, and each was weaker than the shared
+# one in a way that would have travelled into every script written from this
+# template. The local writers wrote straight to the destination, so an
+# interrupted run left a partial file that the next step would read as valid;
+# the shared writers stage to a temporary file in the same directory and promote
+# it only after the write succeeds. The local reader defaulted to UTF-8, which
+# mangles the CP949 Korean public-data CSVs under 01_Data/01_Raw_Data without
+# raising.
 
 #==============================================================================
 # 2. Validation Helpers
 #==============================================================================
 
-assert_required_cols <- function(df, required_cols, df_name = deparse(substitute(df))) {
-  missing_cols <- setdiff(required_cols, names(df))
-  if (length(missing_cols) > 0L) {
-    stop(
-      sprintf(
-        "[ERROR] %s is missing required columns: %s",
-        df_name,
-        paste(missing_cols, collapse = ", ")
-      ),
-      call. = FALSE
-    )
-  }
-  invisible(TRUE)
-}
+# `assert_required_cols()` and `validate_panel_keys()` come from utils_qc.R, and
+# `safe_log1p()` from utils_transform.R. The local copies that used to sit here
+# were removed for the reason given in section 1, and one of them had already
+# drifted: it defaulted the panel key to `c("adm_cd", "year")`, the retired
+# annual contract, where the shared helper defaults to the active `c("adm_cd",
+# "yq")`.
 
 standardize_panel_keys <- function(df) {
   rename_map <- c(
@@ -150,22 +118,6 @@ standardize_panel_keys <- function(df) {
   df
 }
 
-validate_panel_keys <- function(df, key_cols = c("adm_cd", "year")) {
-  assert_required_cols(df, key_cols)
-
-  dup_n <- df |>
-    dplyr::count(dplyr::across(dplyr::all_of(key_cols)), name = "n") |>
-    dplyr::filter(n > 1L) |>
-    nrow()
-
-  if (dup_n > 0L) {
-    stop(sprintf("[ERROR] Duplicate keys found: %d", dup_n), call. = FALSE)
-  }
-
-  cli::cli_alert_success("Confirmed zero duplicate keys")
-  invisible(TRUE)
-}
-
 summarize_missingness <- function(df, vars = names(df)) {
   tibble::tibble(variable = vars) |>
     dplyr::mutate(
@@ -173,13 +125,6 @@ summarize_missingness <- function(df, vars = names(df)) {
       pct_missing = purrr::map_dbl(variable, ~ mean(is.na(df[[.x]])))
     ) |>
     dplyr::arrange(dplyr::desc(pct_missing), dplyr::desc(n_missing))
-}
-
-safe_log1p <- function(x) {
-  if (!is.numeric(x)) {
-    stop("[ERROR] safe_log1p() accepts numeric vectors only.", call. = FALSE)
-  }
-  log1p(pmax(x, 0))
 }
 
 #==============================================================================
