@@ -126,14 +126,54 @@ read_project_r_lines <- function(root = resolve_project_root_for_packages()) {
   )
 }
 
-discover_project_namespace_packages <- function(root = resolve_project_root_for_packages()) {
-  lines <- read_project_r_lines(root = root)
+discover_namespace_packages_in_lines <- function(lines) {
   if (length(lines) == 0L) {
     return(character(0))
   }
 
   matches <- regmatches(lines, gregexpr("[A-Za-z][A-Za-z0-9.]*::", lines, perl = TRUE))
-  pkgs <- sub("::$", "", unlist(matches, use.names = FALSE))
+  sub("::$", "", unlist(matches, use.names = FALSE))
+}
+
+discover_project_namespace_packages <- function(root = resolve_project_root_for_packages()) {
+  # Discovery reads the R parser's own SYMBOL_PACKAGE tokens rather than
+  # scanning raw text for `pkg::`. A text scan cannot tell code from prose, so
+  # it collected package names out of comments and strings: the comment in
+  # project_runtime_namespace_packages() that says "every `pkg::` dependency"
+  # made "pkg" a package under scope = "full_strict", and install_packages.R
+  # then aborted every run on a package that does not exist. The parser sees
+  # only real namespace qualifications.
+  files <- discover_project_r_files(root = root)
+  if (length(files) == 0L) {
+    return(character(0))
+  }
+
+  pkgs <- unlist(
+    lapply(
+      files,
+      function(path) {
+        parsed <- tryCatch(
+          {
+            pd <- utils::getParseData(parse(path, keep.source = TRUE, encoding = "UTF-8"))
+            if (is.null(pd)) NULL else pd$text[pd$token == "SYMBOL_PACKAGE"]
+          },
+          error = function(e) NULL
+        )
+
+        # A file that cannot be parsed falls back to the old line scan. Over-
+        # reporting one unparseable file is safer here than silently dropping
+        # its dependencies from a strict install check.
+        if (is.null(parsed)) {
+          return(discover_namespace_packages_in_lines(
+            tryCatch(readLines(path, warn = FALSE, encoding = "UTF-8"), error = function(e) character(0))
+          ))
+        }
+
+        gsub('^["`\']|["`\']$', "", parsed)
+      }
+    ),
+    use.names = FALSE
+  )
 
   setdiff(normalize_package_vector(pkgs), project_base_packages())
 }

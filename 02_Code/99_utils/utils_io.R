@@ -211,16 +211,63 @@ save_rds_safe <- function(x, path) {
 #==============================================================================
 
 read_csv_kr <- function(path, encoding = NULL, ...) {
-  enc <- encoding
-
-  # Respect caller-specified encoding first, but default by OS to minimize
-  # repeated boilerplate in raw-data ingestion scripts.
-  if (is.null(enc)) {
-    is_windows <- tolower(Sys.info()[["sysname"]]) == "windows"
-    enc <- if (is_windows) "CP949" else "UTF-8"
+  # The Korean public-data CSVs under 01_Data/01_Raw_Data are CP949 regardless
+  # of the operating system, so CP949 is tried first. The previous default
+  # branched on the OS and asked for UTF-8 anywhere but Windows, which mangles
+  # every Korean column name and value on macOS and Linux without raising; that
+  # is why every preprocessing script hard-codes CP949 at its own call site
+  # instead of using this helper.
+  #
+  # A wrong encoding usually decodes rather than errors, so a tryCatch alone is
+  # not enough: candidates are tried in order and the first whose header and
+  # sampled character values carry no U+FFFD replacement character wins. A
+  # genuinely UTF-8 source therefore still reads correctly, and an explicit
+  # `encoding =` from the caller is always tried first.
+  #
+  # The five hard-coded call sites (02_build_seoul_quarter_base.R,
+  # 03_build_auxiliary_covariates.R at three places, and
+  # 05_build_registered_resident_population.R) are not migrated onto this helper
+  # yet: that is a change to preprocessing and cannot be verified without a full
+  # rerun, so it belongs to the next scheduled one. New preprocessing code should
+  # use this helper rather than adding a sixth hard-coded encoding.
+  candidates <- if (is.null(encoding)) {
+    c("CP949", "UTF-8")
+  } else {
+    unique(c(as.character(encoding)[[1L]], "CP949", "UTF-8"))
   }
 
-  readr::read_csv(path, locale = readr::locale(encoding = enc), show_col_types = FALSE, ...)
+  read_one <- function(enc) {
+    readr::read_csv(path, locale = readr::locale(encoding = enc), show_col_types = FALSE, ...)
+  }
+
+  decoded_cleanly <- function(df) {
+    sampled <- unlist(
+      lapply(df, function(col) if (is.character(col)) utils::head(col, 50L) else character(0)),
+      use.names = FALSE
+    )
+    txt <- c(names(df), sampled)
+    txt <- txt[!is.na(txt)]
+    length(txt) == 0L || !any(grepl("�", txt, fixed = TRUE))
+  }
+
+  first_success <- NULL
+  last_error <- NULL
+
+  for (enc in candidates) {
+    out <- tryCatch(read_one(enc), error = function(e) {
+      last_error <<- e
+      NULL
+    })
+    if (is.null(out)) next
+    if (decoded_cleanly(out)) return(out)
+    if (is.null(first_success)) first_success <- out
+  }
+
+  # Nothing decoded cleanly: return the first readable result rather than
+  # failing, so a source with genuinely damaged bytes still reaches the caller's
+  # own validation instead of aborting here.
+  if (!is.null(first_success)) return(first_success)
+  stop(value_or(last_error, sprintf("[ERROR] Could not read CSV: %s", path)))
 }
 
 
@@ -228,12 +275,12 @@ read_csv_kr <- function(path, encoding = NULL, ...) {
 # 4. Miscellaneous Helpers
 #==============================================================================
 
-find_first_existing <- function(paths) {
-  # Resolve path candidates in order for optional aliases and OS-specific paths.
-  idx <- which(file.exists(paths))
-  if (length(idx) == 0) return(NA_character_)
-  paths[idx[1]]
-}
+# `find_first_existing()` was removed on 2026-09-05. It resolved the first of
+# several candidate paths, which it existed to do for the OS-specific path
+# aliases that the canonical registry in config.R replaced. It had no call site
+# and no latent one: all ten `file.exists()` filters in 02_Code are of the form
+# `paths[file.exists(paths)]`, which keeps every existing path rather than
+# picking one.
 
 timestamp <- function() {
   # Keep log timestamps in one project-wide format.
