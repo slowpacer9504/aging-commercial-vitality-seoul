@@ -828,6 +828,7 @@ empty_ehsa_summary <- function(var, message, status = "failed") {
     n_total_locations = NA_integer_,
     n_used_locations = NA_integer_,
     n_excluded_locations = NA_integer_,
+    nsim = NA_integer_,
     classification = NA_character_,
     n_locations = NA_integer_,
     share_locations = NA_real_,
@@ -1016,6 +1017,13 @@ compute_ehsa_for_var <- function(
       end_yq = suffix$end_yq,
       n_periods = suffix$n_periods,
       threshold = threshold,
+      # The permutation count is a property of the result, not of the run that
+      # happened to produce it. Global Moran, LISA, and the bivariate measures
+      # all stamp it; EHSA did not, so a published hot-spot classification could
+      # not be tied to the budget behind it. That matters here more than
+      # elsewhere: cfg$esda_ehsa_nsim has moved between 199 and 999, and the two
+      # give visibly different p-values at a cost difference of about five hours.
+      nsim = as.integer(nsim),
       w_type = "queen_include_self",
       n_total_locations = suffix$n_total_locations,
       n_used_locations = as.integer(length(sub_w_ids)),
@@ -1033,6 +1041,7 @@ compute_ehsa_for_var <- function(
     dplyr::count(
       var, start_yq, end_yq, n_periods,
       n_total_locations, n_used_locations, n_excluded_locations,
+      nsim,
       classification,
       name = "n_locations"
     ) |>
