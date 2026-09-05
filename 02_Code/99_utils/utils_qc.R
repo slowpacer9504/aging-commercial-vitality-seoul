@@ -76,10 +76,12 @@ validate_panel_keys <- function(df, keys = c("adm_cd", "yq")) {
   invisible(TRUE)
 }
 
-validate_quarter_panel_keys <- function(df, keys = c("adm_cd", "year", "quarter")) {
-  # quarterly staging and active quarterly panel helper.
-  validate_panel_keys(df, keys = keys)
-}
+# `validate_quarter_panel_keys()` was removed on 2026-09-05. It wrapped
+# validate_panel_keys() only to change the default key to the staging-layer
+# `c("adm_cd", "year", "quarter")`, and it had no call site: every check in the
+# pipeline names its key explicitly, almost always the active `c("adm_cd",
+# "yq")`. Passing the staging key to validate_panel_keys() directly says the same
+# thing and says it at the call site.
 
 summarize_missing <- function(df) {
   # Return missingness in a long, export-ready format for QC CSVs and logs.
