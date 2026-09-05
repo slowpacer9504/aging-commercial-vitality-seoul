@@ -1,6 +1,6 @@
 # R Code Style Guide
 
-> **Last updated**: 2026-09-04
+> **Last updated**: 2026-09-05
 
 This document defines the R coding standards specific to this project to implement the active quarterly workflow. It has three main objectives:
 
@@ -36,7 +36,7 @@ The directory structure should be read as follows to instantly differentiate the
 
 ## 2.1 Testing Obligation
 
-A utility function that computes a **reported quantity** needs a test, because a wrong number is silent in a way that a wrong pipeline is not: the run succeeds, the table is written, and only the value is incorrect. `95_tests` covers the impact formula, the spatiotemporal distance, and the local collinearity diagnostics on that basis.
+A utility function that computes a **reported quantity** needs a test, because a wrong number is silent in a way that a wrong pipeline is not: the run succeeds, the table is written, and only the value is incorrect. On that basis `95_tests` covers the SDM impact formula, the spatiotemporal distance, the local collinearity diagnostics, the GTWR local standard-error and t-value extraction, and the reduced-form resampler behind the channel-path bootstrap.
 
 Prefer closed-form assertions to stored snapshots. A snapshot only proves the output has not changed; an identity proves it is right. The suite uses, for example, `total = (beta + theta)/(1 - rho)`, which holds exactly for any row-standardised `W`, and the weighted VIF identity `1/(1 - r^2)`. Where a historical defect motivated a rewrite, pin the defect directly, as the `ti.distv()` time-comparison tests do.
 
@@ -62,6 +62,7 @@ The active canonical surface follows this execution order:
 - `02_run_robustness.R`
 - `03_run_influence_robustness.R`
 - `04_run_identification_diagnostics.R`
+- `05_run_evidence_synthesis.R`
 - `01_validate_method_dataset_alignment.R`
 - `01_make_tables_figures.R`
 - `run_all.R`
@@ -111,9 +112,10 @@ As of 2026-09-04 every output and log path in `02_Code/**` comes from the regist
 - Identifiers: `adm_cd`, `year`
 - Log transformations: `ln_`
 - Standardization: `_z`
-- Winsorization: `_w`
 - Spatial lags: `w_`
 - Composite indices: `vitality_index_*`
+
+There is no winsorization suffix, because there is no winsorization. [research_procedure.md section 2.9](research_procedure.md) states the outlier policy as a decision rather than an omission: no winsorising, trimming, or robust standardization is applied at any stage, and the price of that decision is paid by reporting the influence diagnostic beside the impacts. The `_w` convention and the `winsorize_vec()` helper were removed on 2026-09-05 so that neither reads as an available option. Reintroducing either is a design change that belongs in [decision_log.md](../03_Log/decision_log.md) first.
 
 In vitality index calculations, `_z` defaults to a pooled z-score based on the mean and standard deviation of the active analysis sample (`2019Q4~2025Q4 adm_cd-yq`). Auxiliary analyses requiring quarterly cross-section standardization must be separated from the active variable name with a distinct suffix.
 
@@ -178,7 +180,7 @@ Comments to avoid:
 - Save three GTWR spatiotemporal weight-based local collinearity diagnostics: `local_vif_max`, `local_cn_centered`, and the uncentered `local_cn_gtwr`. Flag on `local_vif_max` only, since VIF > 10 is the sole criterion with an established convention; report the two condition numbers without thresholds and do not describe either as correcting the other.
 - Build the spatiotemporal distance matrix with `build_gtwr_st_dmat()` and pass it to every `bw.gtwr()` and `gtwr()` call as `st.dMat`. Never let GWmodel rebuild it internally: `GWmodel::ti.distv()` compares times as strings and mislabels past quarters as future for integer period ids.
 - Keep `lamda` dimensionless by normalizing the spatial and temporal distances by their own spans (`gtwr_st_scales()`) before combining them, and compute the scales once per estimation sample so every column of a spec's distance matrix shares them. Do not compare `lamda` values across the raw-unit and dimensionless conventions.
-- Unify bandwidth in main GTWR to a fixed `GTWR_ST_BW=60`. Perform `bw.gtwr()` search only in `06_select_gtwr_bandwidth.R`, fixed grid `(30,60,90,120,180)` sensitivity in `07_run_gtwr_bandwidth_sensitivity.R`, and lambda grid sensitivity only in `08_run_gtwr_lamda_sensitivity.R`.
+- Unify bandwidth in main GTWR to the fixed adaptive value contracted in [04_model_spec.md section 7.0](../02_Codebook/04_model_spec.md), read from `cfg$gtwr_st_bw` rather than written as a literal. Perform `bw.gtwr()` search only in `06_select_gtwr_bandwidth.R`, fixed grid sensitivity in `07_run_gtwr_bandwidth_sensitivity.R`, and lamda grid sensitivity only in `08_run_gtwr_lamda_sensitivity.R`; both grids come from `cfg$gtwr_bandwidth_sensitivity_grid` and `cfg$gtwr_lamda_sensitivity_grid`.
 - The `estimate` in the main output is the latest-quarter local beta, whereas delta is calculated only in supplementary reporting tables.
 - Long-running executions must be resumable via outcome-exposure spec caches, limiting worker nodes with `GTWR_PARALLEL_SPECS`.
 

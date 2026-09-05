@@ -1,12 +1,15 @@
 # Project File Tree
 
-> **Last updated**: 2026-09-04
+> **Last updated**: 2026-09-05
 
 This document provides a comprehensive snapshot of all tracked files in the repository. 
 For detailed information regarding code execution or variables, please refer to `02_Code/README.md` and the documents in `04_Docs/02_Codebook/`.
 
 ```text
 ├── .Rprofile                                      # Activates renv project library on startup
+├── .github/
+│   └── workflows/
+│       └── deploy-web.yml                         # GitHub Pages deploy for 05_Web (frontend only; runs no R)
 ├── .gitignore                                     # Git ignore rules (data, outputs, secrets, renv library)
 ├── LICENSE                                        # MIT license
 ├── README.md                                      # Main project overview and guide
@@ -130,8 +133,10 @@ For detailed information regarding code execution or variables, please refer to 
 │   ├── 95_tests/                                  # Numeric regression tests (base R, no testthat)
 │   │   ├── run_tests.R                            # Runner; exits non-zero on failure
 │   │   ├── test_collin_diag.R                     # weighted_design_collin_diag(): VIF and condition numbers
+│   │   ├── test_gtwr_local_inference.R            # extract_gtwr_local_inference(): local SE and t-value extraction
 │   │   ├── test_gtwr_st_distance.R                # build_gtwr_st_dmat(): symmetric time distance (ti.distv regression)
-│   │   └── test_sdm_impacts.R                     # compute_true_sdm_effects(): LeSage-Pace direct/indirect/total
+│   │   ├── test_sdm_impacts.R                     # compute_true_sdm_effects(): LeSage-Pace direct/indirect/total
+│   │   └── test_spdm_reduced_form.R               # build_spdm_reduced_form_resampler(): channel-path bootstrap DGP
 │   │
 │   └── 99_utils/                                  # Utility scripts for reuse
 │       ├── utils_age_mix.R
@@ -154,8 +159,12 @@ For detailed information regarding code execution or variables, please refer to 
 ├── 04_Docs/                                       # Design docs and Codebooks
 │   ├── 01_Design/
 │   │   ├── file_tree.md                           # Project file tree (this file)
+│   │   ├── figure_1_1_research_framework_en.mmd   # Research framework figure source (Mermaid, English)
 │   │   ├── figure_1_1_research_framework_en.png   # English research framework figure (raster)
 │   │   ├── figure_1_1_research_framework_en.svg   # English research framework figure (vector)
+│   │   ├── figure_1_1_research_framework_ko.mmd   # Research framework figure source (Mermaid, Korean)
+│   │   ├── mermaid_config.json                    # Mermaid render settings for the framework figure
+│   │   ├── render_figure_1_1.sh                   # Renders the .mmd sources to .png / .svg
 │   │   ├── r_code_style_guide.md                  # R coding conventions
 │   │   ├── raw_data_manifest.csv                  # Raw data acquisition record (file, size, access date, version, MD5)
 │   │   ├── research_plan.md                       # Active research goals and framing
@@ -179,6 +188,7 @@ For detailed information regarding code execution or variables, please refer to 
     ├── build_data.R                               # R pipeline: SHP/CSV transformation & coverage gate
     ├── .gitignore                                 # Ignored build outputs and dependencies
     ├── backend/                                   # Optional FastAPI backend service (Pydantic v2)
+    │   ├── .python-version                        # Pinned Python interpreter version
     │   ├── pyproject.toml                         # Python package configuration
     │   ├── app/                                   # Routers: meta, coefficients, panel, summary, health
     │   └── tests/                                 # Backend pytest suite

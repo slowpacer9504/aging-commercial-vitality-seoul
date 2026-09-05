@@ -78,6 +78,7 @@ This repository is structured as follows to maximize research reproducibility:
 │   ├── 06_qc/                # Data contracts and model consistency quality control (QC)
 │   ├── 80_optional/          # Supplementary analysis scripts such as interaction and mediation path analyses
 │   ├── 90_templates/         # Execution templates for writing code
+│   ├── 95_tests/             # Numeric regression tests for the utilities that produce reported quantities
 │   ├── 99_utils/             # Shared utility helper functions (.R)
 │   ├── run_all.R             # Automated end-to-end pipeline execution script
 │   └── README.md             # Detailed guide for the analysis code

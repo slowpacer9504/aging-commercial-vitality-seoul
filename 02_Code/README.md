@@ -259,7 +259,13 @@ This is the complete list of environment variables read by the pipeline. The def
 Rscript 02_Code/95_tests/run_tests.R    # exits 0 on pass, 1 on failure
 ```
 
-65 assertions over `compute_true_sdm_effects()` (LeSage-Pace direct/indirect/total impacts), `build_gtwr_st_dmat()` with its `gtwr_st_combine()` / `gtwr_st_scales()` helpers (the symmetric spatiotemporal distance that replaced the defective `GWmodel::ti.distv()` time comparison), and `weighted_design_collin_diag()` (local VIF and condition numbers).
+127 assertions over five utility surfaces that compute reported quantities:
+
+- `compute_true_sdm_effects()` — LeSage-Pace direct/indirect/total impacts
+- `build_gtwr_st_dmat()` with its `gtwr_st_combine()` / `gtwr_st_scales()` helpers — the symmetric spatiotemporal distance that replaced the defective `GWmodel::ti.distv()` time comparison
+- `weighted_design_collin_diag()` — local VIF and condition numbers
+- `extract_gtwr_local_inference()` — the GTWR local standard errors and t-values that `GWmodel::gtwr()` returns per estimation point, which the extraction previously discarded
+- `build_spdm_reduced_form_resampler()` with `spdm_within_transform()` — the reduced form `y* = S(Z gamma + e*)` the channel-path bootstrap resamples through, and its round-trip guard
 
 The suite is base R with no `testthat` dependency, runs in a few seconds, needs no pipeline output, and should be run before committing any change to `99_utils/`. Checks that compare against `03_Output/01_Tables/spdm_impacts.csv` skip rather than fail when the outputs are absent, so it works on a fresh clone.
 
