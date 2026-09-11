@@ -351,10 +351,18 @@ build_gtwr_rankings <- function(local_tbl, group_cols = character()) {
 }
 
 build_gtwr_latest_local <- function(local_tbl) {
-  ensure_cols(
-    local_tbl,
-    c("adm_cd", "outcome", "focal_var", "estimate", "estimate_type", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "local_cn_gtwr_latest", "local_cn_centered_latest", "local_vif_max_latest", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
-  ) |>
+  cols <- c("adm_cd", "outcome", "focal_var", "estimate", "estimate_type", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "local_cn_gtwr_latest", "local_cn_centered_latest", "local_vif_max_latest", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
+  if (nrow(local_tbl) == 0L) {
+    res <- ensure_cols(local_tbl, cols)
+    res$estimate <- numeric(0)
+    res$estimate_type <- character(0)
+    res$collinearity_warn_latest <- logical(0)
+    res$collinearity_warn_flag <- logical(0)
+    res$collinearity_warn_stage <- character(0)
+    return(res)
+  }
+  warn_latest <- as.logical(local_tbl$collinearity_warn_latest)
+  ensure_cols(local_tbl, cols) |>
     dplyr::mutate(
       estimate = dplyr::coalesce(
         suppressWarnings(as.numeric(.data$latest_estimate)),
@@ -369,9 +377,10 @@ build_gtwr_latest_local <- function(local_tbl) {
         .data$status == "missing_latest_estimate" ~ "actual_gtwr_estimated_but_latest_quarter_coefficient_missing",
         TRUE ~ .data$message
       ),
-      collinearity_warn_flag = dplyr::coalesce(.data$collinearity_warn_latest, FALSE),
+      collinearity_warn_latest = warn_latest,
+      collinearity_warn_flag = dplyr::coalesce(warn_latest, FALSE),
       collinearity_warn_stage = dplyr::case_when(
-        .data$collinearity_warn_flag ~ "latest",
+        dplyr::coalesce(warn_latest, FALSE) ~ "latest",
         TRUE ~ NA_character_
       )
     )
@@ -422,18 +431,30 @@ build_gtwr_latest_summary <- function(latest_local_tbl, gtwr_summary_tbl) {
 }
 
 build_gtwr_delta_local <- function(local_tbl) {
-  ensure_cols(
-    local_tbl,
-    c("adm_cd", "outcome", "focal_var", "earliest_estimate", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "local_cn_gtwr_earliest", "local_cn_gtwr_latest", "local_cn_centered_earliest", "local_cn_centered_latest", "local_vif_max_earliest", "local_vif_max_latest", "collinearity_warn_earliest", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
-  ) |>
+  cols <- c("adm_cd", "outcome", "focal_var", "earliest_estimate", "latest_estimate", "earliest_yq", "latest_yq", "window_scope", "control_set", "status", "message", "local_cn_gtwr_earliest", "local_cn_gtwr_latest", "local_cn_centered_earliest", "local_cn_centered_latest", "local_vif_max_earliest", "local_vif_max_latest", "collinearity_warn_earliest", "collinearity_warn_latest", "collinearity_warn_flag", "collinearity_warn_stage")
+  if (nrow(local_tbl) == 0L) {
+    res <- ensure_cols(local_tbl, c(cols, "estimate", "estimate_type"))
+    res$estimate <- numeric(0)
+    res$estimate_type <- character(0)
+    res$collinearity_warn_earliest <- logical(0)
+    res$collinearity_warn_latest <- logical(0)
+    res$collinearity_warn_flag <- logical(0)
+    res$collinearity_warn_stage <- character(0)
+    return(res)
+  }
+  warn_earliest <- as.logical(local_tbl$collinearity_warn_earliest)
+  warn_latest <- as.logical(local_tbl$collinearity_warn_latest)
+  ensure_cols(local_tbl, cols) |>
     dplyr::mutate(
       estimate = suppressWarnings(as.numeric(.data$latest_estimate)) - suppressWarnings(as.numeric(.data$earliest_estimate)),
       estimate_type = "latest_minus_earliest",
-      collinearity_warn_flag = dplyr::coalesce(.data$collinearity_warn_earliest, FALSE) | dplyr::coalesce(.data$collinearity_warn_latest, FALSE),
+      collinearity_warn_earliest = warn_earliest,
+      collinearity_warn_latest = warn_latest,
+      collinearity_warn_flag = dplyr::coalesce(warn_earliest, FALSE) | dplyr::coalesce(warn_latest, FALSE),
       collinearity_warn_stage = dplyr::case_when(
-        dplyr::coalesce(.data$collinearity_warn_earliest, FALSE) & dplyr::coalesce(.data$collinearity_warn_latest, FALSE) ~ "earliest_and_latest",
-        dplyr::coalesce(.data$collinearity_warn_earliest, FALSE) ~ "earliest",
-        dplyr::coalesce(.data$collinearity_warn_latest, FALSE) ~ "latest",
+        dplyr::coalesce(warn_earliest, FALSE) & dplyr::coalesce(warn_latest, FALSE) ~ "earliest_and_latest",
+        dplyr::coalesce(warn_earliest, FALSE) ~ "earliest",
+        dplyr::coalesce(warn_latest, FALSE) ~ "latest",
         TRUE ~ NA_character_
       )
     )

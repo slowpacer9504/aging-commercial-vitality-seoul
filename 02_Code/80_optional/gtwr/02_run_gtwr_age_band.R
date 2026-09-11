@@ -97,6 +97,12 @@ add_age_band_payload_metadata <- function(payload, job) {
       selected_optional_controls = collapse_chr(setdiff(job$selected_controls, job$required_controls))
     )
   )
+  if ("optional_candidates" %in% names(payload$controls)) {
+    payload$controls$optional_candidates <- purrr::map_chr(
+      payload$controls$optional_candidates,
+      function(val) collapse_chr(intersect(split_gtwr_tokens(val), control_candidates))
+    )
+  }
   payload
 }
 
@@ -181,7 +187,7 @@ add_age_band_payload_metadata <- function(payload, job) {
       )
       list(
         domain = domain,
-        same_domain_total_control = rec$same_domain_total_control[[1]],
+        same_domain_total_control = if (identical(domain, "resident")) "lag4_ln_resident_pop" else NA_character_,
         panel = add_current_age_shares(panel_base, domain_df, domain)
       )
     })
