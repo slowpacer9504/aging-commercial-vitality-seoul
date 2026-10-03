@@ -242,6 +242,22 @@ clean_code <- function(x, width) {
   stringr::str_pad(x, width = width, side = "left", pad = "0")
 }
 
+# Resolved once at script load so the fork-based workers inherit a plain named
+# vector rather than reaching back into cfg on every chunk.
+living_pop_adm_cd_map <- local({
+  xw <- cfg$living_pop_adm_cd_crosswalk
+  if (is.null(xw) || nrow(xw) == 0L) return(character(0))
+  stats::setNames(as.character(xw$adm_cd), as.character(xw$source_adm_cd))
+})
+
+remap_living_pop_adm_cd <- function(x) {
+  if (length(living_pop_adm_cd_map) == 0L) return(x)
+  hit <- match(x, names(living_pop_adm_cd_map))
+  out <- x
+  out[!is.na(hit)] <- unname(living_pop_adm_cd_map[hit[!is.na(hit)]])
+  out
+}
+
 normalize_pop <- function(x, suppressed_value) {
   x_chr <- gsub(",", "", trimws(as.character(x)), fixed = TRUE)
   out <- suppressWarnings(as.numeric(x_chr))
@@ -331,6 +347,11 @@ aggregate_member <- function(zip_path, member_name, dataset, usecols, hours, sup
 
   dt[, adm_cd_8 := clean_code(adm_cd_raw, 8)]
   dt[, adm_cd := clean_code(adm_cd_raw, 10)]
+  # Six Gangbuk-gu dongs ship under an older code vintage than the 2020 boundary
+  # this project keys on. Remap before aggregation so the source rows land on the
+  # canonical adm_cd rather than being dropped by the base-panel join downstream.
+  dt[, adm_cd := remap_living_pop_adm_cd(adm_cd)]
+  dt[, adm_cd_8 := substr(adm_cd, 3L, 10L)]
   dt[, year := suppressWarnings(as.integer(substr(date_id, 1, 4)))]
   dt[, year_month := year_month]
   dt[, pop := normalize_pop(pop, suppressed_value)]
@@ -580,7 +601,16 @@ finalize_dataset <- function(base_quarter, aggregate, manifest, dataset, mean_co
     allow.cartesian = TRUE
   )[, join_key := NULL]
   monthly <- merge(observed_month_grid, aggregate, by = c("year", "year_month", "adm_cd"), all.x = TRUE)
-  monthly[is.na(pop_sum) & is.finite(n_slots_month) & n_slots_month > 0, pop_sum := 0]
+  # A dong that the source does carry, but with no row in one month, genuinely
+  # recorded no qualifying inflow that month, and zero is the right value. A dong
+  # the source never carries in any month is a join failure, and filling it with
+  # zero manufactures the lowest inflow in Seoul for all 28 quarters instead of
+  # declaring the value unknown. Only the first case is filled.
+  observed_adm_cd <- unique(aggregate$adm_cd)
+  monthly[
+    is.na(pop_sum) & adm_cd %in% observed_adm_cd & is.finite(n_slots_month) & n_slots_month > 0,
+    pop_sum := 0
+  ]
   monthly[
     ,
     monthly_mean := data.table::fifelse(
@@ -708,6 +738,8 @@ if (!reuse_existing_output) {
   manifest <- data.table::rbindlist(list(inner_out$manifest, metro_out$manifest), fill = TRUE) |>
     tibble::as_tibble()
 
+  known_absent <- as.character(cfg$living_pop_known_absent_adm_cd)
+
   qc <- external |>
     tidyr::pivot_longer(
       cols = c(inner_external_inflow_pop, metro_external_inflow_pop, external_inflow_pop),
@@ -719,15 +751,57 @@ if (!reuse_existing_output) {
       row_n = dplyr::n(),
       finite_n = sum(is.finite(value)),
       missing_n = sum(!is.finite(value)),
+      # A zero here is indistinguishable from a join failure on the value alone,
+      # so the count travels with the coverage figures rather than being left for
+      # a reader to notice in min_value.
+      zero_n = sum(is.finite(value) & value == 0),
+      expected_missing_n = sum(adm_cd %in% known_absent),
       mean_value = if (any(is.finite(value))) mean(value[is.finite(value)]) else NA_real_,
       min_value = if (any(is.finite(value))) min(value[is.finite(value)]) else NA_real_,
       max_value = if (any(is.finite(value))) max(value[is.finite(value)]) else NA_real_,
       .groups = "drop"
     )
 
+  # The coverage check above counts NA per quarter and so cannot see a dong that
+  # is present in every quarter at a constant zero, which is exactly the shape a
+  # failed code join takes. This one looks down the dong axis instead.
+  structural_zero_fail <- external |>
+    dplyr::group_by(adm_cd) |>
+    dplyr::summarise(
+      n_q = dplyr::n(),
+      n_zero = sum(is.finite(external_inflow_pop) & external_inflow_pop == 0),
+      .groups = "drop"
+    ) |>
+    dplyr::filter(.data$n_zero == .data$n_q)
+
+  unexpected_missing <- external |>
+    dplyr::filter(!is.finite(external_inflow_pop), !adm_cd %in% known_absent) |>
+    dplyr::distinct(adm_cd)
+
   if (length(sample_months) == 0L) {
+    if (nrow(structural_zero_fail) > 0L || nrow(unexpected_missing) > 0L) {
+      write_csv_safe(manifest, manifest_path)
+      write_csv_safe(qc, qc_path)
+      stop(
+        sprintf(
+          paste0(
+            "[ERROR] Living-population external inflow failed the structural checks. ",
+            "Dongs zero in every quarter (a failed adm_cd join, not a low value): {%s}. ",
+            "Dongs missing without being on the known-absent list: {%s}. ",
+            "Fix cfg$living_pop_adm_cd_crosswalk or cfg$living_pop_known_absent_adm_cd."
+          ),
+          if (nrow(structural_zero_fail) == 0L) "none" else paste(structural_zero_fail$adm_cd, collapse = ", "),
+          if (nrow(unexpected_missing) == 0L) "none" else paste(unexpected_missing$adm_cd, collapse = ", ")
+        ),
+        call. = FALSE
+      )
+    }
+
     external_coverage_fail <- qc |>
-      dplyr::filter(.data$variable == "external_inflow_pop", .data$finite_n < .data$row_n)
+      dplyr::filter(
+        .data$variable == "external_inflow_pop",
+        .data$finite_n < .data$row_n - .data$expected_missing_n
+      )
     month_coverage_fail <- external |>
       dplyr::group_by(yq) |>
       dplyr::summarise(

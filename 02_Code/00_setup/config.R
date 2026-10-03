@@ -184,6 +184,25 @@ cfg$esda_bivariate_nsim <- 9999L
 # 9,999, and a six-hour default pipeline step is not a trade worth making.
 cfg$esda_ehsa_nsim <- 199L
 
+# The two remaining EHSA parameters, moved out of the script on 2026-09-12. They
+# decide the published classification as directly as `nsim` does, and leaving
+# them as function-signature defaults meant no output, codebook entry, or design
+# document recorded what the classification was actually computed at -- the same
+# gap that produced the GTWR bandwidth problem of 2026-09-04.
+#
+# `threshold` is the per-period significance level for calling a location a hot
+# or cold spot. Read it together with `nsim`: at 199 permutations the attainable
+# p-values are multiples of 1/200, so 0.01 admits only the top two permutation
+# ranks out of 200. That is a deliberately strict per-period screen, and it is
+# part of why so many locations classify as "sporadic" rather than "persistent".
+# The value is unchanged from the one every published EHSA table was produced
+# at; moving it here records it rather than revises it.
+cfg$esda_ehsa_threshold <- 0.01
+# `k` is the number of time lags included in the Gi* neighbourhood. 1 keeps the
+# statistic on the contemporaneous cross-section, matching the spatial-only
+# convention the rest of the ESDA layer uses.
+cfg$esda_ehsa_k <- 1L
+
 # Local indicators are corrected for multiplicity. Benjamini-Hochberg rather
 # than Bonferroni because LISA is an exploratory screen where controlling the
 # false discovery rate is the appropriate error criterion; the uncorrected
@@ -282,6 +301,43 @@ if (!is.finite(cfg$living_pop_suppressed_value)) cfg$living_pop_suppressed_value
 cfg$living_pop_encoding <- trimws(Sys.getenv("LIVING_POP_ENCODING", unset = "UTF-8"))
 cfg$living_pop_cores <- suppressWarnings(as.integer(Sys.getenv("LIVING_POP_CORES", unset = "1")))
 if (!is.finite(cfg$living_pop_cores) || cfg$living_pop_cores < 1L) cfg$living_pop_cores <- 1L
+
+# The Seoul Living Population source ships six Gangbuk-gu dongs under an older
+# administrative-dong code vintage than the 2020 boundary the project keys on.
+# Without this crosswalk their rows never join, and the 0-fill for an unobserved
+# dong-month then writes a hard zero for all 28 quarters, which is not a low
+# value but a join failure. Gangbuk-gu has 13 dongs in both vintages; seven codes
+# are identical and the six below are not.
+#
+# `verification` records how each row was established, because the two are not
+# equally certain:
+#   population_match - a log-living-population model fitted on the 418 dongs whose
+#     codes do match (gu fixed effects, resident/floating/worker/store/area
+#     predictors, R2 = 0.85) identifies the assignment against all 720
+#     permutations.
+#   order_convention - the population model and a seven-year trajectory
+#     correlation both tie for this pair (SSE within 0.1%, correlation within 2%),
+#     so neither datum decides it. The pair is assigned by the rank-order
+#     convention that every other Gangbuk-gu code in both vintages obeys. The two
+#     dongs are adjacent and near-identical in scale, so the residual risk is a
+#     swap between two similar neighbours rather than a misattribution across the
+#     district. Revisit if an authoritative code dictionary becomes available.
+cfg$living_pop_adm_cd_crosswalk <- data.frame(
+  source_adm_cd = c("0011305590", "0011305600", "0011305606",
+                    "0011305610", "0011305620", "0011305630"),
+  adm_cd        = c("0011305595", "0011305603", "0011305608",
+                    "0011305615", "0011305625", "0011305635"),
+  adm_nm        = c("번1동", "번2동", "번3동", "수유1동", "수유2동", "수유3동"),
+  verification  = c("population_match", "order_convention", "order_convention",
+                    "population_match", "population_match", "population_match"),
+  stringsAsFactors = FALSE
+)
+
+# Hangdong split out of Oryu2-dong in 2020 and the living-population source never
+# issued a code for it, so its rows are genuinely absent rather than miscoded. It
+# must publish as NA, which is what an unobserved dong now does by default; it is
+# named here so the QC can assert the distinction rather than infer it.
+cfg$living_pop_known_absent_adm_cd <- "0011530800"
 cfg$golmok_survival_endpoint <- "https://golmok.seoul.go.kr/region/selectSurvivalRate.json"
 cfg$golmok_survival_base_years <- c(2019L, 2022L, 2025L)
 cfg$golmok_survival_quarter <- 4L
@@ -1357,6 +1413,7 @@ cfg$logs <- list(
   # Panel-build QC from 06_build_analysis_panel.R.
   panel_join_coverage_qc = file.path(cfg$dir_logs, "panel_join_coverage_qc.csv"),
   panel_structural_count_flags = file.path(cfg$dir_logs, "panel_structural_count_flags.csv"),
+  panel_structural_zero_flags = file.path(cfg$dir_logs, "panel_structural_zero_flags.csv"),
   # Land-price QC from 03_build_auxiliary_covariates.R. The LPI layer writes four
   # separate tables because the adjusted land price is assembled in four stages:
   # raw index match, statutory-to-administrative dong crosswalk, quarterly

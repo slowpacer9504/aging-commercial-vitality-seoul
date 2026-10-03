@@ -113,12 +113,29 @@ lin_tests <- purrr::map_dfr(have, function(oc) {
   quad_p <- a_quad[["Pr(>F)"]][2]
   quad_coef <- unname(stats::coef(m_quad)[["I(x^2)"]])
 
+  # The F-tests above assume independent errors. This panel does not have them:
+  # the within-dong residual AR(1) reported by the TWFE diagnostics runs between
+  # 0.61 and 0.81, so an OLS F-test on 10,000-odd rows treats far more
+  # information as independent than the panel contains, and over-rejects. Every
+  # inferential statement elsewhere in this project clusters on `adm_cd`, so the
+  # same test is repeated under that contract and reported beside the OLS result
+  # rather than replacing it. The two disagree on this panel, and the clustered
+  # column is the one to read.
+  dd <- d
+  dd$.y <- y
+  dd$.x <- x
+  dd$.x2 <- x^2
+  quad_p_cl <- tryCatch({
+    mq <- fixest::feols(.y ~ .x + .x2, data = dd, cluster = ~adm_cd, notes = FALSE)
+    unname(fixest::coeftable(mq)[".x2", "Pr(>|t|)"])
+  }, error = function(e) NA_real_)
+
   # Lack-of-fit test. The comparison must be nested, so the bin dummies are added
   # *to* the linear term rather than substituted for it: `y ~ x` against
   # `y ~ x + factor(bin)` asks whether the binned means depart from the fitted
   # line. Comparing `y ~ x` with `y ~ factor(bin)` directly is not a valid F test,
   # because a coarsening of x does not span the linear term.
-  bin_p <- NA_real_; bin_df <- NA_integer_
+  bin_p <- NA_real_; bin_df <- NA_integer_; bin_p_cl <- NA_real_
   if (any(is.finite(d$exposure_bin)) && dplyr::n_distinct(d$exposure_bin) > 2L) {
     bin_f <- factor(d$exposure_bin)
     m_bin <- stats::lm(y ~ x + bin_f)
@@ -127,17 +144,34 @@ lin_tests <- purrr::map_dfr(have, function(oc) {
       bin_p <- a_bin[["Pr(>F)"]][2]
       bin_df <- a_bin[["Df"]][2]
     }
+    # Same lack-of-fit hypothesis, tested as a joint Wald on the bin dummies with
+    # dong-clustered standard errors.
+    dd$.bin <- bin_f
+    bin_p_cl <- tryCatch({
+      mb <- fixest::feols(.y ~ .x + .bin, data = dd, cluster = ~adm_cd, notes = FALSE)
+      unname(fixest::wald(mb, ".bin", print = FALSE)$p)
+    }, error = function(e) NA_real_)
   }
 
   tibble::tibble(
     outcome = oc, n = nrow(d), n_bins = dplyr::n_distinct(d$exposure_bin),
+    n_clusters = dplyr::n_distinct(d$adm_cd),
     linear_slope = unname(stats::coef(m_lin)[["x"]]),
     quadratic_coef = quad_coef,
-    quadratic_p = quad_p,
-    quadratic_rejects_linearity = is.finite(quad_p) && quad_p < 0.05,
+    quadratic_p_ols = quad_p,
+    quadratic_p_clustered = quad_p_cl,
+    # NA rather than FALSE when the clustered fit failed. `is.finite(NA) && ...`
+    # is FALSE, which would read as "linearity is not rejected" -- the permissive
+    # conclusion -- from a test that never ran. These columns are the primary
+    # ones now, so they must fail loudly rather than quietly agreeable.
+    quadratic_rejects_linearity = if (is.finite(quad_p_cl)) quad_p_cl < 0.05 else NA,
+    quadratic_rejects_linearity_ols = is.finite(quad_p) && quad_p < 0.05,
     lack_of_fit_df = bin_df,
-    lack_of_fit_p = bin_p,
-    lack_of_fit_rejects_linearity = is.finite(bin_p) && bin_p < 0.05,
+    lack_of_fit_p_ols = bin_p,
+    lack_of_fit_p_clustered = bin_p_cl,
+    lack_of_fit_rejects_linearity = if (is.finite(bin_p_cl)) bin_p_cl < 0.05 else NA,
+    lack_of_fit_rejects_linearity_ols = is.finite(bin_p) && bin_p < 0.05,
+    inference = "primary: dong-clustered; *_ols columns assume independent errors and over-reject on this panel",
     note = "two-way within transform; equal-count exposure bins; lack-of-fit is y~x vs y~x+factor(bin)"
   )
 })

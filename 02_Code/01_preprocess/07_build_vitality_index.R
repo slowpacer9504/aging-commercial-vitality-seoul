@@ -650,8 +650,14 @@ if (!is.finite(pc1_corr)) {
 }
 # PCA signs are arbitrary, so align PC1 to have positive correlation with the
 # base index before saving it as an interpretable robustness composite.
-if (pc1_corr < 0) pc1 <- -pc1
+pc1_sign_flipped <- pc1_corr < 0
+if (pc1_sign_flipped) pc1 <- -pc1
 comp$vitality_index_pca[complete_idx] <- pc1
+# Report the alignment of the column that is actually published, not of the raw
+# PC1 before the flip. The raw value reads as an anti-aligned composite and
+# invites the reader to distrust a column that is in fact correctly oriented; the
+# pre-flip sign is kept alongside so the flip itself stays auditable.
+pca_published_corr <- suppressWarnings(stats::cor(pc1, base_complete))
 if (sum(is.finite(comp$vitality_index_pca)) < 100L) {
   write_csv_safe(
     dplyr::bind_rows(vitality_qc, economic_axis_qc, stability_axis_qc, subindex_qc) |>
@@ -662,7 +668,9 @@ if (sum(is.finite(comp$vitality_index_pca)) < 100L) {
         entropy_finite_n = sum(is.finite(comp$vitality_index_entropy)),
         entropy_alignment_corr = entropy_corr,
         pca_finite_n = sum(is.finite(comp$vitality_index_pca)),
-        pca_alignment_corr = pc1_corr
+        pca_alignment_corr = pca_published_corr,
+        pca_raw_pc1_corr = pc1_corr,
+        pca_sign_flipped = pc1_sign_flipped
       ),
     cfg$logs$vitality_component_qc
   )
@@ -718,7 +726,9 @@ write_csv_safe(
       entropy_finite_n = sum(is.finite(comp$vitality_index_entropy)),
       entropy_alignment_corr = entropy_corr,
       pca_finite_n = sum(is.finite(comp$vitality_index_pca)),
-      pca_alignment_corr = pc1_corr,
+      pca_alignment_corr = pca_published_corr,
+      pca_raw_pc1_corr = pc1_corr,
+      pca_sign_flipped = pc1_sign_flipped,
       panel_pre_row_n = nrow(panel_main_pre),
       panel_main_row_n = nrow(panel_main),
       pre_only_cols = "none",

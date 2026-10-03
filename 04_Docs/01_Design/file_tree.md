@@ -134,7 +134,9 @@ For detailed information regarding code execution or variables, please refer to 
 │   │   ├── run_tests.R                            # Runner; exits non-zero on failure
 │   │   ├── test_collin_diag.R                     # weighted_design_collin_diag(): VIF and condition numbers
 │   │   ├── test_gtwr_local_inference.R            # extract_gtwr_local_inference(): local SE and t-value extraction
+│   │   ├── test_gtwr_sensitivity_baseline.R       # assert_gtwr_sensitivity_baseline_contract(): 7F/7G baseline gate
 │   │   ├── test_gtwr_st_distance.R                # build_gtwr_st_dmat(): symmetric time distance (ti.distv regression)
+│   │   ├── test_preprocess_contracts.R            # Preprocessing contracts: stability window, day-part entropy, pooled-z reference, lag calendar, adm_cd crosswalk, panel_main integrity
 │   │   ├── test_sdm_impacts.R                     # compute_true_sdm_effects(): LeSage-Pace direct/indirect/total
 │   │   └── test_spdm_reduced_form.R               # build_spdm_reduced_form_resampler(): channel-path bootstrap DGP
 │   │

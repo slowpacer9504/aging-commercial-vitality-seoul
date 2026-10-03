@@ -28,6 +28,12 @@ suppressWarnings(suppressMessages({
   source(here::here("02_Code", "00_setup", "packages.R"))
   load_project_packages()
   source(here::here("02_Code", "99_utils", "utils_io.R"))
+  # The utilities under test declare these in their DependsOn headers, and a
+  # pipeline script sources them all into one environment. Loading fewer here
+  # lets a test pass on an error raised by a missing helper rather than by the
+  # behaviour it means to pin.
+  source(here::here("02_Code", "99_utils", "utils_model.R"))
+  source(here::here("02_Code", "99_utils", "utils_spatial.R"))
   source(here::here("02_Code", "99_utils", "utils_spdm.R"))
   source(here::here("02_Code", "99_utils", "utils_gtwr_main.R"))
 }))

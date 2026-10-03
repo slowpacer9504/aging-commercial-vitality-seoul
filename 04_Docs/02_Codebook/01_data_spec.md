@@ -129,6 +129,7 @@
 - Panel Merge Structure Checks
   - `panel_join_coverage_qc.csv` (`WARN`)
   - `panel_structural_count_flags.csv` (`FAIL` if structural counts are negative)
+  - `panel_structural_zero_flags.csv` (`FAIL` if a scoped variable is exactly zero in every observed quarter for any dong). Coverage checks count `NA` down the quarter axis and therefore cannot see a source that fills an unmatched dong with zero instead of `NA`; this check looks down the dong axis. Its scope is limited to variables whose zero is implausible for a Seoul administrative dong, so facility, station, and retail counts that are legitimately zero across a whole dong are deliberately excluded.
 - Land Price Observation/Imputation Checks
   - `land_price_imputation_qc.csv` (`WARN`)
 - Land Price Index Adjusted Official Land Price Checks
@@ -139,7 +140,8 @@
   - `workplace_worker_population_qc.csv` (`FAIL` if annual Seoul totals diverge or 425 administrative dong coverage is unmet; `WARN` for 2018~2019 `Hang-dong` backcasts and 2025 carry-forward counts)
 - Seoul Living Population External Inflow Checks
   - `living_population_inflow_manifest.csv` (`WARN` for member-level processing logs and month-level coverage flags)
-  - `living_population_inflow_qc.csv` (`WARN` for annual coverage and value ranges)
+  - `living_population_inflow_qc.csv` (`WARN` for annual coverage and value ranges; carries `zero_n` and `expected_missing_n` beside the coverage counts, because a zero is indistinguishable from a join failure on the value alone)
+  - `FAIL` if any dong is zero in every quarter, or if a dong is missing without being declared in `cfg$living_pop_known_absent_adm_cd`
 - Startup Survival Rate Checks
   - `golmok_survival_rate_qc.csv` (`WARN` for annual coverage, rate ranges, small cohort counts, and numerator/denominator recomputation diffs)
 - Registered Resident Population Checks

@@ -13,7 +13,7 @@
 #             registered_resident_population.parquet
 # Outputs   : panel_merged_base.parquet, panel_main_pre_vitality.parquet,
 #             missing_data_log.csv, panel_join_coverage_qc.csv,
-#             panel_structural_count_flags.csv
+#             panel_structural_count_flags.csv, panel_structural_zero_flags.csv
 # DependsOn : 02_build_seoul_quarter_base.R, 03_build_auxiliary_covariates.R,
 #             01_build_living_population_inflow.R,
 #             04_build_golmok_survival_rate.R,
@@ -694,6 +694,61 @@ join_cov <- dplyr::bind_rows(
 
 join_cov_path <- cfg$logs$panel_join_coverage_qc
 write_csv_safe(join_cov, join_cov_path)
+
+# Join coverage counts NA down the quarter axis, so a source that fills an
+# unmatched dong with zero rather than NA passes it at 100% coverage. That is not
+# hypothetical: the living-population layer published seven dongs at a constant
+# zero for all 28 quarters and every coverage check reported them complete. This
+# check looks down the dong axis instead, and only at variables whose zero is
+# implausible for a Seoul administrative dong -- facility and station counts are
+# legitimately zero in many dongs and are deliberately out of scope.
+structural_zero_scope <- intersect(
+  c(
+    "resident_pop", "age60_resident_pop", "floating_pop", "age60_floating_pop",
+    "external_inflow_pop", "inner_external_inflow_pop", "metro_external_inflow_pop",
+    "total_sales", "sales_count", "age60_sales_amount", "total_store_count",
+    "spend_total", "official_land_price", "land_price_adjusted",
+    "workplace_worker_pop", "adm_area_km2", "bus_stop_count_aux"
+  ),
+  names(panel_main_pre_vitality)
+)
+
+structural_zero_flags <- panel_main_pre_vitality |>
+  dplyr::select(adm_cd, dplyr::all_of(structural_zero_scope)) |>
+  tidyr::pivot_longer(
+    cols = dplyr::all_of(structural_zero_scope),
+    names_to = "variable",
+    values_to = "value"
+  ) |>
+  dplyr::group_by(variable, adm_cd) |>
+  dplyr::summarise(
+    n_q = dplyr::n(),
+    n_finite = sum(is.finite(value)),
+    n_zero = sum(is.finite(value) & value == 0),
+    .groups = "drop"
+  ) |>
+  dplyr::filter(.data$n_finite > 0L, .data$n_zero == .data$n_finite) |>
+  dplyr::arrange(variable, adm_cd)
+
+write_csv_safe(structural_zero_flags, cfg$logs$panel_structural_zero_flags)
+
+if (nrow(structural_zero_flags) > 0L) {
+  stop(
+    sprintf(
+      paste0(
+        "[ERROR] %d dong-variable pairs are zero in every observed quarter, which is a join ",
+        "failure rather than a low value. See %s. Offenders: %s"
+      ),
+      nrow(structural_zero_flags),
+      basename(cfg$logs$panel_structural_zero_flags),
+      paste(
+        sprintf("%s:%s", structural_zero_flags$variable, structural_zero_flags$adm_cd),
+        collapse = ", "
+      )
+    ),
+    call. = FALSE
+  )
+}
 
 count_vars <- intersect(
   c(

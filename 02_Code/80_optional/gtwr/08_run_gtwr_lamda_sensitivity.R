@@ -66,6 +66,17 @@ append_log(cfg$logs$model_run, sprintf("\n## [%s] 08_run_gtwr_lamda_sensitivity"
     stop("[ERROR] Baseline GTWR outputs are empty; run 03_run_gtwr_main.R successfully before lamda sensitivity.", call. = FALSE)
   }
 
+  # The contracted lamda is reused as the baseline row rather than refitted, and
+  # every other lamda is scored against it at the contracted bandwidth, so the
+  # published main surface must be the one the current contract calls baseline.
+  # Reading its realized parameters back from the outputs stops `GTWR_LAMDA` /
+  # `GTWR_ST_BW` from labelling a run estimated at other values as the baseline.
+  assert_gtwr_sensitivity_baseline_contract(
+    summary_tbl,
+    control_set = control_set,
+    context = "08_run_gtwr_lamda_sensitivity"
+  )
+
   panel <- read_panel_main_view("gtwr") |>
     dplyr::mutate(adm_cd = as.character(adm_cd))
   outcome_registry <- resolve_model_outcomes(

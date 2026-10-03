@@ -420,6 +420,7 @@ run_family_comparison_spec <- function(main_row) {
         logLik = twfe_fit_stats$logLik,
         AIC = twfe_fit_stats$AIC,
         BIC = twfe_fit_stats$BIC,
+        ic_comparability = "fixest OLS likelihood; not comparable with the splm families",
         impacts_row = twfe_impacts,
         message = "impacts not applicable for TWFE"
       )
@@ -563,6 +564,23 @@ run_family_comparison_spec <- function(main_row) {
         logLik = fit_stats$logLik,
         AIC = fit_stats$AIC,
         BIC = fit_stats$BIC,
+        # `splm` does not compute the log-likelihood of a lag model and an error
+        # model on a common basis. Measured on `vitality_sub_social`, the same
+        # 10,600 observations give `+8,506` for `sar` and `+8,513` for `sdm`
+        # against `-25,581` for `sem` and `-25,569` for `sdem`: a gap of about
+        # 34,000 units, which is a change of scale and not a difference in fit.
+        # An information criterion built from these is therefore valid only
+        # inside {sar, sdm} or inside {sem, sdem}, never across the two, and
+        # never against the fixest-based `slx` and `twfe_common` rows. The blank
+        # AIC cells for the splm families were correct but unexplained, which is
+        # an invitation to compute the number by hand and reach a conclusion that
+        # the scale gap alone produces. This column states the scope instead.
+        ic_comparability = dplyr::case_when(
+          family %in% c("slx", "twfe_common") ~ "fixest OLS likelihood; not comparable with the splm families",
+          family %in% c("sar", "sdm") ~ "logLik comparable within {sar, sdm} only (splm lag-likelihood basis)",
+          family %in% c("sem", "sdem") ~ "logLik comparable within {sem, sdem} only (splm error-likelihood basis)",
+          TRUE ~ "logLik not returned by splm for this family"
+        ),
         impacts_row = impacts_res$row,
         message = impacts_res$message
       )

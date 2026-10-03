@@ -745,6 +745,9 @@ compute_global_bivariate_moran_pair <- function(cs, lw, var_x, var_y, yq_value,
     expectation = if (length(sim_vals) > 0L) mean(sim_vals, na.rm = TRUE) else NA_real_,
     p_value = p_value,
     nsim = as.integer(nsim),
+    # The four univariate Moran tables all stamp the convention; this one
+    # computed the same two-sided permutation p but did not say so.
+    inference = cfg$esda_global_moran_p_value,
     status = "success",
     message = NA_character_
   )
@@ -907,8 +910,8 @@ compute_ehsa_for_var <- function(
   lw_queen,
   var,
   nsim = cfg$esda_ehsa_nsim,
-  threshold = 0.01,
-  k = 1L,
+  threshold = cfg$esda_ehsa_threshold,
+  k = cfg$esda_ehsa_k,
   min_locations = 30L,
   min_periods = cfg$esda_ehsa_min_periods
 ) {
@@ -1024,6 +1027,10 @@ compute_ehsa_for_var <- function(
       # elsewhere: cfg$esda_ehsa_nsim has moved between 199 and 999, and the two
       # give visibly different p-values at a cost difference of about five hours.
       nsim = as.integer(nsim),
+      # `k` decides how many time lags enter the Gi* neighbourhood and therefore
+      # what "the same place at the same time" means for this statistic. It
+      # belongs on the result for the same reason nsim and threshold do.
+      gi_time_lag_k = as.integer(k),
       w_type = "queen_include_self",
       n_total_locations = suffix$n_total_locations,
       n_used_locations = as.integer(length(sub_w_ids)),
@@ -1041,7 +1048,7 @@ compute_ehsa_for_var <- function(
     dplyr::count(
       var, start_yq, end_yq, n_periods,
       n_total_locations, n_used_locations, n_excluded_locations,
-      nsim,
+      nsim, threshold, gi_time_lag_k,
       classification,
       name = "n_locations"
     ) |>
@@ -1207,10 +1214,11 @@ moran_one <- function(values, ids_order, label) {
     return(list(moran_i = NA_real_, expectation = NA_real_, p_value = NA_real_,
                 n_units = sum(ok), status = "listw_subset_failed"))
   }
+  nsim <- as.integer(cfg$esda_global_moran_nsim)
   res <- with_deterministic_seed(
     label,
     tryCatch(
-      spdep::moran.mc(values[ok], lw_sub, nsim = as.integer(cfg$esda_global_moran_nsim), zero.policy = TRUE),
+      spdep::moran.mc(values[ok], lw_sub, nsim = nsim, zero.policy = TRUE),
       error = function(e) e
     ),
     base_seed = cfg$esda_seed
@@ -1219,8 +1227,25 @@ moran_one <- function(values, ids_order, label) {
     return(list(moran_i = NA_real_, expectation = NA_real_, p_value = NA_real_,
                 n_units = sum(ok), status = "moran_failed"))
   }
-  list(moran_i = unname(res$statistic), expectation = unname(res$res[length(res$res)]),
-       p_value = res$p.value, n_units = sum(ok), status = "success")
+  # `moran.mc()` returns `res` as the nsim permutation statistics followed by the
+  # observed one, and its own `p.value` is one-sided (`alternative = "greater"`).
+  # Taking the last element as the expectation therefore returns the observed
+  # statistic, and taking `p.value` puts this table on a different inference
+  # convention from `global_morans_i.csv` and `global_bivariate_morans_i.csv`,
+  # which both compute the two-sided permutation p that cfg declares as the
+  # contract. The two lines below match those functions rather than the defaults.
+  sim_vals <- suppressWarnings(as.numeric(res$res))
+  if (length(sim_vals) > nsim) sim_vals <- sim_vals[seq_len(nsim)]
+  sim_vals <- sim_vals[is.finite(sim_vals)]
+  obs <- unname(res$statistic)
+  p_two_sided <- if (is.finite(obs) && length(sim_vals) > 0L) {
+    (sum(abs(sim_vals) >= abs(obs)) + 1) / (length(sim_vals) + 1)
+  } else {
+    NA_real_
+  }
+  list(moran_i = obs,
+       expectation = if (length(sim_vals) > 0L) mean(sim_vals, na.rm = TRUE) else NA_real_,
+       p_value = p_two_sided, n_units = sum(ok), status = "success")
 }
 
 w_ids <- attr(lw_queen, "region.id")
@@ -1284,7 +1309,11 @@ if (isTRUE(cfg$esda_global_moran_all_quarters)) {
       ),
       significant_level = is.finite(.data$p_value_level) & .data$p_value_level <= cfg$esda_lisa_alpha,
       significant_within = is.finite(.data$p_value_within) & .data$p_value_within <= cfg$esda_lisa_alpha,
-      nsim = as.integer(cfg$esda_global_moran_nsim)
+      nsim = as.integer(cfg$esda_global_moran_nsim),
+      # Stated on the table rather than left to the reader, because these
+      # significance counts are quoted in the design documents and a two-sided
+      # count is not comparable to a one-sided one.
+      inference = cfg$esda_global_moran_p_value
     )
 
   write_csv_safe(moran_within_cmp, cfg$paths$global_morans_i_within)

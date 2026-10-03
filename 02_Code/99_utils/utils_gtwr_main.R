@@ -130,6 +130,141 @@ assert_gtwr_controls_trace_current <- function(tbl,
   )
 }
 
+# The two sensitivity sidecars measure every refitted bandwidth or lamda against
+# the published main local surface, so their agreement columns mean what they say
+# only when that surface was estimated at the parameters section 7.0 of
+# 04_model_spec.md calls baseline. The realized values are recorded in the outputs
+# themselves: `st_bw` in gtwr_main_models_<cs>.csv, and `lamda`, its convention,
+# the kernel and `ksi` in gtwr_main_frozen_spec_<cs>.csv. Without this gate a main
+# run at another bandwidth is silently relabelled as the contracted baseline, the
+# contracted value is dropped from the refit grid as though it had already been
+# estimated, and `beta_corr_with_main` and `sign_flip_share_vs_main` are measured
+# against a specification the table says is something else. A frozen spec carrying
+# no `lamda_convention` stamp predates the dimensionless normalization and is on
+# the retired raw-unit convention, whose values are not comparable with current
+# ones.
+assert_gtwr_sensitivity_baseline_contract <- function(summary_tbl,
+                                                     control_set,
+                                                     context = "GTWR sensitivity",
+                                                     frozen_spec_path = cfg$get_gtwr_main_frozen_spec_path(control_set)) {
+  # Only rows that actually produced a fit describe the baseline surface; a
+  # deferred row carries the configured fallback rather than an estimated value.
+  keep_estimated <- function(tbl) {
+    if (!"status" %in% names(tbl)) return(tbl)
+    ok <- !is.na(tbl$status) & as.character(tbl$status) == "success"
+    tbl[which(ok), , drop = FALSE]
+  }
+
+  mismatches <- character()
+  summary_estimated <- keep_estimated(summary_tbl)
+
+  contracted_st_bw <- suppressWarnings(as.integer(cfg$gtwr_st_bw))
+  realized_st_bw <- if ("st_bw" %in% names(summary_estimated)) {
+    vals <- suppressWarnings(as.integer(round(as.numeric(summary_estimated$st_bw))))
+    sort(unique(vals[is.finite(vals)]))
+  } else {
+    integer()
+  }
+  if (length(realized_st_bw) == 0L) {
+    mismatches <- c(mismatches, "st_bw: the baseline summary carries no estimated value")
+  } else if (length(realized_st_bw) > 1L || !identical(realized_st_bw, contracted_st_bw)) {
+    mismatches <- c(mismatches, sprintf(
+      "st_bw: baseline estimated at %s, contract is %s",
+      collapse_chr(realized_st_bw),
+      as.character(contracted_st_bw)
+    ))
+  }
+
+  if (!file.exists(frozen_spec_path)) {
+    mismatches <- c(mismatches, sprintf(
+      "lamda/kernel/ksi: %s is missing, so the baseline cannot be verified",
+      basename(frozen_spec_path)
+    ))
+  } else {
+    frozen_estimated <- keep_estimated(readr::read_csv(frozen_spec_path, show_col_types = FALSE))
+    frozen_values <- function(col) {
+      if (!col %in% names(frozen_estimated)) return(character())
+      vals <- trimws(as.character(frozen_estimated[[col]]))
+      unique(vals[!is.na(vals) & nzchar(vals)])
+    }
+    frozen_numbers <- function(col) {
+      vals <- suppressWarnings(as.numeric(frozen_values(col)))
+      sort(unique(vals[is.finite(vals)]))
+    }
+
+    realized_lamda <- frozen_numbers("lamda")
+    contracted_lamda <- suppressWarnings(as.numeric(cfg$gtwr_lamda))
+    if (length(realized_lamda) == 0L) {
+      mismatches <- c(mismatches, "lamda: the frozen spec carries no estimated value")
+    } else if (length(realized_lamda) > 1L ||
+               !isTRUE(all.equal(realized_lamda, contracted_lamda, tolerance = 1e-12))) {
+      mismatches <- c(mismatches, sprintf(
+        "lamda: baseline estimated at %s, contract is %s",
+        collapse_chr(realized_lamda),
+        as.character(contracted_lamda)
+      ))
+    }
+
+    realized_convention <- frozen_values("lamda_convention")
+    contracted_convention <- as.character(cfg$gtwr_lamda_convention)
+    if (length(realized_convention) == 0L) {
+      mismatches <- c(mismatches, sprintf(
+        "lamda_convention: the frozen spec carries no stamp, so its lamda is raw-unit and not comparable with %s",
+        contracted_convention
+      ))
+    } else if (!identical(realized_convention, contracted_convention)) {
+      mismatches <- c(mismatches, sprintf(
+        "lamda_convention: baseline is on %s, contract is %s",
+        collapse_chr(realized_convention),
+        contracted_convention
+      ))
+    }
+
+    realized_kernel <- frozen_values("kernel")
+    contracted_kernel <- as.character(cfg$gtwr_kernel)
+    if (length(realized_kernel) > 0L &&
+        !identical(tolower(realized_kernel), tolower(contracted_kernel))) {
+      mismatches <- c(mismatches, sprintf(
+        "kernel: baseline used %s, contract is %s",
+        collapse_chr(realized_kernel),
+        contracted_kernel
+      ))
+    }
+
+    realized_ksi <- frozen_numbers("ksi")
+    contracted_ksi <- suppressWarnings(as.numeric(cfg$gtwr_ksi))
+    if (length(realized_ksi) > 0L &&
+        (length(realized_ksi) > 1L ||
+         !isTRUE(all.equal(realized_ksi, contracted_ksi, tolerance = 1e-12)))) {
+      mismatches <- c(mismatches, sprintf(
+        "ksi: baseline used %s, contract is %s",
+        collapse_chr(realized_ksi),
+        as.character(contracted_ksi)
+      ))
+    }
+  }
+
+  if (length(mismatches) > 0L) {
+    stop(
+      sprintf(
+        paste0(
+          "[ERROR] %s cannot baseline on the published %s main GTWR outputs: %s. ",
+          "Every agreement column of this sidecar is measured against that surface, so a ",
+          "baseline estimated at other parameters would be published under the contracted ones. ",
+          "Re-run 02_Code/03_models/03_run_gtwr_main.R at the contracted parameters, or set the ",
+          "GTWR_* environment variables to the values the published run actually used."
+        ),
+        context,
+        as.character(control_set),
+        paste(mismatches, collapse = "; ")
+      ),
+      call. = FALSE
+    )
+  }
+
+  invisible(TRUE)
+}
+
 repair_gtwr_controls_trace <- function(tbl) {
   required_cols <- c("optional_candidates", "selected_controls")
   if (nrow(tbl) == 0L || !all(required_cols %in% names(tbl))) return(tbl)
@@ -1342,6 +1477,7 @@ build_gtwr_lamda_sensitivity_signature <- function(outcome, focal_var, selected_
       paste("adaptive", as.character(isTRUE(cfg$gtwr_adaptive)), sep = "="),
       paste("lamda", as.character(lamda), sep = "="),
       paste("baseline_lamda", as.character(cfg$gtwr_lamda), sep = "="),
+      paste("lamda_convention", as.character(cfg$gtwr_lamda_convention), sep = "="),
       paste("ksi", as.character(ksi), sep = "=")
     ),
     collapse = "|"
@@ -1403,6 +1539,7 @@ build_gtwr_bandwidth_sensitivity_signature <- function(outcome, focal_var, selec
       paste("kernel", as.character(cfg$gtwr_kernel), sep = "="),
       paste("adaptive", as.character(isTRUE(cfg$gtwr_adaptive)), sep = "="),
       paste("lamda", as.character(lamda), sep = "="),
+      paste("lamda_convention", as.character(cfg$gtwr_lamda_convention), sep = "="),
       paste("ksi", as.character(ksi), sep = "=")
     ),
     collapse = "|"

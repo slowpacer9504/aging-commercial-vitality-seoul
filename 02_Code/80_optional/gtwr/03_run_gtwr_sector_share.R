@@ -111,7 +111,22 @@ add_sector_share_payload_metadata <- function(payload, job) {
 
   control_set <- normalize_control_set_main(cfg$gtwr_control_set)
   cfg$gtwr_bandwidth_strategy <- "fixed"
-  panel <- read_panel_main_view("gtwr", extra_cols = cfg$gtwr_sector_share_outcomes) |>
+  # The "gtwr" view projects the lagged exposures the main GTWR uses
+  # (`lag4_age60_resident_share`, `lag2_age60_floating_share`), but this sidecar's
+  # family registry is built on the *contemporaneous* `age60_resident_share` and
+  # `age60_floating_share`, and its resident family needs a same-domain
+  # total control. Neither exposure is in the view, so requesting
+  # only the outcomes as extras left the registry empty, sent the script down the
+  # skip branch, and published five empty tables with exit 0 on every run to
+  # 2026-09-13 — while research_plan.md section 7.4 states that this sidecar
+  # invokes GWmodel::gtwr(). All three exist in panel_main and are requested here.
+  panel <- read_panel_main_view(
+    "gtwr",
+    extra_cols = unique(c(
+      cfg$gtwr_sector_share_outcomes,
+      "age60_resident_share", "age60_floating_share"
+    ))
+  ) |>
     dplyr::mutate(adm_cd = as.character(adm_cd))
 
   outcomes <- intersect(cfg$gtwr_sector_share_outcomes, names(panel))
@@ -131,7 +146,15 @@ add_sector_share_payload_metadata <- function(payload, job) {
   family_registry <- tibble::tibble(
     exposure_family = c("resident_only", "floating_only"),
     focal_var = c("age60_resident_share", "age60_floating_share"),
-    same_domain_total_control = c("ln_resident_pop", NA_character_)
+    # `lag4_ln_resident_pop`, not the contemporaneous `ln_resident_pop`. The
+    # latter is not in the current GTWR control contract, and before the
+    # projection fix above it was silently dropped by the
+    # `intersect(..., names(panel))` in the control-selection line, so
+    # `assert_gtwr_control_vector_current()` never saw it. Adding the column to
+    # the projection surfaced the contract violation the silent drop had been
+    # hiding, and the sidecar halted on its own guard. Fixing the projection
+    # alone was not enough; this registry entry was stale too.
+    same_domain_total_control = c("lag4_ln_resident_pop", NA_character_)
   ) |>
     dplyr::filter(.data$focal_var %in% names(panel))
 

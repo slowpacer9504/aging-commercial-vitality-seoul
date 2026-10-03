@@ -156,8 +156,18 @@ eval_gates <- function(oc) {
   lead_p <- pick(dat$placebo, oc, "lead_p")
   hr_lag_p <- pick(dat$placebo, oc, "horserace_lag_p")
   trend_p <- pick(dat$trend, oc, "trend_p")
-  quad_p <- pick(dat$linearity, oc, "quadratic_p")
-  lof_p <- pick(dat$linearity, oc, "lack_of_fit_p")
+  # `exposure_linearity_tests.csv` reports both an OLS and a dong-clustered
+  # p-value as of 2026-09-12, and the clustered one is the primary column,
+  # because the OLS F-test assumes independent errors that this panel does not
+  # have. The `_ols` names are accepted as a fallback only so an older table
+  # still resolves; on the current table the clustered column is what is read,
+  # and it is the criterion every other gate here is already on.
+  quad_p <- pick(dat$linearity, oc, "quadratic_p_clustered")
+  if (is.na(quad_p)) quad_p <- pick(dat$linearity, oc, "quadratic_p")
+  if (is.na(quad_p)) quad_p <- pick(dat$linearity, oc, "quadratic_p_ols")
+  lof_p <- pick(dat$linearity, oc, "lack_of_fit_p_clustered")
+  if (is.na(lof_p)) lof_p <- pick(dat$linearity, oc, "lack_of_fit_p")
+  if (is.na(lof_p)) lof_p <- pick(dat$linearity, oc, "lack_of_fit_p_ols")
 
   sig <- function(p) if (is.na(p)) NA else p < ALPHA
 
@@ -192,6 +202,30 @@ eval_gates <- function(oc) {
 
 gates <- purrr::map_dfr(intersect(OUTCOMES, unique(c(twfe_exposure$outcome, dat$influence$outcome))), eval_gates)
 if (nrow(gates) == 0L) stop("[ERROR] no outcome could be evaluated; upstream diagnostic tables are missing", call. = FALSE)
+
+# `pick()` returns NA when a column is absent, so a renamed upstream column turns
+# a gate into a silent non-evaluation rather than an error. That is the worst
+# failure mode this script has: the gate still counts in the denominator, so
+# every outcome loses a gate it was never tested on, and the tier assignment
+# shifts with nothing in the output saying why. A gate that is NA for a single
+# outcome can be legitimate; one that is NA for every outcome is a broken input
+# contract. This happened on 2026-09-12, when the linearity columns were renamed
+# to carry both an OLS and a clustered p-value.
+dead_gates <- gates |>
+  dplyr::group_by(.data$gate) |>
+  dplyr::summarise(all_na = all(is.na(.data$passed)), .groups = "drop") |>
+  dplyr::filter(.data$all_na)
+if (nrow(dead_gates) > 0L) {
+  stop(
+    sprintf(
+      paste0("[ERROR] %d gate(s) could not be evaluated for any outcome, which means an upstream ",
+             "table is missing the column they read: %s. Fix the input contract rather than ",
+             "publishing a synthesis that silently penalises every outcome by those gates."),
+      nrow(dead_gates), paste(dead_gates$gate, collapse = ", ")
+    ),
+    call. = FALSE
+  )
+}
 
 gates <- gates |>
   dplyr::left_join(GATE_META, by = "gate") |>

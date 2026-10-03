@@ -458,6 +458,29 @@ if (file.exists(cfg$paths$w_queen)) {
 moran_by_yq <- moran_by_yq |>
   annotate_outcomes(include_robustness = FALSE) |>
   dplyr::arrange(outcome_order, exposure, model_name, yq)
+
+# This is one test per quarter per model, so the same multiplicity argument the
+# ESDA layer applies to LISA applies here: at 25 quarters, 1.25 rejections per
+# model are expected at alpha = 0.05 before any real dependence exists, and the
+# uncorrected share alone cannot distinguish the two. Benjamini-Hochberg within
+# each model, matching cfg$esda_lisa_fdr_method, because the 25 tests of one
+# model are the family a reader interprets together. The uncorrected column stays
+# beside it so the effect of the correction is visible.
+moran_by_yq <- moran_by_yq |>
+  dplyr::group_by(model_name) |>
+  dplyr::mutate(
+    p_value_fdr = dplyr::if_else(
+      status == "success",
+      stats::p.adjust(dplyr::if_else(status == "success", p_value, NA_real_),
+                      method = cfg$esda_lisa_fdr_method),
+      NA_real_
+    ),
+    fdr_method = cfg$esda_lisa_fdr_method,
+    significant_fdr = is.finite(p_value_fdr) & p_value_fdr <= cfg$esda_lisa_alpha,
+    n_expected_by_chance = sum(status == "success") * cfg$esda_lisa_alpha
+  ) |>
+  dplyr::ungroup()
+
 write_csv_safe(moran_by_yq, cfg$paths$twfe_main_residual_moran_by_yq)
 
 # The headline residual Moran table keeps the latest successful quarter per
@@ -507,6 +530,12 @@ moran_summary_stats <- moran_by_yq |>
     median_moran_i = stats::median(moran_i, na.rm = TRUE),
     share_p_lt_0_05 = mean(p_value < 0.05, na.rm = TRUE),
     share_p_lt_0_10 = mean(p_value < 0.10, na.rm = TRUE),
+    # The corrected count is the one to quote. `n_expected_by_chance` is what the
+    # uncorrected count has to beat before it means anything.
+    n_significant_fdr = sum(significant_fdr, na.rm = TRUE),
+    share_significant_fdr = mean(significant_fdr, na.rm = TRUE),
+    n_expected_by_chance = dplyr::first(n_expected_by_chance),
+    fdr_method = dplyr::first(fdr_method),
     p_value_method = dplyr::first(p_value_method),
     nsim = dplyr::first(nsim),
     .groups = "drop"
@@ -545,6 +574,10 @@ moran_summary <- m2_registry |>
     median_moran_i,
     share_p_lt_0_05,
     share_p_lt_0_10,
+    n_significant_fdr,
+    share_significant_fdr,
+    n_expected_by_chance,
+    fdr_method,
     p_value_method,
     nsim,
     latest_yq,

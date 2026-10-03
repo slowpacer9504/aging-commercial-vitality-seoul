@@ -81,6 +81,7 @@ selection_empty_family_tbl <- function() {
     error_param_p = numeric(),
     n_lag_x_terms = integer(),
     time_fe_included = logical(),
+    estimand = character(),
     message = character()
   )
 }
@@ -207,6 +208,12 @@ add_selection_family_row <- function(spec_id,
       error_param_p = error_param_p,
       n_lag_x_terms = as.integer(n_lag_x_terms),
       time_fe_included = TRUE,
+      # `time_fe_included` alone said nothing about the individual effects, which
+      # is exactly the axis on which this table's estimates diverge from the main
+      # SPDM: the levels and within relationships have opposite signs on this
+      # panel for four of five outcomes, so a reader comparing the two tables
+      # needs to know which one a row is on.
+      estimand = "dong_demeaned_within_plus_year_dummies",
       message = as.character(message)
     )
 }
@@ -226,9 +233,33 @@ build_spgm_formula <- function(outcome, exposure, controls, include_time_fe = TR
   stats::as.formula(sprintf("%s ~ %s", outcome, paste(rhs, collapse = " + ")))
 }
 
+# `splm::spgm()` accepts `model = "within"` but does not apply the individual
+# within transform in this configuration. Measured on `vitality_index_base`:
+# passing the raw panel returns an exposure coefficient of `+1.5205` with a
+# standard error of `0.0975`, which matches a pooled OLS with year dummies and
+# i.i.d. errors (`+1.5038`, `0.0936`) to three significant figures on both, while
+# every one of the five slopes agrees with that pooled fit to within `0.017` and
+# differs from the dong-within fit by up to `2.68`. Passing a `plm::pdata.frame`
+# changes nothing, so it is not an index problem. Dong-demeaning the inputs first
+# moves the coefficient to `-0.8527`, back into the within family and the sign of
+# every other model in this project. Without this the table published levels
+# estimates under a within label, sign-flipped against the main SPDM at p-values
+# down to 1e-117. The demeaning below makes the estimator do what the argument
+# already claims; the time dimension stays in the formula as year dummies, as
+# before. See decision_log.md, 2026-09-12.
+demean_within_dong <- function(data, cols) {
+  cols <- intersect(cols, names(data))
+  if (length(cols) == 0L) return(data)
+  data |>
+    dplyr::group_by(.data$adm_cd) |>
+    dplyr::mutate(dplyr::across(dplyr::all_of(cols), ~ .x - mean(.x, na.rm = TRUE))) |>
+    dplyr::ungroup()
+}
+
 fit_spgm_selection_model <- function(data, listw, outcome, exposure, controls, family) {
   family <- as.character(family)
   fm <- build_spgm_formula(outcome = outcome, exposure = exposure, controls = controls, include_time_fe = TRUE)
+  data <- demean_within_dong(data, c(outcome, exposure, controls))
 
   model_args <- switch(
     family,
