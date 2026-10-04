@@ -2444,3 +2444,265 @@ build_spdm_reduced_form_resampler <- function(mod, pdat, outcome, rhs_vars, lw_s
     max_design_residual_cor = max_cor
   )
 }
+
+
+#==============================================================================
+# Dong-Level Bootstrap Inference for the Main SDM
+#==============================================================================
+
+# The model-based covariance that splm::spml() returns treats the errors of one
+# dong as independent across quarters. On this panel they are not: the TWFE
+# residuals carry an AR(1) coefficient of 0.61 to 0.81, and the exposure is close
+# to a dong-specific trend, which is the combination under which that assumption
+# understates a standard error most. The 2026-09-12 channel-path run bootstrapped
+# the total-effect equation, which is the main specification, at the dong level
+# and returned impact standard deviations 1.9 to 4.7 times the model-based
+# standard errors. The impact simulation from vcov(fit) has a second defect:
+# splm 1.6-5's spfeml() assembles that covariance block-diagonally, so rho is
+# drawn independently of beta and theta although the information matrix it
+# inverted has cross terms between them.
+#
+# Each draw below flips the sign of all within-scale structural residuals of a
+# dong together, so whatever dependence a dong's residuals have over time enters
+# the draw intact; regenerates the outcome through the reduced form with
+# build_spdm_reduced_form_resampler(); refits the same specification with
+# fit_spdm_model(); and recomputes the matrix impacts. rho, beta and theta are
+# re-estimated jointly in every draw, so their covariance comes from the draws.
+# Dependence between dongs beyond what rho W y absorbs is not resampled; that is
+# the limit of a one-way cluster scheme and is stated with the results.
+
+spdm_bootstrap_se_method <- function() {
+  as.character(spdm_cfg_value("spdm_main_bootstrap_method", "adm_cd_wild_reduced_form_bootstrap"))
+}
+
+# Draws are lost where the estimator breaks down rather than at random, so the
+# survivors understate the spread. Below this share no bootstrap inference is
+# reported at all, rather than a standard error computed from the easy draws.
+spdm_bootstrap_min_valid_share <- function() {
+  as.numeric(spdm_cfg_value("spdm_main_bootstrap_min_valid_share", 0.9))
+}
+
+# One Rademacher weight per dong, repeated on every row of that dong. A weight
+# drawn per row would break the serial dependence the bootstrap exists to carry
+# and estimate the standard error as if that dependence were absent.
+spdm_unit_rademacher_weights <- function(unit_ids, row_unit, seed) {
+  set.seed(as.integer(seed))
+  unit_weight <- stats::setNames(
+    sample(c(-1, 1), length(unit_ids), replace = TRUE),
+    as.character(unit_ids)
+  )
+  row_weight <- unname(unit_weight[as.character(row_unit)])
+  if (anyNA(row_weight)) {
+    stop("[ERROR] bootstrap rows carry units outside the bootstrap unit set", call. = FALSE)
+  }
+  row_weight
+}
+
+# `prep` is the object prepare_spdm_spec() returns: the fitted model, the
+# balanced panel it was fitted on, the subset weights, and the selected controls.
+# Returns the valid draws of the three impacts and of every coefficient, with the
+# two resampler guard values so they can be published rather than inferred from
+# the run completing.
+run_spdm_impact_bootstrap <- function(prep,
+                                      outcome,
+                                      exposure,
+                                      focal_var = exposure,
+                                      R = 1000L,
+                                      seed = 20260317L,
+                                      cores = 1L,
+                                      context = "main SPDM bootstrap") {
+  R <- suppressWarnings(as.integer(R))
+  if (length(R) != 1L || !is.finite(R) || R < 2L) {
+    stop(sprintf("[ERROR] %s: R must be an integer of at least 2", context), call. = FALSE)
+  }
+  if (is.null(prep$mod) || inherits(prep$mod, "error") || is.null(prep$pdat) || is.null(prep$lw_sub)) {
+    stop(sprintf("[ERROR] %s: prep carries no fitted model, panel, or weights", context), call. = FALSE)
+  }
+
+  controls <- as.character(value_or(prep$selected_controls, character()))
+  rhs <- unique(c(exposure, controls))
+  wx_obj <- build_spdm_wx_terms(prep$pdat, rhs, prep$lw_sub)
+  rs <- build_spdm_reduced_form_resampler(
+    prep$mod, wx_obj$data, outcome, c(rhs, wx_obj$wx_terms), prep$lw_sub,
+    context = context
+  )
+
+  coef_names <- names(stats::coef(prep$mod))
+  theta_name <- spdm_wx_name(focal_var)
+  missing_terms <- setdiff(c("lambda", focal_var, theta_name), coef_names)
+  if (length(missing_terms) > 0L) {
+    stop(sprintf("[ERROR] %s: fitted model lacks %s", context, paste(missing_terms, collapse = ", ")), call. = FALSE)
+  }
+
+  unit_ids <- levels(prep$pdat$adm_cd)
+  if (is.null(unit_ids)) unit_ids <- unique(as.character(prep$pdat$adm_cd))
+  row_unit <- as.character(prep$pdat$adm_cd)
+  out_names <- c("direct", "indirect", "total", coef_names)
+  na_draw <- stats::setNames(rep(NA_real_, length(out_names)), out_names)
+
+  # The seed of draw b is seed + b, so a draw is reproducible on its own and the
+  # result does not depend on how the draws are scheduled across cores.
+  one_draw <- function(b) {
+    tryCatch({
+      row_weight <- spdm_unit_rademacher_weights(unit_ids, row_unit, as.integer(seed) + as.integer(b))
+      pdat_b <- prep$pdat
+      pdat_b[[outcome]] <- rs$resample(row_weight)
+      fit_b <- fit_spdm_model(pdat_b, outcome, exposure, controls, prep$lw_sub, model_family = "sdm")
+      if (inherits(fit_b, "error")) stop(conditionMessage(fit_b), call. = FALSE)
+      cf <- stats::coef(fit_b)
+      if (!all(coef_names %in% names(cf))) stop("refit returned a different coefficient set", call. = FALSE)
+      eff <- compute_true_sdm_effects(rs$W, rho = cf[["lambda"]], beta = cf[[focal_var]], theta = cf[[theta_name]])
+      stats::setNames(c(unname(eff[c("direct", "indirect", "total")]), unname(cf[coef_names])), out_names)
+    }, error = function(e) {
+      structure(na_draw, draw_error = conditionMessage(e))
+    })
+  }
+
+  cores <- suppressWarnings(as.integer(cores))
+  if (length(cores) != 1L || !is.finite(cores) || cores < 1L) cores <- 1L
+  logical_cores <- suppressWarnings(parallel::detectCores(logical = TRUE))
+  if (!is.finite(logical_cores) || logical_cores < 1L) logical_cores <- 1L
+  cores <- min(cores, R, max(1L, logical_cores - 1L))
+
+  draws <- if (cores > 1L && .Platform$OS.type != "windows") {
+    parallel::mclapply(seq_len(R), one_draw, mc.cores = cores, mc.preschedule = FALSE)
+  } else {
+    lapply(seq_len(R), one_draw)
+  }
+
+  # A forked worker that dies returns NULL or a try-error instead of a draw, so
+  # every element is checked rather than bound blindly.
+  draw_mat <- matrix(NA_real_, nrow = R, ncol = length(out_names), dimnames = list(NULL, out_names))
+  draw_errors <- character()
+  for (i in seq_len(R)) {
+    d <- draws[[i]]
+    msg <- NULL
+    if (is.numeric(d) && length(d) == length(out_names)) {
+      draw_mat[i, ] <- as.numeric(d)
+      msg <- attr(d, "draw_error", exact = TRUE)
+    } else if (!is.null(d)) {
+      msg <- paste(as.character(d), collapse = " ")
+    }
+    if (length(msg) > 0L && !is.na(msg[[1]]) && nzchar(msg[[1]])) draw_errors <- c(draw_errors, msg[[1]])
+  }
+  valid <- stats::complete.cases(draw_mat)
+
+  list(
+    draws = draw_mat[valid, , drop = FALSE],
+    R = R,
+    n_valid = as.integer(sum(valid)),
+    seed = as.integer(seed),
+    method = spdm_bootstrap_se_method(),
+    focal_var = focal_var,
+    roundtrip_max_deviation = rs$roundtrip_max_deviation,
+    max_design_residual_cor = rs$max_design_residual_cor,
+    errors = unique(draw_errors)
+  )
+}
+
+# `boot` is NULL when the bootstrap was not run, an error condition when it could
+# not start, and the list run_spdm_impact_bootstrap() returns otherwise.
+spdm_bootstrap_status <- function(boot) {
+  if (is.null(boot)) return(list(state = "disabled", message = NA_character_))
+  if (inherits(boot, "error")) {
+    return(list(state = "failed", message = paste("bootstrap failed:", conditionMessage(boot))))
+  }
+  R <- suppressWarnings(as.integer(value_or(boot$R, NA_integer_)))
+  n_valid <- suppressWarnings(as.integer(value_or(boot$n_valid, 0L)))
+  if (!is.finite(R)) {
+    return(list(state = "failed", message = "bootstrap failed: draw count unavailable"))
+  }
+  min_valid <- max(2L, as.integer(ceiling(spdm_bootstrap_min_valid_share() * R)))
+  if (!is.finite(n_valid) || n_valid < min_valid) {
+    first_error <- if (length(boot$errors) > 0L) paste0("; first error: ", boot$errors[[1]]) else ""
+    return(list(
+      state = "failed",
+      message = sprintf("bootstrap valid draws %d/%d below the %d required%s", n_valid, R, min_valid, first_error)
+    ))
+  }
+  list(state = "ok", message = sprintf("bootstrap valid_draws=%d/%d", n_valid, R))
+}
+
+spdm_bootstrap_meta <- function(boot) {
+  has <- !is.null(boot) && !inherits(boot, "error")
+  list(
+    boot_R = if (has) as.integer(value_or(boot$R, NA_integer_)) else NA_integer_,
+    boot_valid_draws = if (has) as.integer(value_or(boot$n_valid, NA_integer_)) else NA_integer_,
+    boot_seed = if (has) as.integer(value_or(boot$seed, NA_integer_)) else NA_integer_,
+    boot_roundtrip_max_deviation = if (has) as.numeric(value_or(boot$roundtrip_max_deviation, NA_real_)) else NA_real_,
+    boot_max_design_residual_cor = if (has) as.numeric(value_or(boot$max_design_residual_cor, NA_real_)) else NA_real_
+  )
+}
+
+spdm_append_message <- function(x, extra) {
+  msgs <- c(as.character(x), as.character(extra))
+  msgs <- msgs[!is.na(msgs) & nzchar(msgs)]
+  if (length(msgs) == 0L) NA_character_ else paste(msgs, collapse = " | ")
+}
+
+# The primary se/z/p/ci columns of an impacts row take the bootstrap; the
+# model-based values compute_true_sdm_impacts_row() wrote move to *_model so the
+# two can be read side by side. A failed bootstrap leaves the primary columns
+# empty rather than falling back to the model-based values, because a silent
+# fallback is how understated inference reaches a published table.
+apply_spdm_bootstrap_to_impacts <- function(row, boot) {
+  st <- spdm_bootstrap_status(boot)
+  meta <- spdm_bootstrap_meta(boot)
+  row <- row |>
+    dplyr::mutate(
+      direct_se_model = .data$direct_se,
+      direct_p_model = .data$direct_p,
+      indirect_se_model = .data$indirect_se,
+      indirect_p_model = .data$indirect_p,
+      total_se_model = .data$total_se,
+      total_p_model = .data$total_p,
+      boot_R = meta$boot_R,
+      boot_valid_draws = meta$boot_valid_draws,
+      boot_seed = meta$boot_seed
+    )
+  if (identical(st$state, "disabled") || nrow(row) != 1L) return(row)
+
+  ok <- identical(st$state, "ok")
+  for (sc in c("direct", "indirect", "total")) {
+    s <- if (ok) {
+      summarise_sdm_impact_draws(row[[sc]][[1]], boot$draws[, sc])
+    } else {
+      list(se = NA_real_, z = NA_real_, p = NA_real_, ci_low = NA_real_, ci_high = NA_real_)
+    }
+    row[[paste0(sc, "_se")]] <- s$se
+    row[[paste0(sc, "_z")]] <- s$z
+    row[[paste0(sc, "_p")]] <- s$p
+    row[[paste0(sc, "_ci_low")]] <- s$ci_low
+    row[[paste0(sc, "_ci_high")]] <- s$ci_high
+  }
+  row$impact_se_method <- if (ok) spdm_bootstrap_se_method() else paste0(spdm_bootstrap_se_method(), "_failed")
+  row$message <- spdm_append_message(row$message[[1]], st$message)
+  row
+}
+
+# Same contract for the coefficient table: the standard error is the standard
+# deviation of the coefficient across the draws, the statistic and p-value are
+# normal-approximation readings of it, and the model-based values move to
+# *_model.
+apply_spdm_bootstrap_to_coefs <- function(coef_tbl, boot) {
+  st <- spdm_bootstrap_status(boot)
+  coef_tbl <- coef_tbl |>
+    dplyr::mutate(std.error_model = .data$std.error, p.value_model = .data$p.value)
+  if (identical(st$state, "disabled") || nrow(coef_tbl) == 0L) return(coef_tbl)
+
+  ok <- identical(st$state, "ok")
+  se_boot <- vapply(seq_len(nrow(coef_tbl)), function(i) {
+    tm <- coef_tbl$term[[i]]
+    if (!ok || is.na(tm) || !tm %in% colnames(boot$draws)) return(NA_real_)
+    v <- boot$draws[, tm]
+    v <- v[is.finite(v)]
+    if (length(v) > 1L) stats::sd(v) else NA_real_
+  }, numeric(1))
+  stat_boot <- ifelse(is.finite(se_boot) & se_boot > 0, coef_tbl$estimate / se_boot, NA_real_)
+
+  coef_tbl$std.error <- se_boot
+  coef_tbl$statistic <- stat_boot
+  coef_tbl$p.value <- ifelse(is.finite(stat_boot), 2 * stats::pnorm(-abs(stat_boot)), NA_real_)
+  coef_tbl$se_method <- if (ok) spdm_bootstrap_se_method() else paste0(spdm_bootstrap_se_method(), "_failed")
+  coef_tbl
+}

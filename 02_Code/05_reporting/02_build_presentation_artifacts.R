@@ -772,7 +772,7 @@ if (file.exists(spdm_main_source)) {
     ) +
     ggplot2::labs(
       title = "Main SPDM Results",
-      subtitle = "Quarterly direct, indirect, and total effects",
+      subtitle = "Quarterly direct, indirect, and total effects; 95% intervals from the dong-level bootstrap",
       x = NULL,
       y = "Estimated Effect",
       color = NULL
@@ -818,6 +818,10 @@ if (file.exists(spdm_w_source)) {
     "vitality_index_base"
   )
 
+  # Point estimates only. The W-robustness refits keep the model-based ML
+  # standard errors, which understate the impact standard errors by a factor of
+  # two to five on this panel; only the main Queen table carries the dong-level
+  # bootstrap, so a p-value here would not be comparable with the main one.
   presentation_spdm_w_tbl <- spdm_w_tbl |>
     dplyr::filter(outcome %in% main_outcomes) |>
     dplyr::arrange(match(outcome, main_outcomes), w_type) |>
@@ -825,7 +829,6 @@ if (file.exists(spdm_w_source)) {
       Outcome = label_outcome(outcome),
       `Spatial Weights` = label_w(w_type),
       `Total Effect` = fmt_num(total),
-      `Total Effect p-value` = fmt_p(total_p),
       `Direct Effect` = fmt_num(direct),
       `Indirect Effect` = fmt_num(indirect),
       `Number of Dongs` = n_units,
@@ -848,7 +851,6 @@ if (file.exists(spdm_w_source)) {
       Outcome = label_outcome(outcome),
       `Spatial Weights` = label_w(w_type),
       `Total Effect` = fmt_num(total),
-      `Total Effect p-value` = fmt_p(total_p),
       `Direct Effect` = fmt_num(direct),
       `Indirect Effect` = fmt_num(indirect),
       `Number of Dongs` = n_units,

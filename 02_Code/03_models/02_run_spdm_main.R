@@ -2,7 +2,8 @@
 # Script    : 02_run_spdm_main.R
 # Project   : Aging and Neighborhood Commercial Vitality in Seoul
 # Purpose   : Run the main Queen-based resident-only true SDM/SPDM and export
-#             the canonical main-model outputs for direct/indirect/total effects.
+#             the canonical main-model outputs for direct/indirect/total effects,
+#             with dong-level reduced-form bootstrap inference.
 # Author    : Junghyun Pyo (Assisted by Codex)
 # Created   : 2026-02-28
 # Type      : spatial_panel_modeling
@@ -78,6 +79,26 @@ impact_sim_R <- as.integer(value_or(cfg$spdm_impact_sim_R, 1000L))
 impact_sim_method <- as.character(value_or(cfg$spdm_impact_sim_method, "manual_true_sdm_matrix"))
 impact_empirical <- isTRUE(value_or(cfg$spdm_impact_empirical, FALSE))
 w_type_main <- as.character(value_or(cfg$default_w, "queen"))
+
+# Inference contract of the main tables. The primary standard errors come from
+# the dong-level reduced-form bootstrap, because the model-based ML standard
+# errors of splm::spml() ignore the serial dependence of a dong's errors and
+# understate the impact standard errors by a factor of two to five on this panel;
+# see run_spdm_impact_bootstrap() in utils_spdm.R and 04_model_spec.md section 5.
+# Each draw is one spml() refit, so the five outcomes take R x 5 refits; at the
+# default R this measured 1.5 to 2.5 minutes per outcome on eight workers
+# (2026-10-04).
+main_bootstrap_enabled <- isTRUE(value_or(cfg$run_spdm_main_bootstrap, TRUE))
+main_bootstrap_R <- as.integer(value_or(cfg$spdm_main_bootstrap_R, 1000L))
+main_bootstrap_cores <- as.integer(value_or(cfg$spdm_main_bootstrap_cores, 1L))
+main_bootstrap_seed <- as.integer(value_or(cfg$spdm_main_bootstrap_seed, cfg$analysis_seed))
+if (!isTRUE(main_bootstrap_enabled)) {
+  append_log(cfg$logs$model_run, "- WARNING: main SPDM bootstrap disabled; the primary SE columns are model-based and understated")
+  warning(
+    "[SPDM] RUN_SPDM_MAIN_BOOTSTRAP is off, so the main tables carry model-based inference; QC S04 and the evidence synthesis refuse them",
+    call. = FALSE
+  )
+}
 
 
 #==============================================================================
@@ -194,8 +215,9 @@ build_main_fail_result <- function(spec_id,
 }
 
 # A successful main spec prepares a balanced Queen-aligned panel, fits the true
-# SDM, extracts model-based coefficient diagnostics, and computes matrix impacts
-# for the focal resident-aging exposure.
+# SDM, computes matrix impacts for the focal resident-aging exposure, and replaces
+# the model-based standard errors of the impacts and coefficients with the
+# dong-level bootstrap, keeping the model-based values as *_model.
 run_main_spec <- function(spec_id,
                           outcome,
                           exposure,
@@ -287,6 +309,40 @@ run_main_spec <- function(spec_id,
     message = prep$message
   )
 
+  # The point estimates above are final. Their model-based standard errors are
+  # replaced here by the dong-level bootstrap and kept as *_model. Each outcome
+  # draws its own stream, offset by the spec number as in the channel bootstrap.
+  boot <- NULL
+  if (isTRUE(main_bootstrap_enabled) && identical(impacts_res$status, "success")) {
+    spec_offset <- suppressWarnings(as.integer(gsub("\\D+", "", spec_id)))
+    if (length(spec_offset) != 1L || !is.finite(spec_offset)) spec_offset <- 0L
+    boot_started <- Sys.time()
+    boot <- tryCatch(
+      run_spdm_impact_bootstrap(
+        prep = prep,
+        outcome = outcome,
+        exposure = exposure,
+        focal_var = exposure,
+        R = main_bootstrap_R,
+        seed = main_bootstrap_seed + spec_offset * 100000L,
+        cores = main_bootstrap_cores,
+        context = sprintf("main SPDM bootstrap (%s)", outcome)
+      ),
+      error = function(e) e
+    )
+    append_log(
+      cfg$logs$model_run,
+      sprintf(
+        "- %s %s: %s (%.1f min)",
+        spec_id, outcome, spdm_bootstrap_status(boot)$message,
+        as.numeric(difftime(Sys.time(), boot_started, units = "mins"))
+      )
+    )
+  }
+  boot_status <- spdm_bootstrap_status(boot)
+  impacts_res$row <- apply_spdm_bootstrap_to_impacts(impacts_res$row, boot)
+  coef_tbl <- apply_spdm_bootstrap_to_coefs(coef_tbl, boot)
+
   spatial_param <- extract_spdm_spatial_param(prep$mod)
   fit_stats <- extract_spdm_fit_stats(prep$mod)
   wx_terms <- value_or(attr(prep$mod, "spdm_wx_terms", exact = TRUE), character())
@@ -296,6 +352,20 @@ run_main_spec <- function(spec_id,
   } else {
     NA_character_
   }
+
+  # The diagnostics row reads rho's standard error from the same source as the
+  # coefficient table, so the two cannot disagree about which inference they carry.
+  lambda_row <- coef_tbl[!is.na(coef_tbl$term) & coef_tbl$term == "lambda", , drop = FALSE]
+  spatial_param_se <- if (nrow(lambda_row) == 1L) lambda_row$std.error[[1]] else spatial_param$spatial_param_se
+  spatial_param_p <- if (nrow(lambda_row) == 1L) lambda_row$p.value[[1]] else spatial_param$spatial_param_p
+  inference_label <- if (identical(boot_status$state, "disabled")) {
+    NA_character_
+  } else if (identical(boot_status$state, "ok")) {
+    spdm_bootstrap_se_method()
+  } else {
+    paste0(spdm_bootstrap_se_method(), "_failed")
+  }
+
   diag_out <- build_spdm_diagnostics_row(
     spec_id = spec_id,
     outcome = outcome,
@@ -313,16 +383,24 @@ run_main_spec <- function(spec_id,
     n_wx_terms = length(wx_terms),
     sdm_implementation = sdm_implementation,
     impact_method = impact_method,
+    coef_se_method = if (is.na(inference_label)) spdm_coef_se_method() else inference_label,
+    spatial_param_se_method = if (is.na(inference_label)) spdm_spatial_param_se_method() else inference_label,
+    impact_se_method = if (is.na(inference_label)) spdm_impact_se_method() else inference_label,
     spatial_param_name = spatial_param$spatial_param_name,
     spatial_param_estimate = spatial_param$spatial_param_estimate,
-    spatial_param_se = spatial_param$spatial_param_se,
-    spatial_param_p = spatial_param$spatial_param_p,
+    spatial_param_se = spatial_param_se,
+    spatial_param_p = spatial_param_p,
     logLik = fit_stats$logLik,
     AIC = fit_stats$AIC,
     BIC = fit_stats$BIC,
     impacts_status = impacts_res$status,
-    message = impacts_res$message
-  )
+    message = spdm_append_message(impacts_res$message, boot_status$message)
+  ) |>
+    dplyr::mutate(
+      spatial_param_se_model = spatial_param$spatial_param_se,
+      spatial_param_p_model = spatial_param$spatial_param_p
+    ) |>
+    dplyr::bind_cols(tibble::as_tibble(spdm_bootstrap_meta(boot)))
 
   list(
     coefs = coef_tbl,

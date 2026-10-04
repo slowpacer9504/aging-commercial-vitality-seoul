@@ -171,6 +171,10 @@ This is the complete list of environment variables read by the pipeline. The def
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `SPDM_MIN_PERIODS` | `20` | Minimum number of quarters a balanced estimation panel must retain for a specification to be accepted. A floor on panel length, not a per-dong observation count |
+| `RUN_SPDM_MAIN_BOOTSTRAP` | `true` | Run the dong-level reduced-form bootstrap that supplies the main SPDM standard errors, p-values and intervals. Off is for development only: the primary columns then stay model-based, QC check `S04` fails, and the evidence synthesis stops |
+| `SPDM_MAIN_BOOTSTRAP_R` | `1000` | Main bootstrap draws per outcome; each draw is one `spml()` refit. A run with fewer than 90% valid draws reports no inference |
+| `SPDM_MAIN_BOOTSTRAP_CORES` | `4` | Parallel workers for the main bootstrap (Windows falls back to sequential) |
+| `SPDM_MAIN_BOOTSTRAP_SEED` | `cfg$analysis_seed` | Base seed; each outcome is offset by its spec number and each draw by its index |
 | `SPDM_OPTIONAL_SPEC_CORES` | `1` | Parallel spec workers for the optional SPDM sidecars |
 | `SPDM_OPTIONAL_IMPACT_CORES` | `1` | Parallel workers for impact simulation in the optional SPDM sidecars |
 | `RUN_SPDM_CHANNEL_BOOTSTRAP` | `true` | Run the wild residual bootstrap in the channel-path sidecar; when disabled, inference falls back to `delta_independent_approx` |
@@ -259,15 +263,16 @@ This is the complete list of environment variables read by the pipeline. The def
 Rscript 02_Code/95_tests/run_tests.R    # exits 0 on pass, 1 on failure
 ```
 
-127 assertions over five utility surfaces that compute reported quantities:
+Assertions over six utility surfaces that compute reported quantities:
 
 - `compute_true_sdm_effects()` — LeSage-Pace direct/indirect/total impacts
+- `run_spdm_impact_bootstrap()` with `spdm_unit_rademacher_weights()` and the `apply_spdm_bootstrap_to_*()` helpers — the dong-level bootstrap that carries the main SPDM inference: one weight per dong, no silent fallback to model-based values, and a larger standard error than the model-based one on a fixture with serially dependent errors
 - `build_gtwr_st_dmat()` with its `gtwr_st_combine()` / `gtwr_st_scales()` helpers — the symmetric spatiotemporal distance that replaced the defective `GWmodel::ti.distv()` time comparison
 - `weighted_design_collin_diag()` — local VIF and condition numbers
 - `extract_gtwr_local_inference()` — the GTWR local standard errors and t-values that `GWmodel::gtwr()` returns per estimation point, which the extraction previously discarded
 - `build_spdm_reduced_form_resampler()` with `spdm_within_transform()` — the reduced form `y* = S(Z gamma + e*)` the channel-path bootstrap resamples through, and its round-trip guard
 
-The suite is base R with no `testthat` dependency, runs in a few seconds, needs no pipeline output, and should be run before committing any change to `99_utils/`. Checks that compare against `03_Output/01_Tables/spdm_impacts.csv` skip rather than fail when the outputs are absent, so it works on a fresh clone.
+The suite is base R with no `testthat` dependency, runs in seconds apart from the bootstrap fixture, which refits `spml()` about a hundred times on a small panel, needs no pipeline output, and should be run before committing any change to `99_utils/`. Checks that compare against `03_Output/01_Tables/spdm_impacts.csv` skip rather than fail when the outputs are absent, so it works on a fresh clone.
 
 ## Specification Navigation
 

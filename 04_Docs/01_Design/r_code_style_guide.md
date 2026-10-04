@@ -167,6 +167,7 @@ Comments to avoid:
 - Do not rely on Durbin placeholders in `splm::spml()` calls; explicitly create `W lag4_age60_resident_share` and `W controls`.
 - Focus on saving direct / indirect / total effect tables rather than coefficient tables.
 - Calculate direct / indirect / total effects using the SDM impact matrix.
+- Report significance for the main SPDM from `run_spdm_impact_bootstrap()`, the dong-level wild bootstrap through the reduced form, never from `vcov()` of an `splm` fit. That matrix treats a dong's errors as independent across quarters, and `splm` returns it with the covariance between `rho` and the coefficients set to zero. Draw one Rademacher weight per dong, not per row; a per-row weight breaks the serial dependence the bootstrap exists to carry. Keep model-based values only as `*_model` columns.
 - Handle alternative W matrices in a separate robustness family.
 
 ### GTWR

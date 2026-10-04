@@ -245,6 +245,9 @@ write_csv_safe(twfe_tidy, path_twfe_csv)
 #   directly on the quarterly panel, not via a Durbin placeholder.
 # - Reporting centers on `direct / indirect / total effects`, not coefficients.
 # - SDM impacts use `S = (I - rho W)^(-1)` and `S(beta I + theta W)`.
+# - Main SPDM significance comes from run_spdm_impact_bootstrap(), the dong-level
+#   reduced-form bootstrap, not from vcov() of the splm fit; model-based values
+#   are kept only as *_model columns.
 # - W robustness is kept as a separate family.
 
 # Robustness template rule:

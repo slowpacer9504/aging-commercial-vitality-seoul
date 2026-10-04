@@ -84,6 +84,34 @@ src <- list(
 dat <- lapply(src, read_if_present)
 missing_src <- names(src)[vapply(dat, is.null, logical(1))]
 
+# The SPDM gate compares 5% verdicts, so it is only as good as the SPDM standard
+# error. Until 2026-10-04 spdm_impacts.csv carried the model-based ML inference
+# of splm, which treats a dong's errors as independent across quarters and
+# understates the impact standard errors by a factor of two to five on this
+# panel (04_model_spec.md section 5). A table still on that inference flips this
+# gate for several outcomes, so it is refused rather than read. A row whose
+# bootstrap failed carries an empty p-value and leaves only its own gate NA.
+if (!is.null(dat$spdm)) {
+  spdm_boot_label <- as.character(value_or(cfg$spdm_main_bootstrap_method, "adm_cd_wild_reduced_form_bootstrap"))
+  spdm_methods <- if ("impact_se_method" %in% names(dat$spdm)) {
+    unique(as.character(dat$spdm$impact_se_method[dat$spdm$status %in% "success"]))
+  } else {
+    NA_character_
+  }
+  spdm_bad_methods <- setdiff(spdm_methods, c(spdm_boot_label, paste0(spdm_boot_label, "_failed")))
+  if (length(spdm_bad_methods) > 0L) {
+    stop(
+      sprintf(
+        paste0("[ERROR] spdm_impacts.csv carries impact inference '%s' rather than '%s'. ",
+               "Re-run 02_Code/03_models/02_run_spdm_main.R with RUN_SPDM_MAIN_BOOTSTRAP=true ",
+               "before the synthesis; model-based SPDM p-values understate uncertainty on this panel."),
+        paste(spdm_bad_methods, collapse = ", "), spdm_boot_label
+      ),
+      call. = FALSE
+    )
+  }
+}
+
 # Provenance. A synthesis over stale inputs is worse than none, so the modification
 # time of every source is carried into the log and the wide output.
 src_mtime <- vapply(src, function(p) {
@@ -125,7 +153,7 @@ GATE_META <- tibble::tribble(
   ~gate,                     ~audit,            ~role,             ~source, ~pass_rule,
   "baseline_significant",    "specification",   "prerequisite",    "twfe",      "TWFE m2 p < .05, clustered by dong",
   "control_set_consistency", "specification",   "supporting",      "twfe",      "m1 and m2 agree on sign and on the 5% verdict",
-  "model_family_agreement",  "specification",   "supporting",      "spdm",      "TWFE m2 and SPDM direct agree on sign and on the 5% verdict",
+  "model_family_agreement",  "specification",   "supporting",      "spdm",      "TWFE m2 and SPDM direct agree on sign and on the 5% verdict, SPDM p from the dong-level bootstrap",
   "influence_stable",        "influence",       "stability",       "influence", "no sign flip, no lost significance, and |pct_change| <= tol in all variants",
   "placebo_lead_null",       "identification",  "identification",  "placebo",   "the 4-quarter lead is not significant at 5%",
   "lag_beats_lead",          "identification",  "identification",  "placebo",   "the lag stays significant at 5% with the lead entered alongside",
@@ -147,6 +175,7 @@ eval_gates <- function(oc) {
 
   sd_direct <- pick(dat$spdm, oc, "direct")
   sd_p <- pick(dat$spdm, oc, "direct_p")
+  sd_method <- pick(dat$spdm, oc, "impact_se_method")
 
   inf <- if (is.null(dat$influence)) NULL else dat$influence[dat$influence$outcome == oc, , drop = FALSE]
   inf_flip <- if (is.null(inf) || nrow(inf) == 0L) NA else any(inf$sign_flip, na.rm = TRUE)
@@ -188,7 +217,7 @@ eval_gates <- function(oc) {
     statistic = c(
       sprintf("beta = %.3f, p = %.4f", b2, p2),
       sprintf("m1 beta = %.3f (p = %.4f); m2 beta = %.3f (p = %.4f)", b1, p1, b2, p2),
-      sprintf("TWFE beta = %.3f (p = %.4f); SPDM direct = %.3f (p = %.4g)", b2, p2, sd_direct, sd_p),
+      sprintf("TWFE beta = %.3f (p = %.4f); SPDM direct = %.3f (p = %.4g, %s)", b2, p2, sd_direct, sd_p, sd_method),
       sprintf("sign_flip = %s, loses_5pct = %s, max |pct_change| = %.1f (tol %.0f)",
               inf_flip, inf_lose, inf_pct, PCT_TOL),
       sprintf("lead p = %.4f", lead_p),

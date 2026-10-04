@@ -149,7 +149,8 @@ cfg$default_w <- "queen"
 cfg$alt_w <- c("rook", "knn6", "knn8")
 # One project-wide base seed. It is named for the analysis rather than for ESDA
 # because it also seeds the SPDM impact simulation and, through
-# cfg$spdm_channel_bootstrap_seed, the channel-path bootstrap. cfg$esda_seed is
+# cfg$spdm_main_bootstrap_seed and cfg$spdm_channel_bootstrap_seed, the main and
+# channel-path bootstraps. cfg$esda_seed is
 # retained as an alias with the identical value so existing call sites and every
 # published result stay bit-identical; new call sites should use
 # cfg$analysis_seed.
@@ -521,6 +522,27 @@ if (!is.finite(cfg$spdm_channel_bootstrap_seed)) cfg$spdm_channel_bootstrap_seed
   "SPDM_CHANNEL_BOOTSTRAP_SEED", Sys.getenv("SPDM_CHANNEL_BOOTSTRAP_SEED", unset = ""), cfg$analysis_seed, "not an integer"
 )
 cfg$spdm_channel_bootstrap_method <- Sys.getenv("SPDM_CHANNEL_BOOTSTRAP_METHOD", unset = "adm_cd_wild_residual")
+# Main SPDM inference. The primary se/z/p/ci columns of spdm_impacts.csv and
+# spdm_main_models.csv come from a dong-level wild bootstrap through the reduced
+# form (run_spdm_impact_bootstrap() in utils_spdm.R), and the model-based ML
+# values are kept beside them as *_model. The model-based standard errors treat a
+# dong's errors as independent over quarters and understate the impact standard
+# errors by a factor of two to five on this panel (04_model_spec.md section 5).
+# Switching the bootstrap off is for development runs only: QC check S04 fails
+# and the evidence synthesis stops on a main table without it.
+cfg$run_spdm_main_bootstrap <- tolower(trimws(Sys.getenv("RUN_SPDM_MAIN_BOOTSTRAP", unset = "true"))) %in% c("1", "true", "yes")
+cfg$spdm_main_bootstrap_R <- suppressWarnings(as.integer(Sys.getenv("SPDM_MAIN_BOOTSTRAP_R", unset = "1000")))
+if (!is.finite(cfg$spdm_main_bootstrap_R) || cfg$spdm_main_bootstrap_R < 2L) cfg$spdm_main_bootstrap_R <- cfg_coerced(
+  "SPDM_MAIN_BOOTSTRAP_R", Sys.getenv("SPDM_MAIN_BOOTSTRAP_R", unset = "1000"), 1000L, "not an integer of at least 2"
+)
+cfg$spdm_main_bootstrap_cores <- suppressWarnings(as.integer(Sys.getenv("SPDM_MAIN_BOOTSTRAP_CORES", unset = "4")))
+if (!is.finite(cfg$spdm_main_bootstrap_cores) || cfg$spdm_main_bootstrap_cores < 1L) cfg$spdm_main_bootstrap_cores <- 1L
+cfg$spdm_main_bootstrap_seed <- suppressWarnings(as.integer(Sys.getenv("SPDM_MAIN_BOOTSTRAP_SEED", unset = as.character(cfg$analysis_seed))))
+if (!is.finite(cfg$spdm_main_bootstrap_seed)) cfg$spdm_main_bootstrap_seed <- cfg_coerced(
+  "SPDM_MAIN_BOOTSTRAP_SEED", Sys.getenv("SPDM_MAIN_BOOTSTRAP_SEED", unset = ""), cfg$analysis_seed, "not an integer"
+)
+cfg$spdm_main_bootstrap_min_valid_share <- 0.9
+cfg$spdm_main_bootstrap_method <- "adm_cd_wild_reduced_form_bootstrap"
 # Main true-SDM/SPDM impacts are computed with the explicit matrix formula
 # S = (I - rho W)^(-1)(beta I + theta W). Keep this label aligned with the
 # `sim_method` written to SPDM main outputs, so readers do not confuse it with

@@ -408,6 +408,44 @@ if (inherits(spdm_impacts_tbl, "data.frame")) {
 }
 rows[[length(rows) + 1L]] <- add_row("S03", "spdm_main", pass, detail)
 
+# S03 passes on a table whose p-values are wrong. The model-based ML standard
+# errors of splm treat a dong's errors as independent across quarters and
+# understate the impact standard errors by a factor of two to five on this panel
+# (04_model_spec.md section 5), so the main impacts must carry the dong-level
+# bootstrap, with at least the contracted share of its draws valid.
+if (inherits(spdm_impacts_tbl, "data.frame")) {
+  boot_label <- as.character(value_or(cfg$spdm_main_bootstrap_method, "adm_cd_wild_reduced_form_bootstrap"))
+  boot_min_share <- as.numeric(value_or(cfg$spdm_main_bootstrap_min_valid_share, 0.9))
+  boot_cols <- c("impact_se_method", "boot_R", "boot_valid_draws")
+  missing_cols <- setdiff(boot_cols, names(spdm_impacts_tbl))
+  main_rows <- spdm_impacts_tbl |>
+    dplyr::filter(
+      model_family == "sdm",
+      w_type == "queen",
+      status == "success",
+      focal_var == expected_main_exposure
+    )
+  methods_seen <- if ("impact_se_method" %in% names(main_rows)) unique(as.character(main_rows$impact_se_method)) else character()
+  draws_ok <- length(missing_cols) == 0L && nrow(main_rows) > 0L &&
+    isTRUE(all(main_rows$boot_valid_draws >= ceiling(boot_min_share * main_rows$boot_R)))
+  pass <- length(missing_cols) == 0L && nrow(main_rows) > 0L &&
+    identical(methods_seen, boot_label) && draws_ok
+  detail <- sprintf(
+    "missing cols=%s; impact_se_method=%s; valid draws=%s",
+    if (length(missing_cols) == 0L) "none" else paste(missing_cols, collapse = ", "),
+    if (length(methods_seen) == 0L) "none" else paste(methods_seen, collapse = ", "),
+    if (all(c("boot_R", "boot_valid_draws") %in% names(main_rows)) && nrow(main_rows) > 0L) {
+      paste(sprintf("%s=%s/%s", main_rows$outcome, main_rows$boot_valid_draws, main_rows$boot_R), collapse = ", ")
+    } else {
+      "unavailable"
+    }
+  )
+} else {
+  pass <- FALSE
+  detail <- if (inherits(spdm_impacts_tbl, "error")) spdm_impacts_tbl$message else "unavailable"
+}
+rows[[length(rows) + 1L]] <- add_row("S04", "spdm_main", pass, detail)
+
 #==============================================================================
 # 6. SPDM W-Robustness Contract
 #==============================================================================

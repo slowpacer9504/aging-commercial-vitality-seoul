@@ -138,6 +138,7 @@ For detailed information regarding code execution or variables, please refer to 
 │   │   ├── test_gtwr_st_distance.R                # build_gtwr_st_dmat(): symmetric time distance (ti.distv regression)
 │   │   ├── test_preprocess_contracts.R            # Preprocessing contracts: stability window, day-part entropy, pooled-z reference, lag calendar, adm_cd crosswalk, panel_main integrity
 │   │   ├── test_sdm_impacts.R                     # compute_true_sdm_effects(): LeSage-Pace direct/indirect/total
+│   │   ├── test_spdm_impact_bootstrap.R           # run_spdm_impact_bootstrap(): dong-level main SPDM inference
 │   │   └── test_spdm_reduced_form.R               # build_spdm_reduced_form_resampler(): channel-path bootstrap DGP
 │   │
 │   └── 99_utils/                                  # Utility scripts for reuse
