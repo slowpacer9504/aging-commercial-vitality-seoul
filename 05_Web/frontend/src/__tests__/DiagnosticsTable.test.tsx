@@ -21,10 +21,6 @@ const base: CoefficientFeatureProps = {
   n_obs: 10599,
   n_eff: 90,
   bw_obs_n: null,
-  local_cn_gtwr_earliest: 82.7,
-  local_cn_gtwr_latest: 182.0,
-  collinearity_warn_latest: true,
-  collinearity_warn_flag: true,
 };
 
 describe("DiagnosticsTable", () => {
@@ -37,14 +33,5 @@ describe("DiagnosticsTable", () => {
     const deltaProps = { ...base, view: "delta" as const, estimate: -5.6921 };
     render(<DiagnosticsTable props={deltaProps} />);
     expect(screen.getByText("Δ β̂ (latest − earliest)")).toBeTruthy();
-  });
-  it("shows collinearity-warn-on badge when both warn flags true", () => {
-    render(<DiagnosticsTable props={base} />);
-    expect(screen.getByTestId("collinearity-warn-on")).toBeTruthy();
-  });
-  it("shows no badge when warns are false", () => {
-    const okProps = { ...base, collinearity_warn_latest: false, collinearity_warn_flag: false };
-    render(<DiagnosticsTable props={okProps} />);
-    expect(screen.queryByTestId("collinearity-warn-on")).toBeNull();
   });
 });

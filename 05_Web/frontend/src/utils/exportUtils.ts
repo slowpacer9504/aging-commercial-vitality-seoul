@@ -196,8 +196,6 @@ export function exportFeaturesToCsv(
     "latest_estimate_2025Q4",
     "effective_n",
     "n_obs",
-    "local_cn_latest",
-    "collinearity_warning",
   ];
 
   const rows = features.map(f => {
@@ -216,8 +214,6 @@ export function exportFeaturesToCsv(
       p.latest_estimate ?? "",
       p.n_eff != null ? p.n_eff.toFixed(2) : "",
       p.n_obs ?? "",
-      p.local_cn_gtwr_latest != null ? p.local_cn_gtwr_latest.toFixed(2) : "",
-      p.collinearity_warn_latest || p.collinearity_warn_flag ? "TRUE" : "FALSE",
     ].join(",");
   });
 

@@ -104,12 +104,6 @@ export const GlobalSummary: FC = () => {
                   <span className="metric-k">GTW AICc</span>
                   <span className="metric-v">{fmt(s.gtw_aicc, 1)}</span>
                 </div>
-                <div className="metric-box">
-                  <span className="metric-k">Max Local CN</span>
-                  <span className={`metric-v ${(s.max_local_cn_gtwr ?? 0) >= 30 ? "cn-warn" : ""}`}>
-                    {fmt(s.max_local_cn_gtwr, 1)}
-                  </span>
-                </div>
               </div>
             </div>
           );

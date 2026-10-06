@@ -14,7 +14,6 @@ export const HoverTooltip: FC<Props> = ({ x, y, props }) => {
   const beta = props.estimate;
   const isPos = beta != null && beta > 0;
   const isNeg = beta != null && beta < 0;
-  const flag = props.collinearity_warn_latest || props.collinearity_warn_flag;
 
   return (
     <div
@@ -43,11 +42,6 @@ export const HoverTooltip: FC<Props> = ({ x, y, props }) => {
           <div className="tooltip-row-sub">
             <span className="tooltip-label-sub">2019Q4 β̂</span>
             <span className="tooltip-val-sub">{fmt(props.earliest_estimate)}</span>
-          </div>
-        )}
-        {flag && (
-          <div className="tooltip-flag">
-            <span>⚠ Collinearity Warn</span>
           </div>
         )}
       </div>

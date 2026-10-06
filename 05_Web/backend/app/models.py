@@ -41,13 +41,8 @@ class CoefficientsRow(BaseModel):
     n_obs: int | None
     n_eff: float | None
     bw_obs_n: int | None
-    local_cn_gtwr_earliest: float | None
-    local_cn_gtwr_latest: float | None
-    collinearity_warn_latest: bool
-    collinearity_warn_flag: bool
     status: str | None = None
     message: str | None = None
-    collinearity_diag_message: str | None = None
 
 
 class LookupRow(BaseModel):
@@ -85,11 +80,8 @@ class SummaryRow(BaseModel):
     gtw_aicc: float | None
     gtw_enp: float | None
     gtw_edf: float | None
-    collinearity_warn_n: int | None
-    collinearity_warn_share: float | None
     latest_missing_n: int | None
     latest_coverage_share: float | None
-    max_local_cn_gtwr: float | None
     control_set: str
     outcome_group: str | None = None
     outcome_order: int | None = None
@@ -142,10 +134,6 @@ class CoefficientFeatureProps(BaseModel):
     n_obs: int | None
     n_eff: float | None
     bw_obs_n: int | None
-    local_cn_gtwr_earliest: float | None
-    local_cn_gtwr_latest: float | None
-    collinearity_warn_latest: bool
-    collinearity_warn_flag: bool
 
 
 class CoefficientFeature(BaseModel):

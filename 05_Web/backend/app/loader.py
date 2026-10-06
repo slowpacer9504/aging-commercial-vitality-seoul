@@ -50,14 +50,6 @@ def _to_int(x: Any) -> int | None:
     return v
 
 
-def _to_bool(x: Any) -> bool:
-    if isinstance(x, bool):
-        return x
-    if isinstance(x, str):
-        return x.strip().lower() in {"true", "1", "yes"}
-    return bool(x)
-
-
 @dataclass
 class LoadedData:
     """Application-wide singleton built once at startup."""
@@ -108,13 +100,8 @@ def load_coefficients_for_control(control_set: str) -> dict[str, dict[str, Coeff
                 n_obs=_to_int(row.get("n_obs")),
                 n_eff=_to_float(row.get("n_eff")),
                 bw_obs_n=_to_int(row.get("bw_obs_n")),
-                local_cn_gtwr_earliest=_to_float(row.get("local_cn_gtwr_earliest")),
-                local_cn_gtwr_latest=_to_float(row.get("local_cn_gtwr_latest")),
-                collinearity_warn_latest=_to_bool(row.get("collinearity_warn_latest")),
-                collinearity_warn_flag=_to_bool(row.get("collinearity_warn_flag")),
                 status=row.get("status"),
                 message=row.get("message"),
-                collinearity_diag_message=row.get("collinearity_diag_message"),
             )
         out[outcome] = rows
     return out
@@ -166,11 +153,8 @@ def load_summary(control_set: str) -> list[SummaryRow]:
                 gtw_aicc=_to_float(r.get("gtw_aicc")),
                 gtw_enp=_to_float(r.get("gtw_enp")),
                 gtw_edf=_to_float(r.get("gtw_edf")),
-                collinearity_warn_n=_to_int(r.get("collinearity_warn_n")),
-                collinearity_warn_share=_to_float(r.get("collinearity_warn_share")),
                 latest_missing_n=_to_int(r.get("latest_missing_n")),
                 latest_coverage_share=_to_float(r.get("latest_coverage_share")),
-                max_local_cn_gtwr=_to_float(r.get("max_local_cn_gtwr")),
                 control_set=str(r.get("control_set", control_set)),
                 outcome_group=r.get("outcome_group"),
                 outcome_order=_to_int(r.get("outcome_order")),
@@ -309,10 +293,6 @@ def build_coefficient_feature_collection(
             n_obs=row.n_obs,
             n_eff=row.n_eff,
             bw_obs_n=row.bw_obs_n,
-            local_cn_gtwr_earliest=row.local_cn_gtwr_earliest,
-            local_cn_gtwr_latest=row.local_cn_gtwr_latest,
-            collinearity_warn_latest=row.collinearity_warn_latest,
-            collinearity_warn_flag=row.collinearity_warn_flag,
         )
         geom = geometry_by_adm_cd.get(adm_cd)
         from .models import FeatureGeometry

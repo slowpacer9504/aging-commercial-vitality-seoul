@@ -16,10 +16,6 @@ const estimateLabel = (props: CoefficientFeatureProps): string => {
 };
 
 export const DiagnosticsTable: FC<Props> = ({ props, compareProps }) => {
-  const flagA = props.collinearity_warn_latest || props.collinearity_warn_flag;
-  const cnLatestA = props.local_cn_gtwr_latest ?? 0;
-  const cnPctA = Math.min(100, Math.round((cnLatestA / 40) * 100));
-
   const betaA = props.estimate;
   const isPosA = betaA != null && betaA > 0;
   const isNegA = betaA != null && betaA < 0;
@@ -66,41 +62,11 @@ export const DiagnosticsTable: FC<Props> = ({ props, compareProps }) => {
             <span className="diag-v">{props.n_obs ?? "—"}</span>
           </div>
         </div>
-
-        {/* Multicollinearity Section */}
-        <div className="diag-cn-section">
-          <div className="cn-header">
-            <span className="cn-title">Local Multicollinearity (CN)</span>
-            <span className={`cn-val ${cnLatestA >= 30 ? "cn-warn" : "cn-safe"}`}>
-              {fmt(props.local_cn_gtwr_latest, 1)} / 30.0
-            </span>
-          </div>
-          <div className="cn-gauge-bar">
-            <div
-              className={`cn-gauge-fill ${cnLatestA >= 30 ? "is-warn" : ""}`}
-              style={{ width: `${cnPctA}%` }}
-            />
-          </div>
-          <div className="cn-footer">
-            <span>Threshold: 30.0</span>
-            {flagA ? (
-              <span className="badge-warn" data-testid="collinearity-warn-on" role="status">
-                ⚠ Collinearity Flag
-              </span>
-            ) : (
-              <span className="badge-ok" role="status">
-                ✓ Normal CN
-              </span>
-            )}
-          </div>
-        </div>
       </div>
     );
   }
 
   // Dual Comparison Mode (Dong A vs Dong B)
-  const flagB = compareProps.collinearity_warn_latest || compareProps.collinearity_warn_flag;
-  const cnLatestB = compareProps.local_cn_gtwr_latest ?? 0;
   const betaB = compareProps.estimate;
   const isPosB = betaB != null && betaB > 0;
   const isNegB = betaB != null && betaB < 0;
@@ -158,16 +124,6 @@ export const DiagnosticsTable: FC<Props> = ({ props, compareProps }) => {
             <td>Effective n</td>
             <td>{fmt(props.n_eff, 1)}</td>
             <td>{fmt(compareProps.n_eff, 1)}</td>
-          </tr>
-          <tr>
-            <td>Local CN (Latest)</td>
-            <td className={cnLatestA >= 30 ? "cn-warn" : "cn-safe"}>{fmt(props.local_cn_gtwr_latest, 1)}</td>
-            <td className={cnLatestB >= 30 ? "cn-warn" : "cn-safe"}>{fmt(compareProps.local_cn_gtwr_latest, 1)}</td>
-          </tr>
-          <tr>
-            <td>Collinearity Warning</td>
-            <td>{flagA ? <span className="badge-warn">⚠ Flag</span> : <span className="badge-ok">Normal</span>}</td>
-            <td>{flagB ? <span className="badge-warn">⚠ Flag</span> : <span className="badge-ok">Normal</span>}</td>
           </tr>
         </tbody>
       </table>

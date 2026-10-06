@@ -79,10 +79,6 @@ describe("exportUtils", () => {
           n_obs: 10599,
           n_eff: 90.0,
           bw_obs_n: null,
-          local_cn_gtwr_earliest: null,
-          local_cn_gtwr_latest: 18.2,
-          collinearity_warn_latest: false,
-          collinearity_warn_flag: false,
         },
       },
     ];

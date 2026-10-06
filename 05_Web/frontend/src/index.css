@@ -1734,13 +1734,6 @@ code {
   margin-top: 2px;
 }
 
-.tooltip-flag {
-  margin-top: 4px;
-  font-size: 10px;
-  color: #fca5a5;
-  font-weight: 600;
-}
-
 /* Legend & Histogram ------------------------------------------------------- */
 .legend {
   position: absolute;
@@ -2149,83 +2142,6 @@ code {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text-main);
-}
-
-.diag-cn-section {
-  padding: 8px 10px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-subtle);
-  border-radius: 7px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.cn-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 11px;
-}
-
-.cn-title {
-  color: var(--text-muted);
-  font-weight: 600;
-}
-
-.cn-val {
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-
-.cn-safe {
-  color: #16a34a;
-}
-
-.cn-warn {
-  color: #dc2626;
-}
-
-.cn-gauge-bar {
-  height: 6px;
-  background: var(--bg-subtle);
-  border-radius: 999px;
-  overflow: hidden;
-}
-
-.cn-gauge-fill {
-  height: 100%;
-  background: #3b82f6;
-  border-radius: 999px;
-  transition: width 0.3s ease;
-}
-
-.cn-gauge-fill.is-warn {
-  background: #dc2626;
-}
-
-.cn-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 10px;
-  color: var(--text-light);
-}
-
-.badge-warn {
-  font-weight: 700;
-  color: var(--warn-text);
-  background: var(--warn-bg);
-  padding: 1px 6px;
-  border-radius: 4px;
-}
-
-.badge-ok {
-  font-weight: 600;
-  color: var(--success-text);
-  background: var(--success-bg);
-  padding: 1px 6px;
-  border-radius: 4px;
 }
 
 /* Compare Mode Diagnostics */

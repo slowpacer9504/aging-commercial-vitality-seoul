@@ -48,7 +48,6 @@ def test_coefficients_valid(client):
     assert p["control_set"] == "lean"
     assert p["target_yq"] == "2025Q4"
     assert "estimate" in p
-    assert isinstance(p["collinearity_warn_flag"], bool)
     assert p["adm_nm"]
 
 

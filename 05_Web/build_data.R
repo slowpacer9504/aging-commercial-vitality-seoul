@@ -249,13 +249,8 @@ build_coefficients_nested <- function(df) {
           n_obs         = suppressWarnings(as.integer(row$n_obs)),
           n_eff         = as_num(row$n_eff),
           bw_obs_n      = suppressWarnings(as.integer(row$bw_obs_n)),
-          local_cn_gtwr_earliest = as_num(row$local_cn_gtwr_earliest),
-          local_cn_gtwr_latest   = as_num(row$local_cn_gtwr_latest),
-          collinearity_warn_latest = as.logical(row$collinearity_warn_latest),
-          collinearity_warn_flag   = as.logical(row$collinearity_warn_flag),
           status        = row$status,
-          message       = row$message,
-          collinearity_diag_message = row$collinearity_diag_message
+          message       = row$message
         )
       }),
       sub$adm_cd
@@ -285,8 +280,7 @@ SUMMARY_COLS <- c(
   "share_positive", "st_bw",
   "global_lm_r2", "global_lm_r2_adj",
   "gtw_aic", "gtw_aicc", "gtw_enp", "gtw_edf",
-  "collinearity_warn_n", "collinearity_warn_share",
-  "latest_missing_n", "latest_coverage_share", "max_local_cn_gtwr",
+  "latest_missing_n", "latest_coverage_share",
   "control_set", "outcome_group", "outcome_order"
 )
 build_summary <- function(control_set) {
@@ -301,12 +295,11 @@ build_summary <- function(control_set) {
     num_cols <- c("mean_beta","sd_beta","p25_beta","p50_beta","p75_beta",
                    "share_positive","st_bw","global_lm_r2","global_lm_r2_adj",
                    "gtw_aic","gtw_aicc","gtw_enp","gtw_edf",
-                   "collinearity_warn_share","latest_coverage_share",
-                   "max_local_cn_gtwr")
+                   "latest_coverage_share")
     for (col in intersect(num_cols, names(out_row))) {
       out_row[[col]] <- suppressWarnings(as.numeric(out_row[[col]]))
     }
-    int_cols <- c("n_locations","n_valid","collinearity_warn_n","latest_missing_n","outcome_order")
+    int_cols <- c("n_locations","n_valid","latest_missing_n","outcome_order")
     for (col in intersect(int_cols, names(out_row))) {
       out_row[[col]] <- suppressWarnings(as.integer(out_row[[col]]))
     }

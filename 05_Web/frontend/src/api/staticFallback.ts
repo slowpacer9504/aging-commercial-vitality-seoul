@@ -201,10 +201,6 @@ export async function staticGetCoefficients(
       n_obs: baseProps.n_obs ?? null,
       n_eff: baseProps.n_eff ?? null,
       bw_obs_n: baseProps.bw_obs_n ?? null,
-      local_cn_gtwr_earliest: baseProps.local_cn_gtwr_earliest ?? null,
-      local_cn_gtwr_latest: baseProps.local_cn_gtwr_latest ?? null,
-      collinearity_warn_latest: Boolean(baseProps.collinearity_warn_latest),
-      collinearity_warn_flag: Boolean(baseProps.collinearity_warn_flag),
     };
 
     return {

@@ -16,7 +16,6 @@ vi.mock("@/api/endpoints", () => ({
           adm_nm: "역삼1동",
           gu_name: "강남구",
           estimate: -2.5,
-          collinearity_warn_latest: false,
         },
       },
       {
@@ -25,7 +24,6 @@ vi.mock("@/api/endpoints", () => ({
           adm_nm: "삼성1동",
           gu_name: "강남구",
           estimate: 1.2,
-          collinearity_warn_latest: false,
         },
       },
     ],

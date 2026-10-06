@@ -26,10 +26,6 @@ const mockFeatures: CoefficientFeature[] = [
       n_obs: 100,
       n_eff: 10,
       bw_obs_n: null,
-      local_cn_gtwr_earliest: null,
-      local_cn_gtwr_latest: null,
-      collinearity_warn_latest: false,
-      collinearity_warn_flag: false,
     },
   },
   {
@@ -53,10 +49,6 @@ const mockFeatures: CoefficientFeature[] = [
       n_obs: 100,
       n_eff: 10,
       bw_obs_n: null,
-      local_cn_gtwr_earliest: null,
-      local_cn_gtwr_latest: null,
-      collinearity_warn_latest: false,
-      collinearity_warn_flag: false,
     },
   },
 ];
