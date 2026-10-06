@@ -8,7 +8,6 @@
 # Status    : MANUAL_REPORTING / sidecar outside canonical workflow
 # Type      : reporting_sidecar
 # Inputs    : gtwr_local_beta_panel_<control_set>.csv,
-#             gtwr_local_coefficients_<control_set>.csv,
 #             gtwr_main_models_<control_set>.csv
 # Outputs   : gtwr_level_*.csv/png under 03_Output/05_report
 # DependsOn : 02_Code/03_models/03_run_gtwr_main.R
@@ -840,7 +839,6 @@ build_gtwr_level_artifacts_for_source <- function(source_row) {
   tag_selected <<- control_set_selected
   source_paths <<- c(
     gtwr_input_path("gtwr_local_beta_panel"),
-    gtwr_input_path("gtwr_local_coefficients"),
     gtwr_input_path("gtwr_main_models")
   )
   source_paths <<- source_paths[file.exists(source_paths)]
@@ -856,11 +854,9 @@ build_gtwr_level_artifacts_for_source <- function(source_row) {
 
 panel_path <- gtwr_input_path("gtwr_local_beta_panel")
 main_path <- gtwr_input_path("gtwr_main_models")
-local_path <- gtwr_input_path("gtwr_local_coefficients")
 
 panel_tbl <- read_gtwr_csv(panel_path)
 main_tbl <- read_gtwr_csv(main_path)
-local_tbl <- if (file.exists(local_path)) read_gtwr_csv(local_path) else tibble::tibble()
 
 required_panel_cols <- c("adm_cd", "year", "yq", "time_id", "outcome", "focal_var", "estimate", "estimate_type", "status")
 missing_panel_cols <- setdiff(required_panel_cols, names(panel_tbl))
@@ -916,8 +912,7 @@ quarter_axis_labels <- expected_yq[quarter_axis_tick_idx]
 main_meta <- main_tbl |>
   ensure_cols(c(
     "outcome_group", "outcome_order", "target_yq", "earliest_yq", "latest_yq",
-    "st_bw", "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr",
-    "latest_coverage_share", "status"
+    "st_bw", "latest_coverage_share", "status"
   )) |>
   dplyr::mutate(
     outcome = as.character(outcome),
@@ -929,7 +924,6 @@ main_meta <- main_tbl |>
     dplyr::any_of(c(
       "outcome", "focal_var", "outcome_group", "outcome_order",
       "target_yq", "earliest_yq", "latest_yq", "st_bw",
-      "collinearity_warn_n", "collinearity_warn_share", "max_local_cn_gtwr",
       "latest_coverage_share", "status"
     ))
   ) |>
@@ -988,22 +982,6 @@ snapshot_pairs <- panel_tbl |>
   dplyr::left_join(sf::st_drop_geometry(boundary_tbl), by = "adm_cd") |>
   dplyr::mutate(outcome_label = make_outcome_label(outcome)) |>
   dplyr::arrange(outcome_order, adm_cd)
-
-if (nrow(local_tbl) > 0L) {
-  local_cn_cols <- intersect(
-    c("local_cn_gtwr_earliest", "local_cn_gtwr_latest", "collinearity_warn_earliest", "collinearity_warn_latest"),
-    names(local_tbl)
-  )
-  if (length(local_cn_cols) > 0L) {
-    snapshot_pairs <- snapshot_pairs |>
-      dplyr::left_join(
-        local_tbl |>
-          dplyr::mutate(adm_cd = as.character(adm_cd)) |>
-          dplyr::select(adm_cd, outcome, focal_var, dplyr::all_of(local_cn_cols)),
-        by = c("adm_cd", "outcome", "focal_var")
-      )
-  }
-}
 
 
 #==============================================================================

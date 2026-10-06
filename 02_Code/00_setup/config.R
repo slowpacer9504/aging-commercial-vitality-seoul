@@ -328,7 +328,8 @@ cfg$gtwr_age_band_domains <- c("resident", "floating")
 cfg$gtwr_age_band_labels <- c("age20", "age30", "age40", "age50")
 
 # GTWR uses a more parsimonious default control contract than TWFE/SPDM
-# because local design matrices are much more sensitive to collinearity.
+# because every local regression is fitted on a small spatiotemporal window,
+# so each added control spends scarce local degrees of freedom.
 # Set GTWR_CONTROL_SET=extended to add lagged transit-accessibility and
 # workplace-worker controls to the lean pool.
 cfg$gtwr_lean_control_cols <- c(
@@ -550,10 +551,6 @@ cfg$gtwr_lamda <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LAMDA", unset = "
 if (!is.finite(cfg$gtwr_lamda) || cfg$gtwr_lamda < 0) cfg$gtwr_lamda <- 0.05
 cfg$gtwr_ksi <- suppressWarnings(as.numeric(Sys.getenv("GTWR_KSI", unset = "0")))
 if (!is.finite(cfg$gtwr_ksi) || cfg$gtwr_ksi < 0) cfg$gtwr_ksi <- 0
-cfg$gtwr_local_cn_warn_threshold <- suppressWarnings(as.numeric(Sys.getenv("GTWR_LOCAL_CN_WARN_THRESHOLD", unset = "100")))
-if (!is.finite(cfg$gtwr_local_cn_warn_threshold) || cfg$gtwr_local_cn_warn_threshold <= 0) {
-  cfg$gtwr_local_cn_warn_threshold <- 100
-}
 cfg$gtwr_lamda_sensitivity_grid <- trimws(Sys.getenv("GTWR_LAMDA_SENSITIVITY_GRID", unset = "0.025,0.05,0.1,0.2"))
 cfg$gtwr_refresh_lamda_sensitivity_cache <- tolower(trimws(Sys.getenv("GTWR_REFRESH_LAMDA_SENSITIVITY_CACHE", unset = "false"))) %in% c("1", "true", "yes")
 cfg$gtwr_bandwidth_sensitivity_grid <- trimws(Sys.getenv("GTWR_BANDWIDTH_SENSITIVITY_GRID", unset = "30,60,90,120,180"))

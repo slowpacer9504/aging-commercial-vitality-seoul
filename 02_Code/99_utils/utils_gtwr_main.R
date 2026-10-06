@@ -244,11 +244,8 @@ empty_gtwr_main_tbl <- function() {
       gtw_aicc = numeric(),
       gtw_enp = numeric(),
       gtw_edf = numeric(),
-      collinearity_warn_n = integer(),
-      collinearity_warn_share = numeric(),
       latest_missing_n = integer(),
       latest_coverage_share = numeric(),
-      max_local_cn_gtwr = numeric(),
     control_set = character(),
     fit_scope = character(),
     recent_period_n = integer(),
@@ -291,17 +288,7 @@ empty_gtwr_local_tbl <- function() {
     location_frac = numeric(),
     location_n = integer(),
     bw_obs_n = integer(),
-    bw_source = character(),
-      local_cn_gtwr_earliest = numeric(),
-      local_cn_gtwr_latest = numeric(),
-    collinearity_warn_earliest = logical(),
-    collinearity_warn_latest = logical(),
-    collinearity_warn_flag = logical(),
-    collinearity_warn_stage = character(),
-    collinearity_warn_metric = character(),
-    collinearity_warn_threshold = numeric(),
-    collinearity_diag_status = character(),
-    collinearity_diag_message = character()
+    bw_source = character()
   )
 }
 
@@ -417,9 +404,6 @@ empty_gtwr_lamda_sensitivity_tbl <- function() {
     p50_beta = numeric(),
     p75_beta = numeric(),
     share_positive = numeric(),
-    max_local_cn_gtwr = numeric(),
-    collinearity_warn_n = integer(),
-    collinearity_warn_share = numeric(),
     n_compare_with_main = integer(),
     beta_corr_with_main = numeric(),
     mean_abs_delta_vs_main = numeric(),
@@ -465,9 +449,6 @@ empty_gtwr_bandwidth_sensitivity_tbl <- function() {
     p50_beta = numeric(),
     p75_beta = numeric(),
     share_positive = numeric(),
-    max_local_cn_gtwr = numeric(),
-    collinearity_warn_n = integer(),
-    collinearity_warn_share = numeric(),
     n_compare_with_main = integer(),
     beta_corr_with_main = numeric(),
     mean_abs_delta_vs_main = numeric(),
@@ -628,64 +609,6 @@ build_gtwr_st_dmat <- function(d_fit, lamda = cfg$gtwr_lamda, ksi = cfg$gtwr_ksi
   out
 }
 
-weighted_design_cn <- function(model_matrix, weights) {
-  # Mirrors GWmodel::gwr.collin.diagno() local_CN, but uses the GTWR
-  # spatiotemporal weights generated from st.dist/gw.weight.
-  if (is.null(model_matrix) || nrow(model_matrix) == 0L || ncol(model_matrix) == 0L) {
-    return(NA_real_)
-  }
-
-  mm <- suppressWarnings(as.matrix(model_matrix))
-  w <- suppressWarnings(as.numeric(weights))
-  if (length(w) != nrow(mm)) return(NA_real_)
-  keep <- stats::complete.cases(mm) & is.finite(w) & w >= 0
-  if (!any(keep)) return(NA_real_)
-
-  mm <- mm[keep, , drop = FALSE]
-  w <- w[keep]
-  if (sum(w) <= .Machine$double.eps) return(NA_real_)
-  if (sum(w > sqrt(.Machine$double.eps)) < ncol(mm) + 1L) return(NA_real_)
-
-  wi <- w / sum(w)
-  xw <- sweep(mm, 1, wi, "*")
-  col_norm <- sqrt(colSums(xw^2, na.rm = TRUE))
-  if (any(!is.finite(col_norm) | col_norm <= .Machine$double.eps)) return(Inf)
-
-  x_scaled <- sweep(xw, 2, col_norm, "/")
-  sv <- tryCatch(svd(x_scaled, nu = 0, nv = 0)$d, error = function(e) NA_real_)
-  sv <- suppressWarnings(as.numeric(sv))
-  sv <- sv[is.finite(sv)]
-  if (length(sv) == 0L) return(NA_real_)
-  if (min(sv) <= .Machine$double.eps) return(Inf)
-  max(sv) / min(sv)
-}
-
-compute_gtwr_local_cn <- function(d_fit, rhs_vars, st_bw, st_dmat, target_idx) {
-  if (length(target_idx) == 0L) return(numeric(0))
-  if (is.null(st_dmat) || !is.matrix(st_dmat) || any(dim(st_dmat) != nrow(d_fit))) {
-    return(rep(NA_real_, length(target_idx)))
-  }
-
-  mm <- tryCatch(
-    stats::model.matrix(stats::reformulate(rhs_vars), data = d_fit),
-    error = function(e) NULL
-  )
-  if (is.null(mm) || ncol(mm) <= 1L) return(rep(NA_real_, length(target_idx)))
-
-  vapply(target_idx, function(i) {
-    weights <- tryCatch(
-      GWmodel::gw.weight(
-        vdist = st_dmat[, i],
-        bw = st_bw,
-        kernel = cfg$gtwr_kernel,
-        adaptive = isTRUE(cfg$gtwr_adaptive)
-      ),
-      error = function(e) rep(NA_real_, nrow(d_fit))
-    )
-    weighted_design_cn(mm, weights)
-  }, numeric(1))
-}
-
 gtwr_period_id <- function(d_fit) {
   if ("time_id" %in% names(d_fit)) {
     out <- suppressWarnings(as.integer(d_fit$time_id))
@@ -748,40 +671,6 @@ gtwr_period_meta <- function(d_fit) {
     latest_year = get_int("year", latest_idx),
     earliest_yq = get_chr("yq", earliest_idx),
     latest_yq = get_chr("yq", latest_idx)
-  )
-}
-
-local_cn_for_window <- function(d_fit, rhs_vars, st_bw, st_dmat, threshold) {
-  period_meta <- gtwr_period_meta(d_fit)
-  period_id <- period_meta$period_id
-
-  build_period_cn <- function(target_period_id, suffix) {
-    target_idx <- which(period_id == target_period_id)
-    target_idx <- target_idx[order(d_fit$adm_cd[target_idx])]
-
-    cn <- if (length(target_idx) == 0L) {
-      numeric(0)
-    } else {
-      compute_gtwr_local_cn(
-        d_fit = d_fit,
-        rhs_vars = rhs_vars,
-        st_bw = st_bw,
-        st_dmat = st_dmat,
-        target_idx = target_idx
-      )
-    }
-
-      tibble::tibble(
-        adm_cd = d_fit$adm_cd[target_idx],
-        !!paste0("local_cn_gtwr_", suffix) := cn,
-        !!paste0("collinearity_warn_", suffix) := is.finite(cn) & cn >= threshold
-      )
-  }
-
-  dplyr::full_join(
-    build_period_cn(period_meta$earliest_period_id, "earliest"),
-    build_period_cn(period_meta$latest_period_id, "latest"),
-    by = "adm_cd"
   )
 }
 
@@ -921,7 +810,7 @@ build_gtwr_spec_signature <- function(outcome,
                                       extra_cache_stamp = NULL) {
   paste(
     c(
-      "quarterly_gtwr_spec_cache_v6_gwmodel_local_cn",
+      "quarterly_gtwr_spec_cache_v7_gwmodel_outputs_only",
       paste("cache_context", cache_context, sep = "="),
       if (!is.null(extra_cache_stamp)) paste("extra_cache_stamp", extra_cache_stamp, sep = "=") else NULL,
       paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
@@ -1066,7 +955,7 @@ write_gtwr_bandwidth_cache <- function(path, signature, payload) {
 build_gtwr_lamda_sensitivity_signature <- function(outcome, focal_var, selected_controls, control_set, lamda, ksi) {
   paste(
     c(
-      "quarterly_gtwr_lamda_sensitivity_cache_v2",
+      "quarterly_gtwr_lamda_sensitivity_cache_v3",
       paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
       paste("outcome", outcome, sep = "="),
       paste("focal_var", focal_var, sep = "="),
@@ -1130,7 +1019,7 @@ write_gtwr_lamda_sensitivity_cache <- function(path, signature, payload) {
 build_gtwr_bandwidth_sensitivity_signature <- function(outcome, focal_var, selected_controls, control_set, st_bw, baseline_st_bw, lamda, ksi) {
   paste(
     c(
-      "quarterly_gtwr_bandwidth_sensitivity_cache_v1",
+      "quarterly_gtwr_bandwidth_sensitivity_cache_v2",
       paste("panel", build_gtwr_panel_cache_stamp(), sep = "="),
       paste("outcome", outcome, sep = "="),
       paste("focal_var", focal_var, sep = "="),
@@ -1523,9 +1412,6 @@ build_gtwr_lamda_baseline_rows <- function(summary_tbl) {
       p50_beta,
       p75_beta,
       share_positive,
-      max_local_cn_gtwr,
-      collinearity_warn_n,
-      collinearity_warn_share,
       n_compare_with_main = dplyr::if_else(.data$status == "success", as.integer(.data$n_valid), 0L),
       beta_corr_with_main = dplyr::if_else(.data$status == "success", 1, NA_real_),
       mean_abs_delta_vs_main = dplyr::if_else(.data$status == "success", 0, NA_real_),
@@ -1622,9 +1508,6 @@ build_gtwr_bandwidth_baseline_rows <- function(summary_tbl) {
       p50_beta,
       p75_beta,
       share_positive,
-      max_local_cn_gtwr,
-      collinearity_warn_n,
-      collinearity_warn_share,
       n_compare_with_main = dplyr::if_else(.data$status == "success", as.integer(.data$n_valid), 0L),
       beta_corr_with_main = dplyr::if_else(.data$status == "success", 1, NA_real_),
       mean_abs_delta_vs_main = dplyr::if_else(.data$status == "success", 0, NA_real_),
@@ -1718,9 +1601,6 @@ build_gtwr_bandwidth_sensitivity_row_from_payload <- function(payload,
       p50_beta = suppressWarnings(as.numeric(summary$p50_beta[[1]])),
       p75_beta = suppressWarnings(as.numeric(summary$p75_beta[[1]])),
       share_positive = suppressWarnings(as.numeric(summary$share_positive[[1]])),
-      max_local_cn_gtwr = suppressWarnings(as.numeric(summary$max_local_cn_gtwr[[1]])),
-      collinearity_warn_n = suppressWarnings(as.integer(summary$collinearity_warn_n[[1]])),
-      collinearity_warn_share = suppressWarnings(as.numeric(summary$collinearity_warn_share[[1]])),
       n_compare_with_main = if (identical(status, "success")) cmp_stats$n_compare_with_main else 0L,
       beta_corr_with_main = if (identical(status, "success")) cmp_stats$beta_corr_with_main else NA_real_,
       mean_abs_delta_vs_main = if (identical(status, "success")) cmp_stats$mean_abs_delta_vs_main else NA_real_,
@@ -1895,18 +1775,6 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
     dplyr::filter(.data$period_id == .env$period_meta$latest_period_id) |>
     dplyr::select(adm_cd, outcome, focal_var, estimate)
 
-  cn_tbl <- local_cn_for_window(
-    d_fit,
-    rhs_vars = rhs_vars,
-    st_bw = st_bw,
-    st_dmat = st_dmat,
-    threshold = cfg$gtwr_local_cn_warn_threshold
-  )
-  cn_vals <- cn_tbl$local_cn_gtwr_latest
-  warn_vals <- cn_tbl$collinearity_warn_latest
-  warn_n <- sum(warn_vals %in% TRUE, na.rm = TRUE)
-  warn_denom <- sum(!is.na(warn_vals))
-
   beta_stats <- summarise_numeric(latest_beta$estimate)
   if (beta_stats$n_valid == 0L) {
     return(build_gtwr_lamda_sensitivity_deferred_row(
@@ -1968,9 +1836,6 @@ run_gtwr_lamda_sensitivity_spec <- function(panel_xy,
       p50_beta = beta_stats$p50_beta,
       p75_beta = beta_stats$p75_beta,
       share_positive = beta_stats$share_positive,
-      max_local_cn_gtwr = if (any(is.finite(cn_vals))) max(cn_vals[is.finite(cn_vals)]) else NA_real_,
-      collinearity_warn_n = as.integer(warn_n),
-      collinearity_warn_share = if (warn_denom > 0L) warn_n / warn_denom else NA_real_,
       n_compare_with_main = cmp_stats$n_compare_with_main,
       beta_corr_with_main = cmp_stats$beta_corr_with_main,
       mean_abs_delta_vs_main = cmp_stats$mean_abs_delta_vs_main,
@@ -2352,14 +2217,6 @@ run_actual_gtwr_spec <- function(panel_xy,
       bw_source = bw_source
     )
 
-  cn_tbl <- local_cn_for_window(
-    d_fit,
-    rhs_vars = rhs_vars,
-    st_bw = st_bw,
-    st_dmat = st_dmat,
-    threshold = cfg$gtwr_local_cn_warn_threshold
-  )
-
   local_tbl <- beta_panel |>
     dplyr::group_by(adm_cd, outcome, focal_var) |>
     dplyr::summarise(
@@ -2393,36 +2250,12 @@ run_actual_gtwr_spec <- function(panel_xy,
       bw_obs_n = as.integer(bw_obs_n),
       bw_source = bw_source
     ) |>
-    dplyr::left_join(cn_tbl, by = "adm_cd") |>
-    dplyr::mutate(
-        collinearity_warn_earliest = dplyr::coalesce(.data$collinearity_warn_earliest, FALSE),
-        collinearity_warn_latest = dplyr::coalesce(.data$collinearity_warn_latest, FALSE),
-        collinearity_warn_flag = .data$status == "success" & .data$collinearity_warn_latest,
-        collinearity_warn_stage = dplyr::case_when(
-          .data$status == "success" & .data$collinearity_warn_latest ~ "latest",
-          TRUE ~ NA_character_
-        ),
-        collinearity_warn_metric = "gtwr_spatiotemporal_local_cn_gwmodel_style",
-        collinearity_warn_threshold = cfg$gtwr_local_cn_warn_threshold,
-        collinearity_diag_status = dplyr::case_when(
-          is.null(.env$st_dmat) ~ "not_computed_st_dmat_error",
-          TRUE ~ "computed_gtwr_spatiotemporal"
-        ),
-        collinearity_diag_message = dplyr::case_when(
-          is.null(.env$st_dmat) ~ "GTWR local CN not computed because spatiotemporal distance matrix construction failed",
-          TRUE ~ "local_cn_gtwr mirrors GWmodel::gwr.collin.diagno local_CN using GTWR spatiotemporal weights"
-        )
-      ) |>
     dplyr::select(dplyr::all_of(names(empty_gtwr_local_tbl())))
 
     success_local <- local_tbl |>
       dplyr::filter(.data$status == "success", is.finite(.data$estimate))
     beta_stats <- summarise_numeric(success_local$estimate)
     diag_tbl <- extract_gtwr_diagnostics(fit)
-    warn_vals <- local_tbl$collinearity_warn_flag
-    cn_vals <- local_tbl$local_cn_gtwr_latest
-    warn_n <- sum(warn_vals %in% TRUE, na.rm = TRUE)
-    warn_denom <- sum(local_tbl$status == "success" & !is.na(warn_vals))
     latest_missing_n <- sum(!is.finite(local_tbl$latest_estimate))
     latest_coverage_share <- if (nrow(local_tbl) > 0L) {
       mean(is.finite(local_tbl$latest_estimate))
@@ -2456,11 +2289,8 @@ run_actual_gtwr_spec <- function(panel_xy,
         gtw_aicc = diag_tbl$gtw_aicc[[1]],
         gtw_enp = diag_tbl$gtw_enp[[1]],
         gtw_edf = diag_tbl$gtw_edf[[1]],
-        collinearity_warn_n = as.integer(warn_n),
-        collinearity_warn_share = if (warn_denom > 0L) warn_n / warn_denom else NA_real_,
         latest_missing_n = as.integer(latest_missing_n),
         latest_coverage_share = latest_coverage_share,
-        max_local_cn_gtwr = if (any(is.finite(cn_vals))) max(cn_vals[is.finite(cn_vals)]) else NA_real_,
       control_set = control_set,
       fit_scope = "quarterly_actual",
       recent_period_n = as.integer(n_periods),
