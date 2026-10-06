@@ -158,7 +158,7 @@ An interactive web-based visual analytics explorer is provided to inspect the lo
 
 ### 5.1 Key Analytical Features
 
-* **Spatial Choropleth & Diagnostics**: Interactive maps displaying local aging coefficients ($\hat{\beta}$) across five commercial vitality outcomes, accompanied by spatiotemporal local condition number diagnostics.
+* **Spatial Choropleth & Diagnostics**: Interactive maps displaying local aging coefficients ($\hat{\beta}$) across five commercial vitality outcomes, accompanied by per-dong local fit details (effective sample size and earliest/latest estimates).
 * **Spatiotemporal Timeline**: Sequential time-slider spanning 25 quarters (2019Q4–2025Q4) to trace empirical trajectory shifts across pandemic shocks and recovery.
 * **Guided Research Tour**: Step-by-step interactive narrative summarizing key empirical findings (e.g., broad vitality enhancements in Northeast living areas and divergent patterns between GBD employment centers and outer residential districts in Southeast Seoul).
 * **Comparative Analytics & Linked Scatter Plot**: Autonomous district filtering (25 Gus), pairwise side-by-side dong comparison with time-series trajectory overlays, and linked diagnostic scatter plots.

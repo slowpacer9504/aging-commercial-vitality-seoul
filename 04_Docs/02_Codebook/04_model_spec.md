@@ -284,8 +284,7 @@
   - The lean control pool consists solely of `lag4_ln_resident_pop` and `lag4_ln_land_price_adjusted`.
   - `GTWR_CONTROL_SET=extended` adds `lag4_transit_accessibility` and `lag4_ln_workplace_worker_pop` to the lean controls.
   - In GTWR extended, the number of bus stops and subway stations are not input as separate controls but as a `lag4_transit_accessibility` composite, and workplace population size is controlled via `lag4_ln_workplace_worker_pop`.
-  - Records the local condition-number based on GTWR spatiotemporal weights as a diagnostic.
-  - The local condition-number applies the local_CN calculation convention of `GWmodel::gwr.collin.diagno()` adapted to GTWR's `st.dist`/`gw.weight` spatiotemporal weights.
+  - Multicollinearity is checked with the pooled OLS VIF of the GTWR covariates on the complete-case sample, the standard pre-estimation check; `GWmodel::gtwr()` provides no local collinearity diagnostic, so none is computed for the local fits.
   - The default bandwidth is uniformly fixed at `GTWR_ST_BW=60`.
   - Under `adaptive=TRUE`, a bandwidth of 60 means 60 spatiotemporal neighbors around each estimation point.
   - [03_run_gtwr_main.R](../../02_Code/03_models/03_run_gtwr_main.R) does not run `bw.gtwr()` even if `GTWR_BANDWIDTH_STRATEGY` is not fixed.
@@ -382,7 +381,7 @@
   - `03_Output/04_Logs/gtwr_bandwidth_sensitivity_cache/<control_set>/main/*.rds`
 - Implementation Principles:
   - Requires baseline `gtwr_main_models_<control_set>.csv` and `gtwr_local_coefficients_<control_set>.csv` first.
-  - The fixed bandwidth grid is re-estimated by spec, and the sensitivity regarding correlation, absolute difference, sign flip, and local condition-number relative to the baseline latest-quarter beta is saved.
+  - The fixed bandwidth grid is re-estimated by spec, and the sensitivity regarding correlation, absolute difference, and sign flip relative to the baseline latest-quarter beta is saved.
 
 ## 7G) GTWR Lamda Sensitivity Diagnostic
 
@@ -393,7 +392,7 @@
   - `03_Output/04_Logs/gtwr_lamda_sensitivity_cache/<control_set>/main/*.rds`
 - Implementation Principles:
   - Requires baseline `gtwr_main_models_<control_set>.csv` and `gtwr_local_coefficients_<control_set>.csv` first.
-  - The lamda grid is re-estimated by spec using the fixed main bandwidth, and sensitivity regarding correlation, absolute difference, sign flip, and local condition-number relative to the baseline latest-quarter beta is saved.
+  - The lamda grid is re-estimated by spec using the fixed main bandwidth, and sensitivity regarding correlation, absolute difference, and sign flip relative to the baseline latest-quarter beta is saved.
 
 ## 7X) GTWR Experiment Appendix
 

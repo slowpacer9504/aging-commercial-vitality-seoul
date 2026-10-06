@@ -1,6 +1,6 @@
 # Research Procedure
 
-> **Last updated**: 2026-08-13
+> **Last updated**: 2026-10-06
 
 ## 0. Document Purpose
 
@@ -396,9 +396,9 @@ GTWR main is a quarterly resident-only local sidecar.
 - Execution method: Computations run per outcome-exposure spec, utilizing parallel workers up to `GTWR_PARALLEL_SPECS`.
 - Resumption method: Per-spec RDS caches are saved to `03_Output/04_Logs/gtwr_spec_cache/<control_set>/main/`, and if interrupted and restarted, valid completed specs are reused.
 - Control set: Default is `GTWR_CONTROL_SET=lean`. `lean` only uses resident-population-based `lag4_ln_resident_pop` and `lag4_ln_land_price_adjusted`. `extended` adds `lag4_transit_accessibility` and `lag4_ln_workplace_worker_pop` to these.
-- Bandwidth strategy: Main GTWR uses fixed adaptive `GTWR_ST_BW=60`. Based on `adaptive=TRUE`, 60 spatiotemporal neighbors around each estimation point are used. `full_panel_bw_gtwr` and `anchor_quarter_bw_gtwr` searches are only performed in [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), and the selected results are saved to `gtwr_bandwidth_selection_<control_set>.csv` and the bandwidth cache. [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R) applies the default `GTWR_BANDWIDTH_SENSITIVITY_GRID` (`30,60,90,120,180`) iteratively to the same outcome-control-spec, saving beta correlations against the baseline 60, absolute changes, sign flips, and local condition-number shifts to `gtwr_bandwidth_sensitivity_<control_set>.csv`.
-- Lamda sensitivity: Executed exclusively in [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R). It re-estimates GTWR applying each value in `GTWR_LAMDA_SENSITIVITY_GRID` to the same outcome-control-spec, logging correlations, absolute changes, sign flips, and local condition-number shifts against baseline latest-quarter betas to `gtwr_lamda_sensitivity_<control_set>.csv`.
-- Local CN Diagnostics: Follows the `GWmodel::gwr.collin.diagno()` local_CN calculation convention but applies the `st.dist`/`gw.weight`-based spatiotemporal weights used in GTWR.
+- Bandwidth strategy: Main GTWR uses fixed adaptive `GTWR_ST_BW=60`. Based on `adaptive=TRUE`, 60 spatiotemporal neighbors around each estimation point are used. `full_panel_bw_gtwr` and `anchor_quarter_bw_gtwr` searches are only performed in [06_select_gtwr_bandwidth.R](../../02_Code/80_optional/gtwr/06_select_gtwr_bandwidth.R), and the selected results are saved to `gtwr_bandwidth_selection_<control_set>.csv` and the bandwidth cache. [07_run_gtwr_bandwidth_sensitivity.R](../../02_Code/80_optional/gtwr/07_run_gtwr_bandwidth_sensitivity.R) applies the default `GTWR_BANDWIDTH_SENSITIVITY_GRID` (`30,60,90,120,180`) iteratively to the same outcome-control-spec, saving beta correlations against the baseline 60, absolute changes, and sign flips to `gtwr_bandwidth_sensitivity_<control_set>.csv`.
+- Lamda sensitivity: Executed exclusively in [08_run_gtwr_lamda_sensitivity.R](../../02_Code/80_optional/gtwr/08_run_gtwr_lamda_sensitivity.R). It re-estimates GTWR applying each value in `GTWR_LAMDA_SENSITIVITY_GRID` to the same outcome-control-spec, logging correlations, absolute changes, and sign flips against baseline latest-quarter betas to `gtwr_lamda_sensitivity_<control_set>.csv`.
+- Multicollinearity check: The GTWR covariates are checked with the pooled OLS VIF on the GTWR complete-case sample, the standard pre-estimation check in applied GTWR studies (values in [research_plan.md](research_plan.md) section 6.3). `GWmodel::gtwr()` provides no local collinearity diagnostic, so none is computed for the local fits.
 
 The core operational principles for GTWR are:
 

@@ -160,7 +160,6 @@ Comments to avoid:
 - Fix lean controls to `lag4_ln_resident_pop` and `lag4_ln_land_price_adjusted`.
 - Extended controls add `lag4_transit_accessibility` and `lag4_ln_workplace_worker_pop` to the lean controls.
 - Construct `transit_accessibility` as the pooled z-score average of `bus_stop_count_aux` and `subway_station_count_aux`; do not input these two raw counts directly as model controls.
-- Save the GTWR spatiotemporal weight-based local condition-number as a diagnostic.
 - Unify bandwidth in main GTWR to a fixed `GTWR_ST_BW=60`. Perform `bw.gtwr()` search only in `06_select_gtwr_bandwidth.R`, fixed grid `(30,60,90,120,180)` sensitivity in `07_run_gtwr_bandwidth_sensitivity.R`, and lambda grid sensitivity only in `08_run_gtwr_lamda_sensitivity.R`.
 - The `estimate` in the main output is the latest-quarter local beta, whereas delta is calculated only in supplementary reporting tables.
 - Long-running executions must be resumable via outcome-exposure spec caches, limiting worker nodes with `GTWR_PARALLEL_SPECS`.
